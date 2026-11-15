@@ -184,6 +184,10 @@ cada ficha consumida viaja al lugar donde se produce otra, con un tween de 0,3 s
 - Eventos no controlables: no tienen botón; se muestran como flecha punteada.
 - Botones táctiles de 44 × 44 px como mínimo.
 
+**Tamaño real (cambio respecto al texto anterior, por confirmar):** el panel mide 340 x 392 px y se coloca junto a la máquina
+(a la derecha, o a la izquierda si la máquina está en la mitad derecha de la pantalla). Con 300 x 220 px no cabían
+el grafo, los botones de 44 px y los últimos 10 eventos. El grafo usa las coordenadas x, y del .jff escaladas al panel.
+
 ## 8. HUD general (zonas)
 
 | Zona | Posición | Contenido |

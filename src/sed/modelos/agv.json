@@ -3,6 +3,12 @@
   "estados": ["Libre", "Viajando", "Esperando", "Descargando"],
   "inicial": "Libre",
   "marcados": ["Libre"],
+  "posiciones": {
+    "Libre": [100, 200],
+    "Viajando": [300, 100],
+    "Esperando": [500, 200],
+    "Descargando": [300, 320]
+  },
   "eventos": [
     {
       "id": "reservar",

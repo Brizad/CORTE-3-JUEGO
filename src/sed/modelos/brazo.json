@@ -3,6 +3,12 @@
   "estados": ["Reposo", "Moviendo", "Mandril_Cerrado", "Mandril_Abierto"],
   "inicial": "Reposo",
   "marcados": ["Reposo"],
+  "posiciones": {
+    "Reposo": [100, 200],
+    "Moviendo": [300, 100],
+    "Mandril_Cerrado": [500, 200],
+    "Mandril_Abierto": [500, 400]
+  },
   "eventos": [
     {
       "id": "mover",

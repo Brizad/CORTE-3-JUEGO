@@ -3,6 +3,13 @@
   "estados": ["Libre", "Cargado", "Fresando", "Terminado", "Falla"],
   "inicial": "Libre",
   "marcados": ["Libre"],
+  "posiciones": {
+    "Libre": [100, 200],
+    "Cargado": [300, 100],
+    "Fresando": [500, 200],
+    "Terminado": [300, 320],
+    "Falla": [500, 400]
+  },
   "eventos": [
     {
       "id": "cargar",

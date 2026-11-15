@@ -24,6 +24,7 @@ export class Piloto {
     this.acciones = 0;
     this._pendiente = null;
     this._ciclosDespachados = 0;
+    this.bloqueadas = new Set(); // máquinas con el HUD abierto: el piloto no las toca
   }
 
   activar() {
@@ -65,14 +66,26 @@ export class Piloto {
     return accion;
   }
 
+  /** ¿La acción tocaría una máquina con el HUD abierto? (la CNC y el brazo se afectan entre sí) */
+  _ocupada(maquina, evento, opciones = {}) {
+    const involucradas = new Set([maquina]);
+    if (CNCS.includes(maquina) && (evento === 'cargar' || evento === 'descargar')) involucradas.add('BRAZO');
+    if (maquina === 'BRAZO') {
+      if (opciones.objetivo) involucradas.add(opciones.objetivo);
+      if (this.celda.atendida) involucradas.add(this.celda.atendida);
+    }
+    return [...involucradas].some((m) => this.bloqueadas.has(m));
+  }
+
   /** Primera acción posible, en orden de prioridad. */
   _elegir() {
     const c = this.celda;
-    const posible = (maquina, evento, opciones) => c.evaluar(maquina, evento, opciones) === null;
+    const posible = (maquina, evento, opciones) =>
+      !this._ocupada(maquina, evento, opciones) && c.evaluar(maquina, evento, opciones) === null;
 
     // 1. Reparar una CNC en Falla con una palabra válida de la consola.
     for (const cnc of CNCS) {
-      if (c.estado(cnc) === 'Falla') return [cnc, 'reset', { palabra: PALABRA_REPARACION }];
+      if (c.estado(cnc) === 'Falla' && !this._ocupada(cnc, 'reset')) return [cnc, 'reset', { palabra: PALABRA_REPARACION }];
     }
     // 2. Iniciar el fresado de una CNC cargada (si el supervisor lo permite).
     for (const cnc of CNCS) {

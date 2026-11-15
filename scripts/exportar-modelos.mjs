@@ -35,10 +35,14 @@ const TRANSICIONES = {
 function leerJff(archivo, nombre) {
   const texto = fs.readFileSync(ruta(`modelos/automatas/${archivo}`), 'utf8');
   const estados = new Map();
+  const posiciones = {}; // coordenadas (x, y) de cada estado en JFLAP: el HUD usa la misma distribución
   let inicial = null;
   const marcados = [];
   for (const m of texto.matchAll(/<state id="(\d+)" name="([^"]*)">([\s\S]*?)<\/state>/g)) {
     estados.set(m[1], m[2]);
+    const x = /<x>([-\d.]+)<\/x>/.exec(m[3]);
+    const y = /<y>([-\d.]+)<\/y>/.exec(m[3]);
+    if (x && y) posiciones[m[2]] = [Number(x[1]), Number(y[1])];
     if (/<initial\/>/.test(m[3])) inicial = m[2];
     if (/<final\/>/.test(m[3])) marcados.push(m[2]);
   }
@@ -53,6 +57,7 @@ function leerJff(archivo, nombre) {
     estados: [...estados.values()],
     inicial,
     marcados,
+    posiciones,
     eventos: EVENTOS[archivo].map(([codigo, id, controlable]) => ({ id, codigo, controlable, observable: true })),
     transiciones,
   };

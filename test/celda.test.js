@@ -215,3 +215,20 @@ test('los pedidos llegan cada 25 s, vencen a los 30 s y un ciclo de AGV atiende 
   assert.equal(celda.pedidos.length, 1);
   assert.equal(celda.pedidos[0].t, 50);
 });
+
+test('el piloto no toca las máquinas con el HUD abierto (CNC1 bloqueada durante 100 s)', () => {
+  const { reloj, celda } = nueva({ ...TURNOS[0], probFalla: 0 });
+  const piloto = new Piloto(celda);
+  piloto.bloqueadas.add('CNC1');
+  celda.alCambiar(() => {});
+  piloto.activar();
+  for (let i = 0; i < 400; i++) reloj.avanzar(0.25);
+  const tocadas = celda.bitacora.filter((e) => e.tipo === 'automata' && e.maquina === 'CNC1');
+  assert.equal(tocadas.length, 0, 'CNC1 no cambió de estado');
+  assert.equal(celda.estado('CNC1'), 'Libre');
+  assert.ok(celda.estadisticas.piezas > 0, 'la CNC2 sí trabaja');
+  // Al cerrar el HUD, el piloto vuelve a usarla.
+  piloto.bloqueadas.delete('CNC1');
+  for (let i = 0; i < 400; i++) reloj.avanzar(0.25);
+  assert.ok(celda.bitacora.some((e) => e.tipo === 'automata' && e.maquina === 'CNC1'));
+});

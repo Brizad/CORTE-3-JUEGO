@@ -93,9 +93,10 @@ export class EntidadBrazo extends Entidad {
     this.redibujarIcono(t);
   }
 
+  /** El ícono queda fijo a un lado de la base, así nunca se encima con el de la CNC que el brazo atiende. */
   puntoIcono() {
-    const m = this._muneca ?? aPantalla(this.pos.x + 0.5, this.pos.y + 0.5, ALTOS.BRAZO);
-    return { x: m.x, y: m.y - 8 - 8 };
+    const base = aPantalla(this.pos.x + 0.5, this.pos.y + 0.5, ALTOS.BRAZO);
+    return { x: base.x + 26, y: base.y - 4 };
   }
 
   /** Silueta fija para detectar clics: hexágono alrededor de la base y el brazo en reposo. */
