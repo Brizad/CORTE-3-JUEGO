@@ -1,0 +1,778 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<pnml>
+<net id="Net-One" type="P/T net">
+<token id="Default" enabled="true" red="0" green="0" blue="0"/>
+<place id="Mesa_libre">
+<graphics>
+<position x="290.0" y="300.0"/>
+</graphics>
+<name>
+<value>Mesa_libre</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,1</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="Robot_libre">
+<graphics>
+<position x="390.0" y="300.0"/>
+</graphics>
+<name>
+<value>Robot_libre</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,1</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="AGV1_listo">
+<graphics>
+<position x="120.0" y="100.0"/>
+</graphics>
+<name>
+<value>AGV1_listo</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,1</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="AGV2_listo">
+<graphics>
+<position x="560.0" y="100.0"/>
+</graphics>
+<name>
+<value>AGV2_listo</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,1</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="AGV1_con_mesa">
+<graphics>
+<position x="120.0" y="300.0"/>
+</graphics>
+<name>
+<value>AGV1_con_mesa</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,0</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="AGV2_con_robot">
+<graphics>
+<position x="560.0" y="300.0"/>
+</graphics>
+<name>
+<value>AGV2_con_robot</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,0</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="AGV1_trabajando">
+<graphics>
+<position x="120.0" y="500.0"/>
+</graphics>
+<name>
+<value>AGV1_trabajando</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,0</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="AGV2_trabajando">
+<graphics>
+<position x="560.0" y="500.0"/>
+</graphics>
+<name>
+<value>AGV2_trabajando</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,0</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="Robot_en_CNC">
+<graphics>
+<position x="440.0" y="470.0"/>
+</graphics>
+<name>
+<value>Robot_en_CNC</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,0</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<place id="Celda_libre">
+<graphics>
+<position x="340.0" y="700.0"/>
+</graphics>
+<name>
+<value>Celda_libre</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</name>
+<initialMarking>
+<value>Default,1</value>
+<graphics>
+<offset x="0.0" y="0.0"/>
+</graphics>
+</initialMarking>
+<capacity>
+<value>1</value>
+</capacity>
+</place>
+<transition id="t1a">
+<graphics>
+<position x="120.0" y="200.0"/>
+</graphics>
+<name>
+<value>t1a</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="t1b">
+<graphics>
+<position x="120.0" y="400.0"/>
+</graphics>
+<name>
+<value>t1b</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="t1c">
+<graphics>
+<position x="120.0" y="600.0"/>
+</graphics>
+<name>
+<value>t1c</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="t2a">
+<graphics>
+<position x="560.0" y="200.0"/>
+</graphics>
+<name>
+<value>t2a</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="t2b">
+<graphics>
+<position x="560.0" y="400.0"/>
+</graphics>
+<name>
+<value>t2b</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="t2c">
+<graphics>
+<position x="560.0" y="600.0"/>
+</graphics>
+<name>
+<value>t2c</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="tr_ir">
+<graphics>
+<position x="400.0" y="400.0"/>
+</graphics>
+<name>
+<value>tr_ir</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<transition id="tr_volver">
+<graphics>
+<position x="480.0" y="400.0"/>
+</graphics>
+<name>
+<value>tr_volver</value>
+<graphics>
+<offset x="-5.0" y="35.0"/>
+</graphics>
+</name>
+<orientation>
+<value>90</value>
+</orientation>
+<rate>
+<value>1.0</value>
+</rate>
+<timed>
+<value>false</value>
+</timed>
+<infiniteServer>
+<value>false</value>
+</infiniteServer>
+<priority>
+<value>1</value>
+</priority>
+</transition>
+<arc id="AGV1_listo to t1a" source="AGV1_listo" target="t1a">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="115" curvePoint="false"/>
+<arcpath id="001" x="135" y="215" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Mesa_libre to t1a" source="Mesa_libre" target="t1a">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="305" y="315" curvePoint="false"/>
+<arcpath id="001" x="135" y="215" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Celda_libre to t1a" source="Celda_libre" target="t1a">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="355" y="715" curvePoint="false"/>
+<arcpath id="001" x="135" y="215" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t1a to AGV1_con_mesa" source="t1a" target="AGV1_con_mesa">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="215" curvePoint="false"/>
+<arcpath id="001" x="135" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="AGV1_con_mesa to t1b" source="AGV1_con_mesa" target="t1b">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="315" curvePoint="false"/>
+<arcpath id="001" x="135" y="415" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Robot_libre to t1b" source="Robot_libre" target="t1b">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="405" y="315" curvePoint="false"/>
+<arcpath id="001" x="135" y="415" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t1b to AGV1_trabajando" source="t1b" target="AGV1_trabajando">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="415" curvePoint="false"/>
+<arcpath id="001" x="135" y="515" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="AGV1_trabajando to t1c" source="AGV1_trabajando" target="t1c">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="515" curvePoint="false"/>
+<arcpath id="001" x="135" y="615" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t1c to AGV1_listo" source="t1c" target="AGV1_listo">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="615" curvePoint="false"/>
+<arcpath id="001" x="135" y="115" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t1c to Mesa_libre" source="t1c" target="Mesa_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="615" curvePoint="false"/>
+<arcpath id="001" x="305" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t1c to Robot_libre" source="t1c" target="Robot_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="615" curvePoint="false"/>
+<arcpath id="001" x="405" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t1c to Celda_libre" source="t1c" target="Celda_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="135" y="615" curvePoint="false"/>
+<arcpath id="001" x="355" y="715" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="AGV2_listo to t2a" source="AGV2_listo" target="t2a">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="115" curvePoint="false"/>
+<arcpath id="001" x="575" y="215" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Robot_libre to t2a" source="Robot_libre" target="t2a">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="405" y="315" curvePoint="false"/>
+<arcpath id="001" x="575" y="215" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Celda_libre to t2a" source="Celda_libre" target="t2a">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="355" y="715" curvePoint="false"/>
+<arcpath id="001" x="575" y="215" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t2a to AGV2_con_robot" source="t2a" target="AGV2_con_robot">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="215" curvePoint="false"/>
+<arcpath id="001" x="575" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="AGV2_con_robot to t2b" source="AGV2_con_robot" target="t2b">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="315" curvePoint="false"/>
+<arcpath id="001" x="575" y="415" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Mesa_libre to t2b" source="Mesa_libre" target="t2b">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="305" y="315" curvePoint="false"/>
+<arcpath id="001" x="575" y="415" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t2b to AGV2_trabajando" source="t2b" target="AGV2_trabajando">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="415" curvePoint="false"/>
+<arcpath id="001" x="575" y="515" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="AGV2_trabajando to t2c" source="AGV2_trabajando" target="t2c">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="515" curvePoint="false"/>
+<arcpath id="001" x="575" y="615" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t2c to AGV2_listo" source="t2c" target="AGV2_listo">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="615" curvePoint="false"/>
+<arcpath id="001" x="575" y="115" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t2c to Mesa_libre" source="t2c" target="Mesa_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="615" curvePoint="false"/>
+<arcpath id="001" x="305" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t2c to Robot_libre" source="t2c" target="Robot_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="615" curvePoint="false"/>
+<arcpath id="001" x="405" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="t2c to Celda_libre" source="t2c" target="Celda_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="575" y="615" curvePoint="false"/>
+<arcpath id="001" x="355" y="715" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Robot_libre to tr_ir" source="Robot_libre" target="tr_ir">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="405" y="315" curvePoint="false"/>
+<arcpath id="001" x="415" y="415" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="tr_ir to Robot_en_CNC" source="tr_ir" target="Robot_en_CNC">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="415" y="415" curvePoint="false"/>
+<arcpath id="001" x="455" y="485" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="Robot_en_CNC to tr_volver" source="Robot_en_CNC" target="tr_volver">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="455" y="485" curvePoint="false"/>
+<arcpath id="001" x="495" y="415" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+<arc id="tr_volver to Robot_libre" source="tr_volver" target="Robot_libre">
+<graphics/>
+<inscription>
+<value>Default,1</value>
+<graphics/>
+</inscription>
+<tagged>
+<value>false</value>
+</tagged>
+<arcpath id="000" x="495" y="415" curvePoint="false"/>
+<arcpath id="001" x="405" y="315" curvePoint="false"/>
+<type value="normal"/>
+</arc>
+</net>
+</pnml>

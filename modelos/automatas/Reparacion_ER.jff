@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><!--Lenguaje de reparación ^H(CT?)+R$ en notación JFLAP--><structure>
+	<type>re</type>
+	<expression>H(C(T+!))(C(T+!))*R</expression>
+</structure>

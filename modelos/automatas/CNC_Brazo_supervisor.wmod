@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Module Name="RoboCell_CNC_Brazo" xmlns="http://waters.sourceforge.net/xsd/module" xmlns:B="http://waters.sourceforge.net/xsd/base">
+<B:Comment>RoboCell Tycoon: CNC || Brazo con especificacion que prohibe (Fresando, Mandril_Abierto)</B:Comment>
+<EventDeclList>
+<EventDecl Kind="PROPOSITION" Name=":accepting"/>
+<EventDecl Kind="CONTROLLABLE" Name="cargar"/>
+<EventDecl Kind="CONTROLLABLE" Name="iniciar_fresado"/>
+<EventDecl Kind="UNCONTROLLABLE" Name="fin_fresado"/>
+<EventDecl Kind="CONTROLLABLE" Name="descargar"/>
+<EventDecl Kind="UNCONTROLLABLE" Name="falla_husillo"/>
+<EventDecl Kind="CONTROLLABLE" Name="reset"/>
+<EventDecl Kind="CONTROLLABLE" Name="mover"/>
+<EventDecl Kind="UNCONTROLLABLE" Name="llegar"/>
+<EventDecl Kind="CONTROLLABLE" Name="abrir_mandril"/>
+<EventDecl Kind="CONTROLLABLE" Name="cerrar_mandril"/>
+</EventDeclList>
+<ComponentList>
+<SimpleComponent Kind="PLANT" Name="CNC">
+<Graph>
+<NodeList>
+<SimpleNode Initial="true" Name="Libre">
+<EventList>
+<SimpleIdentifier Name=":accepting"/>
+</EventList>
+</SimpleNode>
+<SimpleNode Name="Cargado">
+</SimpleNode>
+<SimpleNode Name="Fresando">
+</SimpleNode>
+<SimpleNode Name="Terminado">
+</SimpleNode>
+<SimpleNode Name="Falla">
+</SimpleNode>
+</NodeList>
+<EdgeList>
+<Edge Source="Libre" Target="Cargado">
+<LabelBlock>
+<SimpleIdentifier Name="cargar"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Cargado" Target="Fresando">
+<LabelBlock>
+<SimpleIdentifier Name="iniciar_fresado"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Fresando" Target="Terminado">
+<LabelBlock>
+<SimpleIdentifier Name="fin_fresado"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Terminado" Target="Libre">
+<LabelBlock>
+<SimpleIdentifier Name="descargar"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Fresando" Target="Falla">
+<LabelBlock>
+<SimpleIdentifier Name="falla_husillo"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Falla" Target="Libre">
+<LabelBlock>
+<SimpleIdentifier Name="reset"/>
+</LabelBlock>
+</Edge>
+</EdgeList>
+</Graph>
+</SimpleComponent>
+<SimpleComponent Kind="PLANT" Name="Brazo">
+<Graph>
+<NodeList>
+<SimpleNode Initial="true" Name="Reposo">
+<EventList>
+<SimpleIdentifier Name=":accepting"/>
+</EventList>
+</SimpleNode>
+<SimpleNode Name="Moviendo">
+</SimpleNode>
+<SimpleNode Name="Mandril_Cerrado">
+</SimpleNode>
+<SimpleNode Name="Mandril_Abierto">
+</SimpleNode>
+</NodeList>
+<EdgeList>
+<Edge Source="Reposo" Target="Moviendo">
+<LabelBlock>
+<SimpleIdentifier Name="mover"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Moviendo" Target="Mandril_Cerrado">
+<LabelBlock>
+<SimpleIdentifier Name="llegar"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Cerrado" Target="Mandril_Abierto">
+<LabelBlock>
+<SimpleIdentifier Name="abrir_mandril"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Abierto" Target="Mandril_Abierto">
+<LabelBlock>
+<SimpleIdentifier Name="cargar"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Abierto" Target="Mandril_Cerrado">
+<LabelBlock>
+<SimpleIdentifier Name="descargar"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Abierto" Target="Mandril_Cerrado">
+<LabelBlock>
+<SimpleIdentifier Name="cerrar_mandril"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Cerrado" Target="Reposo">
+<LabelBlock>
+<SimpleIdentifier Name="mover"/>
+</LabelBlock>
+</Edge>
+</EdgeList>
+</Graph>
+</SimpleComponent>
+<SimpleComponent Kind="SPEC" Name="Spec_NoFresarConMandrilAbierto">
+<Graph>
+<NodeList>
+<SimpleNode Initial="true" Name="Seguro">
+<EventList>
+<SimpleIdentifier Name=":accepting"/>
+</EventList>
+</SimpleNode>
+<SimpleNode Name="CNC_Fresando">
+<EventList>
+<SimpleIdentifier Name=":accepting"/>
+</EventList>
+</SimpleNode>
+<SimpleNode Name="Mandril_Abierto">
+<EventList>
+<SimpleIdentifier Name=":accepting"/>
+</EventList>
+</SimpleNode>
+</NodeList>
+<EdgeList>
+<Edge Source="Seguro" Target="CNC_Fresando">
+<LabelBlock>
+<SimpleIdentifier Name="iniciar_fresado"/>
+</LabelBlock>
+</Edge>
+<Edge Source="CNC_Fresando" Target="Seguro">
+<LabelBlock>
+<SimpleIdentifier Name="fin_fresado"/>
+</LabelBlock>
+</Edge>
+<Edge Source="CNC_Fresando" Target="Seguro">
+<LabelBlock>
+<SimpleIdentifier Name="falla_husillo"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Seguro" Target="Mandril_Abierto">
+<LabelBlock>
+<SimpleIdentifier Name="abrir_mandril"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Abierto" Target="Seguro">
+<LabelBlock>
+<SimpleIdentifier Name="cerrar_mandril"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Abierto" Target="Seguro">
+<LabelBlock>
+<SimpleIdentifier Name="descargar"/>
+</LabelBlock>
+</Edge>
+<Edge Source="Mandril_Abierto" Target="Mandril_Abierto">
+<LabelBlock>
+<SimpleIdentifier Name="cargar"/>
+</LabelBlock>
+</Edge>
+</EdgeList>
+</Graph>
+</SimpleComponent>
+</ComponentList>
+</Module>
