@@ -79,6 +79,7 @@ Cada fila cita lo que la produce. El juego no añade reglas fuera de esta tabla.
 | Mandar el brazo | Evento `m` mover (controlable). Brazo: Reposo → Moviendo. Transición **tr_ir** (Robot_libre → Robot_en_CNC) | `Brazo.jff`, `robocell.pnml` |
 | Brazo llega | Evento `l` llegar (no controlable). Brazo: Moviendo → Mandril_Cerrado | `Brazo.jff` |
 | Abrir y cerrar el mandril | Eventos `a` abrir_mandril y `e` cerrar_mandril (controlables) | `Brazo.jff` |
+| Brazo vuelve a reposo (a mano, botón "volver") | Evento `m` desde Mandril_Cerrado, solo con el brazo en Mandril_Cerrado. Transición **tr_volver** | `Brazo.jff`, `robocell.pnml` |
 | Brazo vuelve a reposo (automático) | Evento `m` desde Mandril_Cerrado. Transición **tr_volver** (Robot_en_CNC → Robot_libre) | `Brazo.jff`, `robocell.pnml` |
 | Despachar AGV1 | Transición **t1a** (AGV1_listo + Mesa_libre → AGV1_con_mesa). Evento `v` reservar (controlable). AGV: Libre → Viajando | `AGV.jff`, `robocell.pnml` |
 | Despachar AGV2 | Transición **t2a** (AGV2_listo + Robot_libre → AGV2_con_robot). Evento `v` reservar. AGV: Libre → Viajando | `AGV.jff`, `robocell.pnml` |
@@ -271,15 +272,41 @@ Aparece como escena superpuesta al hacer clic en una máquina:
 - Estado actual iluminado.
 - Botones de los eventos controlables. Los que el supervisor inhibe se ven en rojo con **glow**.
   Los que inhibe Celda_libre (t1a, t2a) se ven en gris y muestran el aviso "Controlador de celda activo".
-- Para la CNC en Falla: la consola de reparación con los botones H, C, T, R y Enviar, y el botón Pedir ayuda.
-- Para el brazo y las CNC: el botón "Mandar brazo (tr_ir)". Para los AGV: "Despachar AGV1" y "Despachar AGV2".
+- Botones en gris: el evento no es controlable (solo informativo) o ahora no se puede ejecutar. Al pasar el mouse
+  explican qué falta. Ejemplo para `cargar` o `descargar`: "El brazo debe estar en Mandril_Abierto frente a esta CNC
+  (ahora: Mandril_Cerrado)". También dicen si el brazo atiende a otra CNC o si la CNC no está en el estado que exige el evento.
+- Botones en rojo: los inhibe el supervisor. Al pasar el mouse muestran la razón formal ¬(CNC = Fresando ∧ Brazo = Mandril_Abierto)
+  y el estado (CNC, Brazo).
+- **Sección "Brazo en esta CNC"** (solo en el HUD de las CNC): botones del brazo que sirven para esa CNC, con los mismos
+  colores verde, gris y rojo. Cada uno se ejecuta por δ del autómata del brazo y, si corresponde, por su transición:
+  `m` mover (tr_ir, hacia esta CNC), `a` abrir_mandril, `e` cerrar_mandril y `m` volver (tr_volver, a mano). Así el jugador
+  carga y descarga sin cambiar de HUD. Si el brazo atiende a otra CNC, estos botones quedan en gris.
+- **Volver (manual):** evento `m` del brazo desde Mandril_Cerrado, con la transición tr_volver. Es el mismo evento de la vuelta
+  automática (decisión 4 de la sección 17); solo se puede pedir con el brazo en Mandril_Cerrado.
+- Mientras el brazo está en Moviendo, el HUD muestra "Brazo en camino…".
+- Para la CNC en Falla: la consola de reparación (14.2) reemplaza a los botones y a la lista de eventos.
+- Para el brazo: "m → CNC1" y "m → CNC2" desde Reposo (tr_ir) y "volver" desde Mandril_Cerrado. Para los AGV: "Despachar AGV1"
+  o "Despachar AGV2" según el HUD abierto.
+- Mientras un HUD está abierto, el modo demostración no toca esa máquina.
+- El panel mide 340 × 392 px y se coloca junto a la máquina (a la derecha, o a la izquierda si la máquina está en la mitad
+  derecha de la pantalla). Un HUD abierto tapa lo que queda debajo del panel: se cierra con Esc o con la X.
+- Lista de los últimos 10 eventos de la máquina (su palabra observada), con el tiempo de cada uno.
 
 ### 14.2 Consola de reparación
 
-- La palabra tecleada se valida al enviar con el DFA mínimo de 5 estados (`Reparacion_DFA.jff`).
-- **Válida** (por ejemplo HCTCR): se dispara `r` y la CNC pasa de Falla a Libre. +50.
-- **Inválida** (por ejemplo HTCR): la consola se borra. −30.
-- Pedir ayuda muestra `^H(CT?)+R$` y cuesta −20.
+- Cuando una CNC entra en Falla (`x` falla_husillo) aparece una alerta abajo a la derecha y, si su HUD está abierto,
+  la consola. Tiene un campo con la palabra w y los comandos del alfabeto: **H** (home de ejes), **C** (chequeo de herramienta),
+  **T** (cambio de herramienta) y **R** (reset). También se escribe con el teclado: H, C, T, R, Retroceso y Enter.
+- Cada comando avanza el DFA mínimo de 5 estados (`Reparacion_DFA.jff`) y la consola muestra en qué estado va (q0…q4)
+  y qué símbolos pueden seguir.
+- Si un símbolo no tiene transición, desde ese símbolo la palabra se marca en rojo y la consola explica qué se esperaba.
+  Ejemplo: "Después de H se espera C (chequeo de herramienta)". Se puede seguir tecleando; Retroceso quita el último símbolo.
+- Al enviar, w se valida con la RegExp anclada `^H(CT?)+R$` y con el DFA; los dos deben coincidir.
+- **Válida** (por ejemplo HCTCR o HCR): se dispara `r` por δ y la CNC pasa de Falla a Libre. +50.
+- **Inválida** (por ejemplo HTCR, HR o HCT): la CNC sigue en Falla y la consola se borra. −30.
+- **Pedir ayuda** muestra `^H(CT?)+R$` durante 5 s de simulación y cuesta −20 cada vez.
+- **Solo en desarrollo** (`npm run dev`): la tecla **F** fuerza una `falla_husillo` por δ en la CNC que esté fresando.
+  No existe en la versión publicada.
 
 ## 15. Análisis de balance
 
@@ -348,3 +375,8 @@ Estas decisiones cierran huecos de la lista original. El equipo las confirmó, c
 7. **Intento bloqueado** es solo el bloqueo del supervisor CNC ‖ Brazo. El bloqueo por Celda_libre
    muestra el aviso "Controlador de celda activo" y no resta puntos.
 8. **Los tiempos de clic del jugador** (1 s por acción) usados en el balance son una suposición.
+9. **Volver manual del brazo:** el botón "volver" dispara tr_volver desde Mandril_Cerrado (confirmado por el equipo).
+10. **HUD de máquina:** panel de 340 × 392 px, botón de reset en gris hasta la consola, "m → CNC1/CNC2" desde el brazo y
+    paneles que tapan lo que queda debajo (confirmado por el equipo).
+11. **Consola de reparación:** la palabra sigue aceptando símbolos después de un error (marcado en rojo) para poder enviar
+    palabras como HTCR. La tecla F de desarrollo no forma parte del juego publicado.

@@ -13,8 +13,8 @@
 import { Automata } from './automata.js';
 import { componer, supervisor, claveDe } from './composicion.js';
 import { RedPetri } from './redPetri.js';
-import { ValidadorReparacion } from './lenguaje.js';
-import { TIEMPOS, TURNOS } from '../config.js';
+import { validarConRegExp, validarConDFA, EXPRESION_TEXTO } from './lenguaje.js';
+import { TIEMPOS, TURNOS, PUNTOS, DURACION_AYUDA } from '../config.js';
 
 export const CNCS = ['CNC1', 'CNC2'];
 export const AGVS = ['AGV1', 'AGV2'];
@@ -54,12 +54,14 @@ export class Celda {
     // Supervisor CNC || Brazo (se consulta con el estado de la CNC atendida y del brazo).
     this.composicion = componer(modelos.cnc, modelos.brazo);
     this.supervisor = supervisor(this.composicion, modelos.supervisor.prohibidos, { razon: modelos.supervisor.razon });
-    this.validadores = { CNC1: new ValidadorReparacion(modelos.reparacion), CNC2: new ValidadorReparacion(modelos.reparacion) };
 
     this.atendida = null; // CNC que el brazo atiende ('CNC1', 'CNC2' o null con el brazo en reposo)
     this.pedidos = []; // pedidos de AGV pendientes: {id, t, vencido}
     this.estadisticas = { piezas: 0, ciclosAGV: 0, fallas: 0, reparaciones: 0, pedidosVencidos: 0, bloqueos: 0 };
     this.deadlock = false;
+    this.puntaje = 0; // puntos acumulados (GDD, sección 8)
+    this.ayudaHasta = 0; // tiempo de simulación hasta el que se muestra la expresión regular
+    this._fresado = { CNC1: null, CNC2: null }; // evento del reloj pendiente de cada fresado
     this.bitacora = []; // todo lo que ocurrió: {t, ...evento}
     this._escuchas = [];
     this._siguientePedido = 0;
@@ -107,6 +109,34 @@ export class Celda {
     });
   }
 
+  // ---- Puntaje y ayuda ----
+
+  /** Suma (o resta) puntos y avisa a quien escuche. */
+  sumarPuntos(puntos, motivo, maquina = null) {
+    this.puntaje += puntos;
+    this._emitir({ tipo: 'puntos', puntos, motivo, maquina, total: this.puntaje });
+  }
+
+  /** "Pedir ayuda": muestra la expresión regular durante 5 s y resta 20 puntos cada vez. */
+  pedirAyuda(maquina = null) {
+    this.ayudaHasta = this.reloj.ahora + DURACION_AYUDA;
+    this.sumarPuntos(PUNTOS.ayuda, 'ayuda de reparación', maquina);
+    this._emitir({ tipo: 'ayuda', maquina, hasta: this.ayudaHasta });
+    return EXPRESION_TEXTO;
+  }
+
+  /**
+   * Solo para pruebas en desarrollo: fuerza falla_husillo (por δ) en una CNC que esté fresando.
+   * Cancela el fin_fresado pendiente. Devuelve la CNC afectada o null.
+   */
+  forzarFalla() {
+    const cnc = CNCS.find((id) => this.automatas[id].estado === 'Fresando');
+    if (!cnc) return null;
+    if (this._fresado[cnc] !== null) this.reloj.cancelar(this._fresado[cnc]);
+    this._interno([[cnc, 'falla_husillo']], undefined, () => { this.estadisticas.fallas++; });
+    return cnc;
+  }
+
   // ---- Consultas ----
 
   /** Estado actual de una máquina. */
@@ -146,6 +176,7 @@ export class Celda {
     const motivo = plan.error ?? this._comprobar(plan);
     if (motivo) {
       if (motivo === 'supervisor') this.estadisticas.bloqueos++;
+      if (motivo === 'palabra_invalida') this.sumarPuntos(PUNTOS.palabraInvalida, 'palabra de reparación inválida', maquina);
       this._emitir({ tipo: 'rechazo', maquina, evento, motivo });
       return { ok: false, motivo };
     }
@@ -174,11 +205,19 @@ export class Celda {
             despues: () => this._programarFresado(cnc),
           };
         case 'reset': {
-          const v = this.validadores[cnc];
-          v.reiniciar();
-          for (const simbolo of opciones.palabra ?? '') v.avanzar(simbolo);
-          if (!v.esValida()) return { error: 'palabra_invalida' };
-          return { pasos: [[cnc, 'reset']], despues: () => { this.estadisticas.reparaciones++; } };
+          // La palabra w se valida con la RegExp anclada y con el DFA de JFLAP: deben coincidir.
+          const palabra = opciones.palabra ?? '';
+          const porRegExp = validarConRegExp(palabra);
+          const porDFA = validarConDFA(this.modelos.reparacion, palabra);
+          if (porRegExp !== porDFA) throw new Error(`La RegExp y el DFA no coinciden con "${palabra}"`);
+          if (!porDFA) return { error: 'palabra_invalida' };
+          return {
+            pasos: [[cnc, 'reset']],
+            despues: () => {
+              this.estadisticas.reparaciones++;
+              this.sumarPuntos(PUNTOS.reparacion, 'reparación válida', cnc);
+            },
+          };
         }
         default:
           return { error: 'no_controlable' };
@@ -315,9 +354,9 @@ export class Celda {
     const falla = this.aleatorio.siguiente() < this.turno.probFalla;
     if (falla) {
       const dt = this.aleatorio.entre(this.tiempos.fallaMin, this.tiempos.fallaMax);
-      this.reloj.programarEn(dt, () => this._interno([[cnc, 'falla_husillo']], undefined, () => { this.estadisticas.fallas++; }));
+      this._fresado[cnc] = this.reloj.programarEn(dt, () => this._interno([[cnc, 'falla_husillo']], undefined, () => { this.estadisticas.fallas++; }));
     } else {
-      this.reloj.programarEn(this.tiempos.fresado, () => this._interno([[cnc, 'fin_fresado']]));
+      this._fresado[cnc] = this.reloj.programarEn(this.tiempos.fresado, () => this._interno([[cnc, 'fin_fresado']]));
     }
   }
 }

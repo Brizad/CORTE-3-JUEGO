@@ -13,6 +13,7 @@ import { EntidadCNC } from '../entidades/EntidadCNC.js';
 import { EntidadBrazo } from '../entidades/EntidadBrazo.js';
 import { EntidadAGV } from '../entidades/EntidadAGV.js';
 import { FichasPlanta } from '../entidades/FichasPlanta.js';
+import { Alertas } from '../entidades/Alertas.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
 const ZOOM_MIN = 0.8;
@@ -50,6 +51,7 @@ export class Planta extends Phaser.Scene {
       this.piloto.desactivar();
       this.entidades.forEach((e) => e.destruir());
       this.fichas.destruir();
+      this.alertas.destruir();
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
@@ -122,6 +124,7 @@ export class Planta extends Phaser.Scene {
       new EntidadAGV(this, this.celda, 'AGV2'),
     ];
     this.fichas = new FichasPlanta(this, this.celda);
+    this.alertas = new Alertas(this, this.celda);
   }
 
   // ---- Textos de depuración ----
@@ -152,9 +155,10 @@ export class Planta extends Phaser.Scene {
     const r = this.reloj;
     for (const e of this.entidades) e.actualizar(r.ahora);
     this.fichas.actualizar();
+    this.alertas.actualizar();
     const est = this.celda.estadisticas;
     this.textoEstado.setText(
-      `Velocidad x${r.velocidad}   Piezas ${est.piezas}   Ciclos AGV ${est.ciclosAGV}   Pedidos ${this.celda.pedidos.length}`,
+      `Velocidad x${r.velocidad}   Piezas ${est.piezas}   Puntos ${this.celda.puntaje}   Ciclos AGV ${est.ciclosAGV}   Pedidos ${this.celda.pedidos.length}`,
     );
     this.textoDemo.setText(this.celda.deadlock ? 'DEADLOCK' : this.piloto.activo ? 'MODO DEMOSTRACIÓN (D para salir)' : '');
     this.textoDemo.setColor(this.celda.deadlock ? TEXTO_HEX.fallo : TEXTO_HEX.operacion);
@@ -175,6 +179,11 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
     e.on(ACCIONES.FPS, () => this.textoFps.setVisible(!this.textoFps.visible));
     e.on(ACCIONES.DEMO, () => this.piloto.alternar());
+    // Solo en desarrollo (npm run dev): fuerza una falla_husillo para probar la consola de reparación.
+    e.on(ACCIONES.FORZAR_FALLA, () => {
+      if (!import.meta.env?.DEV) return;
+      if (!this.celda.forzarFalla()) this.alertas.avisar('Tecla F: no hay ninguna CNC fresando.', 'espera');
+    });
     e.on(ACCIONES.INSPECTOR, () => inspector().alternar?.());
     e.on(ACCIONES.CERRAR, () => {
       hud().cerrar?.();

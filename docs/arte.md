@@ -180,13 +180,35 @@ cada ficha consumida viaja al lugar donde se produce otra, con un tween de 0,3 s
 - **Estado actual iluminado:** nodo relleno con su color de estado y borde blanco.
 - **Eventos controlables habilitados:** botón con el color de operación.
 - **Eventos deshabilitados por el supervisor:** botón **rojo `#d64545`**, con **glow** de Phaser 4 que pulsa.
-- **Eventos no definidos en el estado:** botón gris sin glow.
-- Eventos no controlables: no tienen botón; se muestran como flecha punteada.
+- **Eventos que ahora no se pueden ejecutar** (falta el brazo, un recurso o la palabra de reparación): botón gris sin glow,
+  con la explicación al pasar el mouse. Solo hay botón para los eventos de Γ(q).
+- **Eventos no controlables:** botón gris solo informativo (por ejemplo `f` y `x` con la CNC fresando).
 - Botones táctiles de 44 × 44 px como mínimo.
 
-**Tamaño real (cambio respecto al texto anterior, por confirmar):** el panel mide 340 x 392 px y se coloca junto a la máquina
-(a la derecha, o a la izquierda si la máquina está en la mitad derecha de la pantalla). Con 300 x 220 px no cabían
-el grafo, los botones de 44 px y los últimos 10 eventos. El grafo usa las coordenadas x, y del .jff escaladas al panel.
+**Tamaño real (confirmado por el equipo):** el panel mide 340 × 392 px y se coloca junto a la máquina
+(a la derecha, o a la izquierda si la máquina está en la mitad derecha de la pantalla). Con 300 × 220 px no cabían
+el grafo, los botones de 44 px y los últimos 10 eventos. El grafo usa las coordenadas x, y del .jff escaladas al panel
+(150 px de alto en las CNC, 198 px en las demás).
+
+Distribución del panel de una CNC, de arriba hacia abajo:
+
+1. Título, aviso "Brazo en camino…" (verde, arriba a la derecha, solo con el brazo en Moviendo) y botón X.
+2. Grafo del autómata. Estado actual: nodo relleno con su color, borde blanco y glow que pulsa. Última transición: parpadea 0,5 s.
+3. Botones de los eventos de Γ(q) (verde, gris o rojo con glow).
+4. Sección **"Brazo en esta CNC"**: cuatro botones de 73 × 44 px: `m · mover`, `a · abrir`, `e · cerrar` y `m · volver`.
+   Mismos colores que los demás. En gris, al pasar el mouse explican qué falta (por ejemplo "El brazo debe estar en Mandril_Abierto
+   frente a esta CNC"). El panel del brazo, de los AGV y de la CNC en Falla no lleva esta sección.
+5. Lista de los últimos 10 eventos (dos columnas de 5) con la palabra observada.
+6. Aviso al pasar el mouse sobre un botón: texto de 10 px en la parte baja del panel.
+
+**CNC en Falla:** la consola de reparación reemplaza a los botones y a la lista:
+
+- Campo de 316 × 28 px con la palabra w en fuente monoespaciada de 18 px. Desde el primer símbolo sin transición, la palabra
+  se ve en rojo `#d64545`.
+- Línea del DFA: "DFA: qN" y los símbolos que pueden seguir; en verde con "(aceptada ✔)" al llegar a q4.
+- Línea de aviso (10 px): lo que se espera, el error, el resultado o la ayuda (`^H(CT?)+R$` en espera `#e0b21b`, 5 s).
+- Botones H, C, T, R en mantenimiento `#3b7dd8` y, debajo, Borrar (gris), Enviar (operación) y Ayuda −20 (espera).
+- Alertas: la zona de abajo a la derecha (sección 8) muestra "CNC1: falla del husillo…" en rojo y los puntos de cada acción.
 
 ## 8. HUD general (zonas)
 

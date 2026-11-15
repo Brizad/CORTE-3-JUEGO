@@ -85,3 +85,20 @@ export const TURNOS = [
   { duracion: 180, meta: 5, probFalla: 0.2, intervaloPedidos: 18 },
   { duracion: 180, meta: 7, probFalla: 0.3, intervaloPedidos: 12 },
 ];
+
+// Puntaje del GDD (sección 8), en puntos. Los negativos restan.
+export const PUNTOS = {
+  pieza: 100,
+  cicloAGV: 40,
+  reparacion: 50,
+  palabraInvalida: -30,
+  ayuda: -20,
+  intentoBloqueado: -15,
+  pedidoVencido: -20,
+  radarVerde: 25,
+  controlador: -150,
+  deadlock: -200,
+};
+
+// Segundos de simulación que se muestra la expresión regular tras "Pedir ayuda" (GDD, sección 8).
+export const DURACION_AYUDA = 5;

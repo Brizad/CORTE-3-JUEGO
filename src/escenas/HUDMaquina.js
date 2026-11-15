@@ -6,6 +6,8 @@
 import { COLORES, TEXTO_HEX } from '../config.js';
 import { aspectoDe } from '../arte/estados.js';
 import { MODELOS } from '../modelos.js';
+import { ConsolaReparacion, COMANDOS } from '../sed/consola.js';
+import { EXPRESION_TEXTO } from '../sed/lenguaje.js';
 
 const PANEL = { ancho: 340, alto: 392, y: 56, xDerecha: 612, xIzquierda: 8 }; // docs/arte.md, sección 7
 const GRAFO = { x: 12, y: 26, ancho: 316, alto: 198, margen: 30 };
@@ -51,6 +53,7 @@ export class HUDMaquina extends Phaser.Scene {
     this.gfxParpadeo = this.add.graphics(); // última transición
     this.capaTextos = this.add.container(0, 0);
     this.capaBotones = this.add.container(0, 0);
+    this.capaConsola = this.add.container(0, 0).setVisible(false);
     this.listaIzq = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
     this.listaDer = this.add.text(12 + 160, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
     this.cabeceraLista = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
@@ -66,11 +69,19 @@ export class HUDMaquina extends Phaser.Scene {
 
     this.contenedor.add([
       marco, this.titulo, this.cerrarBoton, this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos,
-      this.capaBotones, this.cabeceraBrazo, this.aviso, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
+      this.capaBotones, this.capaConsola, this.cabeceraBrazo, this.aviso, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
     ]);
     this.botones = [];
     this._firmaBotones = '';
-    this.events.on('shutdown', () => this._soltarCelda());
+    // Teclado de la consola de reparación (H, C, T, R, Retroceso y Enter).
+    this.input.keyboard.on('keydown', this._alTecla, this);
+    this._modoConsola = false;
+    this._consolaLista = false;
+    this.consola = new ConsolaReparacion(MODELOS.reparacion);
+    this.events.on('shutdown', () => {
+      this.input.keyboard?.off('keydown', this._alTecla, this);
+      this._soltarCelda();
+    });
   }
 
   // ---- Abrir y cerrar ----
@@ -95,8 +106,17 @@ export class HUDMaquina extends Phaser.Scene {
     this.abierto = true;
 
     planta.piloto.bloqueadas.add(id); // el modo demostración no toca esta máquina
-    this._bajaCelda = this.celda.alCambiar(() => {
+    this._modoConsola = false;
+    this._consolaLista = false;
+    this._mensaje = null;
+    this.capaConsola.setVisible(false);
+    this._bajaCelda = this.celda.alCambiar((e) => {
       this._sucia = true;
+      // Los puntos de esta máquina (reparación válida, palabra inválida, ayuda) se avisan en la consola.
+      if (e.tipo === 'puntos' && e.maquina === this.maquinaId) {
+        const signo = e.puntos > 0 ? '+' : '';
+        this._mensaje = { texto: `${signo}${e.puntos} puntos: ${e.motivo}`, color: e.puntos > 0 ? TEXTO_HEX.operacion : TEXTO_HEX.espera, hasta: this.time.now + 3500 };
+      }
     });
     this._dibujarGrafo();
     this._estadoNodo = null;
@@ -290,6 +310,7 @@ export class HUDMaquina extends Phaser.Scene {
       this._actualizarBotones();
       this._actualizarLista();
     }
+    if (this._modoConsola && this._consolaLista) this._refrescarConsola();
     // Los botones rojos pulsan.
     for (const bt of this.botones) if (bt.glow) bt.glow.outerStrength = 3 + 3 * Math.sin(this.time.now / 200);
   }
@@ -439,6 +460,24 @@ export class HUDMaquina extends Phaser.Scene {
   }
 
   _actualizarBotones() {
+    // CNC en Falla: la consola de reparación reemplaza a los botones.
+    const enFalla = this.tipo === 'CNC' && this.celda.estado(this.maquinaId) === 'Falla';
+    if (enFalla !== this._modoConsola) {
+      this._modoConsola = enFalla;
+      this._firmaBotones = '';
+      this.tip.setVisible(false);
+    }
+    this.capaConsola.setVisible(enFalla);
+    if (enFalla) {
+      this.capaBotones.removeAll(true);
+      this.botones = [];
+      this.cabeceraBrazo.setVisible(false);
+      if (!this._consolaLista) this._construirConsola();
+      this._claveConsola = '';
+      this._refrescarConsola();
+      return;
+    }
+    this._consolaLista = false;
     const { principales, brazo } = this._describirBotones();
     const firma = JSON.stringify([principales, brazo].map((l) => l.map((d) => [d.etiqueta, d.tipo, d.tip])));
     if (firma === this._firmaBotones) return;
@@ -459,6 +498,101 @@ export class HUDMaquina extends Phaser.Scene {
     }
   }
 
+  // ---- Consola de reparación (CNC en Falla) ----
+
+  /** Crea la consola: campo con la palabra, estado del DFA, comandos H C T R y Borrar, Enviar, Ayuda. */
+  _construirConsola() {
+    this.capaConsola.removeAll(true);
+    this.consola.limpiar();
+    const y0 = this._yBotones;
+    const texto = (x, y, t, estilo = {}) => {
+      const o = this.add.text(x, y, t, { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, ...estilo });
+      this.capaConsola.add(o);
+      return o;
+    };
+    texto(12, y0, 'Consola de reparación: la CNC está en Falla', { fontStyle: 'bold', color: TEXTO_HEX.espera });
+    const campo = this.add.rectangle(12, y0 + 14, 316, 28, COLORES.panel).setOrigin(0).setStrokeStyle(2, COLORES.maquina);
+    this.capaConsola.add(campo);
+    const mono = { fontFamily: 'Courier New, monospace', fontSize: '18px', fontStyle: 'bold' };
+    this.txtPalabra = texto(20, y0 + 17, '', mono);
+    this.txtMala = texto(20, y0 + 17, '', { ...mono, color: TEXTO_HEX.fallo });
+    this.txtVacio = texto(20, y0 + 21, 'w = escribe H, C, T, R y Enter', { color: '#8794a3' });
+    this.txtEstado = texto(12, y0 + 46, '', { fontStyle: 'bold' });
+    this.txtAviso = texto(12, y0 + 59, '', { wordWrap: { width: 316 } });
+    this._claveConsola = '';
+
+    const boton = (x, y, ancho, etiqueta, color, accion, tip, colorTexto = TEXTO_HEX.texto) => {
+      const rect = this.add.rectangle(x, y, ancho, BOTON.alto, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9);
+      rect.setInteractive({ useHandCursor: true });
+      const t = this.add.text(x + ancho / 2, y + BOTON.alto / 2, etiqueta, {
+        fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: colorTexto, align: 'center',
+      }).setOrigin(0.5);
+      rect.on('pointerup', () => { accion(); this._consolaSucia = true; });
+      rect.on('pointerover', () => this._mostrarTip(tip));
+      rect.on('pointerout', () => this.tip.setVisible(false));
+      this.capaConsola.add([rect, t]);
+    };
+    const fila1 = y0 + 88;
+    const w4 = (316 - 3 * BOTON.hueco) / 4;
+    [['H', 'home'], ['C', 'chequeo'], ['T', 'cambio'], ['R', 'reset']].forEach(([s, nombre], i) => {
+      boton(12 + i * (w4 + BOTON.hueco), fila1, w4, `${s}\n${nombre}`, COLORES.mantenimiento, () => this.consola.escribir(s), `${s}: ${COMANDOS[s]}`);
+    });
+    const fila2 = fila1 + BOTON.alto + 4;
+    const w3 = (316 - 2 * BOTON.hueco) / 3;
+    boton(12, fila2, w3, '⌫ Borrar', COLORES.banda, () => this.consola.borrar(), 'Retroceso: quita el último comando');
+    boton(12 + w3 + BOTON.hueco, fila2, w3, '↵ Enviar', COLORES.operacion, () => this._enviar(), 'Enter: valida la palabra con la RegExp y el DFA');
+    boton(12 + 2 * (w3 + BOTON.hueco), fila2, w3, '? Ayuda (−20)', COLORES.espera, () => this.celda.pedirAyuda(this.maquinaId), 'Muestra la expresión regular 5 s y resta 20 puntos', '#161b22');
+    this._consolaLista = true;
+  }
+
+  /** Envía la palabra: si w ∈ L la Celda ejecuta reset por δ (+50); si no, la CNC sigue en Falla (−30). */
+  _enviar() {
+    const w = this.consola.palabra;
+    if (!w) {
+      this._mensaje = { texto: 'Escribe una palabra antes de enviar.', color: TEXTO_HEX.espera, hasta: this.time.now + 2500 };
+      return;
+    }
+    this.celda.solicitar(this.maquinaId, 'reset', { palabra: w });
+    this.consola.limpiar(); // válida o no, la consola se borra
+    this._sucia = true;
+  }
+
+  /** Teclado de la consola: H, C, T, R, Retroceso y Enter. */
+  _alTecla(evento) {
+    if (!this.abierto || !this._modoConsola) return;
+    const k = evento.key;
+    if (k === 'Enter') this._enviar();
+    else if (k === 'Backspace') {
+      evento.preventDefault();
+      this.consola.borrar();
+    } else if (k.length === 1 && 'hctrHCTR'.includes(k)) this.consola.escribir(k);
+    else return;
+    this._consolaSucia = true;
+  }
+
+  /** Dibuja la palabra, el estado del DFA y el aviso (error, ayuda, mensaje o lo que se espera). */
+  _refrescarConsola() {
+    const c = this.consola;
+    const ahora = this.celda.reloj.ahora;
+    const ayuda = ahora < this.celda.ayudaHasta;
+    const mensaje = this._mensaje && this._mensaje.hasta > this.time.now ? this._mensaje : null;
+    const clave = [c.palabra, c.fallo?.indice, ayuda ? Math.ceil(this.celda.ayudaHasta - ahora) : '-', mensaje?.texto].join('|');
+    if (clave === this._claveConsola) return;
+    this._claveConsola = clave;
+
+    // Desde el primer símbolo sin transición, el resto de la palabra se marca en rojo.
+    const ok = c.fallo ? c.palabra.slice(0, c.fallo.indice) : c.palabra;
+    this.txtPalabra.setText(ok);
+    this.txtMala.setText(c.fallo ? c.palabra.slice(c.fallo.indice) : '').setX(this.txtPalabra.x + this.txtPalabra.width);
+    this.txtVacio.setVisible(c.palabra === '');
+    this.txtEstado
+      .setText(c.fallo ? 'DFA: sin transición para ese símbolo ✗' : `DFA: ${c.estado}${c.aceptada ? '  (aceptada ✔)' : ''}   |   siguiente: ${c.esperados.join(', ') || '—'}`)
+      .setColor(c.fallo ? TEXTO_HEX.fallo : c.aceptada ? TEXTO_HEX.operacion : TEXTO_HEX.texto);
+    if (ayuda) this.txtAviso.setText(`Ayuda: la palabra debe cumplir ${EXPRESION_TEXTO}  (${Math.ceil(this.celda.ayudaHasta - ahora)} s)`).setColor(TEXTO_HEX.espera);
+    else if (mensaje) this.txtAviso.setText(mensaje.texto).setColor(mensaje.color);
+    else this.txtAviso.setText(c.sugerencia).setColor(c.fallo ? TEXTO_HEX.fallo : TEXTO_HEX.texto);
+  }
+
   _mostrarTip(texto) {
     this.tip.setText(texto).setVisible(true);
   }
@@ -475,6 +609,9 @@ export class HUDMaquina extends Phaser.Scene {
 
   /** Últimos 10 eventos de la máquina: su palabra observada. */
   _actualizarLista() {
+    // La consola de reparación ocupa el lugar de la lista mientras la CNC está en Falla.
+    for (const t of [this.cabeceraLista, this.listaIzq, this.listaDer]) t.setVisible(!this._modoConsola);
+    if (this._modoConsola) return;
     const eventos = this.celda.bitacora.filter((e) => e.tipo === 'automata' && e.maquina === this.maquinaId).slice(-10);
     const codigo = new Map(this.modelo.eventos.map((e) => [e.id, e.codigo]));
     const palabra = eventos.map((e) => codigo.get(e.evento)).join(' ');

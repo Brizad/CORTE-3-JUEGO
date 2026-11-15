@@ -12,6 +12,7 @@ export const ACCIONES = {
   VELOCIDAD: 'velocidad', // teclas 1, 2 y 4: {valor}
   CERRAR: 'cerrar', // tecla Esc
   FPS: 'fps', // tecla F1
+  FORZAR_FALLA: 'forzarFalla', // tecla F: solo en desarrollo, fuerza falla_husillo en la CNC que fresa
   DEMO: 'demo', // tecla D: modo demostración (provisional, hasta que exista el HUD de eventos)
   PUNTERO: 'puntero', // el puntero se mueve: {x, y}
   ARRASTRE: 'arrastre', // arrastre con mouse o un dedo: {dx, dy}
@@ -123,6 +124,7 @@ export class GestorEntrada {
     if (tecla === 'p' || tecla === 'P') this._emitir(ACCIONES.PAUSA);
     else if (tecla === 'i' || tecla === 'I') this._emitir(ACCIONES.INSPECTOR);
     else if (tecla === 'd' || tecla === 'D') this._emitir(ACCIONES.DEMO);
+    else if (tecla === 'f' || tecla === 'F') this._emitir(ACCIONES.FORZAR_FALLA);
     else if (tecla === 'Escape') this._emitir(ACCIONES.CERRAR);
     else if (tecla === 'F1') {
       evento.preventDefault(); // evita la ayuda del navegador
