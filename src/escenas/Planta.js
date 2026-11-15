@@ -52,6 +52,7 @@ export class Planta extends Phaser.Scene {
       this.entidades.forEach((e) => e.destruir());
       this.fichas.destruir();
       this.alertas.destruir();
+      this._bajaTemblor();
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
@@ -125,6 +126,10 @@ export class Planta extends Phaser.Scene {
     ];
     this.fichas = new FichasPlanta(this, this.celda);
     this.alertas = new Alertas(this, this.celda);
+    // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
+    this._bajaTemblor = this.celda.alCambiar((e) => {
+      if (e.tipo === 'rechazo' && e.motivo === 'supervisor') this.cameras.main.shake(300, 0.004);
+    });
   }
 
   // ---- Textos de depuración ----

@@ -192,7 +192,9 @@ el grafo, los botones de 44 px y los últimos 10 eventos. El grafo usa las coord
 
 Distribución del panel de una CNC, de arriba hacia abajo:
 
-1. Título, aviso "Brazo en camino…" (verde, arriba a la derecha, solo con el brazo en Moviendo) y botón X.
+1. Título, pestañas **Autómata** y **Composición** (solo en las CNC), aviso "Brazo en camino…" (verde, arriba a la derecha, solo
+   con el brazo en Moviendo) y botón X. La pestaña Composición reemplaza el cuerpo del panel con las cifras 20 / 19 y el estado
+   compuesto actual en 20 px (espera `#e0b21b`; rojo si fuera el estado prohibido).
 2. Grafo del autómata. Estado actual: nodo relleno con su color, borde blanco y glow que pulsa. Última transición: parpadea 0,5 s.
 3. Botones de los eventos de Γ(q) (verde, gris o rojo con glow).
 4. Sección **"Brazo en esta CNC"**: cuatro botones de 73 × 44 px: `m · mover`, `a · abrir`, `e · cerrar` y `m · volver`.
@@ -238,7 +240,7 @@ Cada efecto tiene un propósito. Ninguno es solo decoración.
 | Glow | Máquina seleccionada | Mostrar cuál está abierta |
 | **Bloom** | Eventos críticos: falla del husillo, deadlock, pieza descargada | Subrayar el cambio importante |
 | **Partículas** | Chispas en la CNC Fresando. Humo en la CNC en Falla. Flujo de tokens entre lugares | Mostrar el estado y el flujo |
-| **Temblor de cámara** | Al fallar el husillo y al caer en deadlock (0,3 s) | Marcar el evento negativo |
+| **Temblor de cámara** | Al fallar el husillo, al caer en deadlock y al insistir en un botón rojo del supervisor (0,3 s) | Marcar el evento negativo |
 | **Path** | Rutas de los AGV | Mover cada AGV por una trayectoria |
 
 ### 9.1 Trayectorias de los AGV (Path)

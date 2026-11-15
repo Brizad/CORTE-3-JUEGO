@@ -245,3 +245,78 @@ test('volver: el brazo regresa a reposo a mano (tr_volver) solo desde Mandril_Ce
   assert.equal(celda.atendida, null);
   assert.equal(celda.red.fichas('Robot_libre'), 1);
 });
+
+test('3 intentos de llegar al estado prohibido: ninguno se ejecuta y cada uno resta 15 puntos', () => {
+  const { reloj, celda } = nueva({ ...TURNOS[0], probFalla: 0 });
+  const prohibido = () => celda.estado('CNC1') === 'Fresando' && celda.estado('BRAZO') === 'Mandril_Abierto';
+  // Intentos 1 y 2: iniciar el fresado con el mandril abierto (CNC Cargada).
+  celda.solicitar('BRAZO', 'mover', { objetivo: 'CNC1' });
+  reloj.avanzar(2);
+  celda.solicitar('BRAZO', 'abrir_mandril');
+  celda.solicitar('CNC1', 'cargar');
+  assert.deepEqual(celda.deshabilitadosPorSupervisor('CNC1').map((d) => d.evento), ['iniciar_fresado']);
+  for (let intento = 1; intento <= 2; intento++) {
+    const antes = celda.puntaje;
+    assert.deepEqual(celda.solicitar('CNC1', 'iniciar_fresado'), { ok: false, motivo: 'supervisor' });
+    assert.equal(celda.puntaje - antes, -15);
+    assert.equal(celda.estado('CNC1'), 'Cargado');
+    assert.equal(prohibido(), false);
+  }
+  // Intento 3: abrir el mandril con la CNC fresando.
+  celda.solicitar('BRAZO', 'cerrar_mandril');
+  celda.solicitar('CNC1', 'iniciar_fresado');
+  celda.solicitar('BRAZO', 'mover', { objetivo: 'CNC1' });
+  reloj.avanzar(2);
+  const antes = celda.puntaje;
+  assert.deepEqual(celda.solicitar('BRAZO', 'abrir_mandril'), { ok: false, motivo: 'supervisor' });
+  assert.equal(celda.puntaje - antes, -15);
+  assert.equal(celda.estado('BRAZO'), 'Mandril_Cerrado');
+  assert.equal(prohibido(), false);
+  assert.equal(celda.estadisticas.bloqueos, 3);
+  assert.equal(celda.supervisores.CNC1.bloqueos, 3);
+  assert.equal(celda.supervisores.CNC2.bloqueos, 0);
+  assert.equal(celda.puntaje, -45);
+  assert.equal(celda.bitacora.filter((e) => e.tipo === 'rechazo' && e.motivo === 'supervisor').length, 3);
+});
+
+test('un evento no definido o sin recurso NO es un intento bloqueado (no resta puntos)', () => {
+  const { celda } = nueva();
+  celda.solicitar('AGV2', 'reservar'); // el robot queda tomado: tr_ir sin ficha
+  celda.solicitar('BRAZO', 'mover', { objetivo: 'CNC1' }); // 'recurso'
+  celda.solicitar('CNC1', 'cargar'); // 'indefinido'
+  assert.equal(celda.estadisticas.bloqueos, 0);
+  assert.equal(celda.puntaje, 0);
+});
+
+test('10 000 eventos aleatorios pedidos a la Celda nunca llegan al estado prohibido (en ninguna CNC atendida)', () => {
+  const azar = crearAleatorio(SEMILLA);
+  const { reloj, celda } = nueva({ ...TURNOS[2], probFalla: 0.3 });
+  const elegir = (lista) => lista[Math.floor(azar.siguiente() * lista.length)];
+  let rechazos = 0;
+  let ejecutados = 0;
+  celda.alCambiar(() => {
+    if (celda.atendida) {
+      const [q, b] = celda.estadoCompuesto(celda.atendida);
+      assert.equal(q === 'Fresando' && b === 'Mandril_Abierto', false, `estado prohibido en t = ${reloj.ahora}`);
+    }
+  });
+  const acciones = [
+    ...['CNC1', 'CNC2'].flatMap((c) => ['cargar', 'descargar', 'iniciar_fresado'].map((e) => [c, e])),
+    ['BRAZO', 'abrir_mandril'], ['BRAZO', 'cerrar_mandril'], ['BRAZO', 'volver'],
+    ['BRAZO', 'mover', { objetivo: 'CNC1' }], ['BRAZO', 'mover', { objetivo: 'CNC2' }],
+  ];
+  for (let i = 0; i < 10000; i++) {
+    const [m, e, o] = elegir(acciones);
+    const r = celda.solicitar(m, e, o);
+    if (r.ok) ejecutados++;
+    else if (r.motivo === 'supervisor') rechazos++;
+    if (celda.deadlock) break;
+    reloj.avanzar(azar.entre(0, 1.5));
+    if (['Falla'].includes(celda.estado('CNC1'))) celda.solicitar('CNC1', 'reset', { palabra: 'HCR' });
+    if (['Falla'].includes(celda.estado('CNC2'))) celda.solicitar('CNC2', 'reset', { palabra: 'HCR' });
+  }
+  assert.ok(ejecutados > 500, `ejecutados ${ejecutados}`);
+  assert.ok(rechazos > 20, `la prueba debe poner a prueba al supervisor (rechazos ${rechazos})`);
+  assert.equal(celda.estadisticas.bloqueos, rechazos);
+  assert.equal(celda.supervisores.CNC1.bloqueos + celda.supervisores.CNC2.bloqueos, rechazos);
+});

@@ -14,6 +14,7 @@ export class Alertas {
    */
   constructor(escena, celda) {
     this.escena = escena;
+    this.celda = celda;
     this.avisos = []; // {texto, color, hasta}
     this.fondo = escena.add.graphics().setDepth(90).setScrollFactor(0);
     this.fondo.fillStyle(COLORES.panel, 0.75);
@@ -24,7 +25,7 @@ export class Alertas {
     for (let i = 0; i < LINEAS; i++) {
       this.textos.push(
         escena.add
-          .text(ZONA.x + 8, ZONA.y + 5 + i * 19, '', { fontFamily: 'Arial', fontSize: '12px', color: TEXTO_HEX.texto, wordWrap: { width: ZONA.ancho - 16 } })
+          .text(ZONA.x + 8, ZONA.y + 5 + i * 19, '', { fontFamily: 'Arial', fontSize: '12px', color: TEXTO_HEX.texto })
           .setDepth(91)
           .setScrollFactor(0),
       );
@@ -44,6 +45,8 @@ export class Alertas {
     } else if (e.tipo === 'puntos' && e.maquina) {
       const signo = e.puntos > 0 ? '+' : '';
       this.avisar(`${e.maquina}: ${signo}${e.puntos} puntos (${e.motivo})`, e.puntos > 0 ? 'operacion' : 'espera');
+    } else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') {
+      this.avisar(`Bloqueado: ${this.celda.razonSupervisor}`, 'fallo');
     } else if (e.tipo === 'deadlock') {
       this.avisar('DEADLOCK: ninguna transición está habilitada.', 'fallo');
     }

@@ -284,6 +284,12 @@ Aparece como escena superpuesta al hacer clic en una máquina:
 - **Volver (manual):** evento `m` del brazo desde Mandril_Cerrado, con la transición tr_volver. Es el mismo evento de la vuelta
   automática (decisión 4 de la sección 17); solo se puede pedir con el brazo en Mandril_Cerrado.
 - Mientras el brazo está en Moviendo, el HUD muestra "Brazo en camino…".
+- **Pestaña "Composición"** (solo en el HUD de las CNC, junto a "Autómata"): muestra el tamaño de CNC ‖ Brazo (20 estados,
+  43 transiciones), el del sistema supervisado (19 estados, 38 transiciones), el estado prohibido y la regla, el
+  **estado compuesto actual** de esa CNC (por ejemplo (Cargado, Mandril_Abierto)), si el supervisor está activo para ella
+  (solo lo está cuando el brazo la atiende), los eventos que deshabilita ahora y los intentos bloqueados.
+- **Insistir en un botón rojo:** el evento no se ejecuta, la cámara tiembla 0,3 s, la zona de alertas registra el intento y se
+  restan −15 puntos. El bloqueo por Celda_libre no cuenta aquí (sección 8).
 - Para la CNC en Falla: la consola de reparación (14.2) reemplaza a los botones y a la lista de eventos.
 - Para el brazo: "m → CNC1" y "m → CNC2" desde Reposo (tr_ir) y "volver" desde Mandril_Cerrado. Para los AGV: "Despachar AGV1"
   o "Despachar AGV2" según el HUD abierto.
@@ -380,3 +386,6 @@ Estas decisiones cierran huecos de la lista original. El equipo las confirmó, c
     paneles que tapan lo que queda debajo (confirmado por el equipo).
 11. **Consola de reparación:** la palabra sigue aceptando símbolos después de un error (marcado en rojo) para poder enviar
     palabras como HTCR. La tecla F de desarrollo no forma parte del juego publicado.
+12. **Supervisor:** hay una instancia por CNC (la que el brazo atiende) y se consulta en cada paso con el estado compuesto
+    (CNC, Brazo). Una CNC que el brazo no atiende no tiene restricción: puede estar en Fresando mientras el brazo está en
+    Mandril_Abierto frente a la otra.

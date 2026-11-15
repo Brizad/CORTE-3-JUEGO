@@ -8,6 +8,7 @@ import { aspectoDe } from '../arte/estados.js';
 import { MODELOS } from '../modelos.js';
 import { ConsolaReparacion, COMANDOS } from '../sed/consola.js';
 import { EXPRESION_TEXTO } from '../sed/lenguaje.js';
+import { claveDe } from '../sed/composicion.js';
 
 const PANEL = { ancho: 340, alto: 392, y: 56, xDerecha: 612, xIzquierda: 8 }; // docs/arte.md, sección 7
 const GRAFO = { x: 12, y: 26, ancho: 316, alto: 198, margen: 30 };
@@ -45,6 +46,26 @@ export class HUDMaquina extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.cerrarBoton.on('pointerup', () => this.cerrar());
 
+    // Pestañas del HUD de las CNC: Autómata y Composición.
+    this._pestana = 'automata';
+    this.pestanas = {};
+    for (const [clave, etiqueta, x, ancho] of [['automata', 'Autómata', 70, 56], ['composicion', 'Composición', 130, 74]]) {
+      const rect = this.add.rectangle(x, 5, ancho, 18, COLORES.panel).setOrigin(0).setStrokeStyle(1, COLORES.maquina).setInteractive({ useHandCursor: true });
+      const t = this.add.text(x + ancho / 2, 14, etiqueta, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
+      rect.on('pointerup', () => this._cambiarPestana(clave));
+      this.pestanas[clave] = { rect, t };
+    }
+    this.capaComposicion = this.add.container(0, 0).setVisible(false);
+    const fuente = { fontFamily: 'Arial', fontSize: '11px', color: TEXTO_HEX.texto, lineSpacing: 5, wordWrap: { width: 316 } };
+    this.capaComposicion.add([
+      this.add.text(12, 36, '', fuente), // cifras: se rellenan en abrir()
+      this.add.text(12, 112, 'Estado compuesto actual (esta CNC, Brazo):', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera }),
+    ]);
+    this.txtCompFijo = this.capaComposicion.list[0];
+    this.txtCompEstado = this.add.text(12, 128, '', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    this.txtCompB = this.add.text(12, 166, '', fuente);
+    this.capaComposicion.add([this.txtCompEstado, this.txtCompB]);
+
     this.gfxFijo = this.add.graphics(); // aristas y nodos sin iluminar
     this.gfxNodo = this.add.graphics(); // nodo del estado actual (con glow)
     this.gfxNodo.enableFilters();
@@ -58,7 +79,7 @@ export class HUDMaquina extends Phaser.Scene {
     this.listaDer = this.add.text(12 + 160, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
     this.cabeceraLista = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
     this.cabeceraBrazo = this.add.text(12, 0, 'Brazo en esta CNC', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera }).setVisible(false);
-    this.aviso = this.add.text(PANEL.ancho - 40, 8, '', { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.operacion }).setOrigin(1, 0).setVisible(false);
+    this.aviso = this.add.text(PANEL.ancho - 34, 8, '', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.operacion }).setOrigin(1, 0).setVisible(false);
     this.tip = this.add
       .text(8, PANEL.alto - 8, '', {
         fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, wordWrap: { width: PANEL.ancho - 28 },
@@ -69,7 +90,7 @@ export class HUDMaquina extends Phaser.Scene {
 
     this.contenedor.add([
       marco, this.titulo, this.cerrarBoton, this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos,
-      this.capaBotones, this.capaConsola, this.cabeceraBrazo, this.aviso, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
+      this.capaBotones, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
     ]);
     this.botones = [];
     this._firmaBotones = '';
@@ -96,7 +117,16 @@ export class HUDMaquina extends Phaser.Scene {
     this.tipo = tipoDe(id);
     this.modelo = MODELO_DE[this.tipo];
     this.automata = this.celda.automatas[id];
-    this.titulo.setText(`${nombre ?? id}   (${this.modelo.nombre})`);
+    this.titulo.setText(this.tipo === 'CNC' ? `${nombre ?? id}` : `${nombre ?? id}   (${this.modelo.nombre})`);
+    // Cifras de la pestaña Composición (CNC ‖ Brazo y sistema supervisado).
+    const sup = this.celda.supervisores[id];
+    this.txtCompFijo?.setText(
+      `CNC ‖ Brazo (planta): ${this.celda.composicion.estados.length} estados, ${this.celda.composicion.transiciones.length} transiciones
+Sistema supervisado: ${sup ? sup.estados.length : '-'} estados, ${sup ? sup.transiciones.length : '-'} transiciones
+Estado prohibido: (Fresando, Mandril_Abierto)
+Regla: ${this.celda.razonSupervisor}`,
+    );
+    this._reiniciarPestanas();
 
     // El panel se coloca junto a la máquina: a la izquierda si la máquina está en la mitad derecha.
     const entidad = planta.entidades.find((e) => e.id === id);
@@ -310,7 +340,12 @@ export class HUDMaquina extends Phaser.Scene {
       this._actualizarBotones();
       this._actualizarLista();
     }
-    if (this._modoConsola && this._consolaLista) this._refrescarConsola();
+    if (this._pestana === 'composicion') {
+      // Pestaña Composición: nada de lo del autómata se ve ni recibe clics.
+      for (const o of [this.capaConsola, this.cabeceraBrazo, this.cabeceraLista, this.listaIzq, this.listaDer]) o.setVisible(false);
+      this._refrescarComposicion();
+    }
+    if (this._modoConsola && this._consolaLista && this._pestana === 'automata') this._refrescarConsola();
     // Los botones rojos pulsan.
     for (const bt of this.botones) if (bt.glow) bt.glow.outerStrength = 3 + 3 * Math.sin(this.time.now / 200);
   }
@@ -330,7 +365,7 @@ export class HUDMaquina extends Phaser.Scene {
   _explicar(motivo, cnc) {
     const c = this.celda;
     if (motivo === 'supervisor') {
-      return `Supervisor: ${c.supervisor.razon}. Estado (${c.estado(cnc)}, ${c.estado('BRAZO')}).`;
+      return `Supervisor: ${c.razonSupervisor}. Estado (${c.estado(cnc)}, ${c.estado('BRAZO')}).`;
     }
     if (motivo === 'recurso') return 'Recurso ocupado: la red de Petri no habilita la transición (Robot_libre o Mesa_libre sin ficha).';
     return 'Ahora no se puede.';
@@ -527,7 +562,7 @@ export class HUDMaquina extends Phaser.Scene {
       const t = this.add.text(x + ancho / 2, y + BOTON.alto / 2, etiqueta, {
         fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: colorTexto, align: 'center',
       }).setOrigin(0.5);
-      rect.on('pointerup', () => { accion(); this._consolaSucia = true; });
+      rect.on('pointerup', () => { if (this._pestana === 'automata') { accion(); this._consolaSucia = true; } });
       rect.on('pointerover', () => this._mostrarTip(tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
       this.capaConsola.add([rect, t]);
@@ -559,7 +594,7 @@ export class HUDMaquina extends Phaser.Scene {
 
   /** Teclado de la consola: H, C, T, R, Retroceso y Enter. */
   _alTecla(evento) {
-    if (!this.abierto || !this._modoConsola) return;
+    if (!this.abierto || !this._modoConsola || this._pestana !== 'automata') return;
     const k = evento.key;
     if (k === 'Enter') this._enviar();
     else if (k === 'Backspace') {
@@ -593,13 +628,71 @@ export class HUDMaquina extends Phaser.Scene {
     else this.txtAviso.setText(c.sugerencia).setColor(c.fallo ? TEXTO_HEX.fallo : TEXTO_HEX.texto);
   }
 
+  // ---- Pestañas: Autómata y Composición (solo en el HUD de las CNC) ----
+
+  _cambiarPestana(pestana) {
+    if (this.tipo !== 'CNC' || pestana === this._pestana) return;
+    this._pestana = pestana;
+    const automata = pestana === 'automata';
+    for (const o of [this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos, this.capaBotones]) o.setVisible(automata);
+    this.capaComposicion.setVisible(!automata);
+    this._sucia = true; // al volver, los botones, la consola y la lista se rehacen
+    this._firmaBotones = '';
+    this._claveConsola = '';
+    this._claveComp = '';
+    this._estilizarPestanas();
+  }
+
+  _estilizarPestanas() {
+    for (const [clave, p] of Object.entries(this.pestanas)) {
+      const activa = clave === this._pestana;
+      p.rect.setFillStyle(activa ? COLORES.banda : COLORES.panel).setStrokeStyle(activa ? 2 : 1, activa ? COLORES.texto : COLORES.maquina);
+    }
+  }
+
+  /** Restaura la pestaña Autómata y muestra las pestañas solo si la máquina es una CNC. */
+  _reiniciarPestanas() {
+    this._pestana = 'automata';
+    for (const o of [this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos, this.capaBotones]) o.setVisible(true);
+    this.capaComposicion.setVisible(false);
+    for (const p of Object.values(this.pestanas)) {
+      p.rect.setVisible(this.tipo === 'CNC');
+      p.t.setVisible(this.tipo === 'CNC');
+    }
+    this._claveComp = '';
+    this._estilizarPestanas();
+  }
+
+  /** Pestaña Composición: tamaños de CNC ‖ Brazo y del sistema supervisado, y el estado compuesto actual. */
+  _refrescarComposicion() {
+    const c = this.celda;
+    const id = this.maquinaId;
+    const sup = c.supervisores[id];
+    const [q, b] = c.estadoCompuesto(id);
+    const clave = claveDe([q, b]);
+    const atiende = c.atendida === id;
+    const deshabilitados = c.deshabilitadosPorSupervisor(id);
+    const codigo = new Map([...MODELOS.cnc.eventos, ...MODELOS.brazo.eventos].map((e) => [e.id, e.codigo]));
+    const texto = [
+      `Supervisor de esta CNC: ${atiende ? `ACTIVO (el brazo atiende a ${id})` : `INACTIVO (el brazo no atiende a ${id}: sin restricción)`}`,
+      `¿En el sistema supervisado? ${sup.estados.includes(clave) ? 'sí ✔' : 'no ✗ (estado prohibido: solo ocurre porque el brazo atiende a la otra CNC)'}`,
+      `Eventos deshabilitados ahora: ${deshabilitados.length ? deshabilitados.map((d) => `${codigo.get(d.evento)} · ${d.evento}`).join(', ') : 'ninguno'}`,
+      `Intentos bloqueados en esta CNC: ${sup.bloqueos} (−15 puntos cada uno)`,
+    ].join('\n');
+    const total = `${q}|${b}|${texto}`;
+    if (total === this._claveComp) return;
+    this._claveComp = total;
+    this.txtCompEstado.setText(`(${q}, ${b})`).setColor(sup.estados.includes(clave) ? TEXTO_HEX.espera : TEXTO_HEX.fallo);
+    this.txtCompB.setText(texto);
+  }
+
   _mostrarTip(texto) {
     this.tip.setText(texto).setVisible(true);
   }
 
   /** Clic en un botón: pide el evento a la Celda (δ y transición). Gris no hace nada. */
   _pulsar(d) {
-    if (d.tipo === 'gris' || !d.maquina) return;
+    if (d.tipo === 'gris' || !d.maquina || this._pestana !== 'automata') return;
     const r = this.celda.solicitar(d.maquina, d.evento, d.opciones);
     this._sucia = true;
     if (!r.ok) this._mostrarTip(`Rechazado (${r.motivo}). ${d.tip}`);

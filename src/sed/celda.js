@@ -53,7 +53,14 @@ export class Celda {
 
     // Supervisor CNC || Brazo (se consulta con el estado de la CNC atendida y del brazo).
     this.composicion = componer(modelos.cnc, modelos.brazo);
-    this.supervisor = supervisor(this.composicion, modelos.supervisor.prohibidos, { razon: modelos.supervisor.razon });
+    // Una instancia del supervisor por CNC: cada una se consulta solo cuando el brazo atiende a esa CNC.
+    this.razonSupervisor = modelos.supervisor.razon;
+    this.supervisores = {};
+    for (const cnc of CNCS) {
+      const s = supervisor(this.composicion, modelos.supervisor.prohibidos, { razon: this.razonSupervisor });
+      s.bloqueos = 0; // intentos bloqueados en esta CNC
+      this.supervisores[cnc] = s;
+    }
 
     this.atendida = null; // CNC que el brazo atiende ('CNC1', 'CNC2' o null con el brazo en reposo)
     this.pedidos = []; // pedidos de AGV pendientes: {id, t, vencido}
@@ -147,7 +154,12 @@ export class Celda {
   /** Eventos que el supervisor deshabilita ahora para la CNC dada (solo si el brazo la atiende). */
   deshabilitadosPorSupervisor(cnc) {
     if (this.atendida !== cnc) return [];
-    return this.supervisor.deshabilitadosEn(this._claveSupervisor(cnc));
+    return this.supervisores[cnc].deshabilitadosEn(this._claveSupervisor(cnc));
+  }
+
+  /** Estado compuesto (CNC, Brazo) de la CNC dada, por ejemplo ['Cargado', 'Mandril_Abierto']. */
+  estadoCompuesto(cnc) {
+    return [this.automatas[cnc].estado, this.automatas.BRAZO.estado];
   }
 
   _claveSupervisor(cnc) {
@@ -175,9 +187,17 @@ export class Celda {
     const plan = this._plan(maquina, evento, opciones);
     const motivo = plan.error ?? this._comprobar(plan);
     if (motivo) {
-      if (motivo === 'supervisor') this.estadisticas.bloqueos++;
+      let cnc = null;
+      if (motivo === 'supervisor') {
+        // Insistir en un evento que el supervisor deshabilita: no se ejecuta y cuesta 15 puntos.
+        // (El bloqueo por Celda_libre sería 'recurso' y no entra aquí.)
+        cnc = plan.supervisada;
+        this.estadisticas.bloqueos++;
+        this.supervisores[cnc].bloqueos++;
+        this.sumarPuntos(PUNTOS.intentoBloqueado, 'intento bloqueado por el supervisor', cnc);
+      }
       if (motivo === 'palabra_invalida') this.sumarPuntos(PUNTOS.palabraInvalida, 'palabra de reparación inválida', maquina);
-      this._emitir({ tipo: 'rechazo', maquina, evento, motivo });
+      this._emitir({ tipo: 'rechazo', maquina, evento, motivo, cnc });
       return { ok: false, motivo };
     }
     this._aplicar(plan);
@@ -276,7 +296,7 @@ export class Celda {
     if (plan.supervisada && this.atendida === plan.supervisada) {
       const clave = this._claveSupervisor(plan.supervisada);
       for (const [, evento] of plan.pasos) {
-        if (!this.supervisor.permite(clave, evento)) return 'supervisor';
+        if (!this.supervisores[plan.supervisada].permite(clave, evento)) return 'supervisor';
       }
     }
     return null;
