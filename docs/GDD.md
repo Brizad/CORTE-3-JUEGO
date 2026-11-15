@@ -165,8 +165,11 @@ Los pedidos llegan en t = n × intervalo, para n ≥ 1 y t < 180 s.
 Reglas de aplicación:
 
 - **Intento bloqueado:** un clic en un botón en rojo. Rojo significa que el evento está definido en δ y
-  los recursos están, pero el supervisor o el lugar Celda_libre lo inhiben. Un botón en gris significa
+  los recursos están, pero el **supervisor CNC ‖ Brazo** lo inhibe. Un botón en gris significa
   que el evento no existe en ese estado: el clic no hace nada y no cuesta puntos.
+- **Bloqueo por Celda_libre:** no es un intento bloqueado. Si el Controlador de celda está activo y el
+  jugador pulsa t1a o t2a sin ficha en Celda_libre, el juego muestra el aviso "Controlador de celda activo"
+  en la zona de alertas. No resta puntos y no cuenta para el logro Manos seguras.
 - **Pedir ayuda:** muestra la expresión regular `^H(CT?)+R$` durante 5 s. Se puede pedir más de una vez y
   cada vez cuesta −20.
 - **Radar de amarillo a verde:** se otorga una vez por cada regreso a verde, con un enfriamiento de
@@ -267,6 +270,7 @@ Aparece como escena superpuesta al hacer clic en una máquina:
 - Grafo del autómata: nodos circulares y flechas con el código del evento.
 - Estado actual iluminado.
 - Botones de los eventos controlables. Los que el supervisor inhibe se ven en rojo con **glow**.
+  Los que inhibe Celda_libre (t1a, t2a) se ven en gris y muestran el aviso "Controlador de celda activo".
 - Para la CNC en Falla: la consola de reparación con los botones H, C, T, R y Enviar, y el botón Pedir ayuda.
 - Para el brazo y las CNC: el botón "Mandar brazo (tr_ir)". Para los AGV: "Despachar AGV1" y "Despachar AGV2".
 
@@ -313,7 +317,7 @@ Cada criterio se comprueba jugando o con el inspector.
 | CA-04 | El estado prohibido nunca se alcanza: para la CNC atendida, no existe un instante con CNC = Fresando y Brazo = Mandril_Abierto | Intentar `i` con el mandril abierto y `a` con la CNC fresando. Ambos botones aparecen en rojo y el estado no cambia |
 | CA-05 | Cada intento bloqueado resta 15 puntos | Hacer clic en un botón en rojo y ver el puntaje |
 | CA-06 | **t1a y luego t2a** sin el Controlador lleva a game over con marcado **[0,0,0,0,1,1,0,0,0]**, y se aplica −200 | Despachar AGV1 y AGV2 seguidos en M0. El inspector muestra el marcado y el radar queda en rojo |
-| CA-07 | Con el Controlador de celda comprado, la misma jugada **no bloquea**: t2a queda en rojo después de t1a | Comprar, despachar AGV1, ver t2a en rojo; el turno sigue |
+| CA-07 | Con el Controlador de celda comprado, la misma jugada **no bloquea**: t2a no se dispara después de t1a, aparece el aviso "Controlador de celda activo" y **no se restan puntos** | Comprar, despachar AGV1, pulsar t2a, ver el aviso y comprobar que el puntaje no baja; el turno sigue |
 | CA-08 | El **árbol de cobertura desde M0 tiene 14 nodos**, 8 marcados distintos y 1 muerto. Con el Controlador tiene 12 nodos, 7 marcados y 0 muertos | Leer el inspector |
 | CA-09 | El radar es verde en M0, amarillo en M1 y M2, y rojo en el marcado muerto | Mirar el radar después de t1a, y luego tras t1b |
 | CA-10 | El radar de amarillo a verde suma +25, con enfriamiento de 20 s | Despachar AGV1 y esperar t1b |
@@ -331,9 +335,9 @@ Cada criterio se comprueba jugando o con el inspector.
 | CA-22 | Todo cambio de estado de una máquina pasa por δ o por una transición de la red | Las pruebas con `node --test` reproducen las palabras de `automatas.md` y los marcados de `petri.md` |
 | CA-23 | El Controlador de celda no se puede comprar en el marcado muerto y se pierde al terminar el turno | Intentar comprarlo en deadlock; ganar el turno y ver el turno siguiente |
 
-## 17. Decisiones derivadas que el equipo debe confirmar
+## 17. Decisiones derivadas (confirmadas por el equipo)
 
-Estas decisiones no estaban en la lista del equipo. Se tomaron para cerrar huecos. Se pueden cambiar.
+Estas decisiones cierran huecos de la lista original. El equipo las confirmó, con el cambio de la decisión 7.
 
 1. **Se acaban los 180 s sin la meta:** el turno se pierde, sin penalización de puntos.
 2. **Reintento de turno:** se conserva el puntaje (incluido el −200) y se restaura la semilla del inicio del turno.
@@ -341,5 +345,6 @@ Estas decisiones no estaban en la lista del equipo. Se tomaron para cerrar hueco
 4. **El brazo vuelve solo** después de `e` (cerrar) o de `d` (descargar) cuando ya hizo su tarea.
 5. **Radar +25 con enfriamiento de 20 s** para evitar repetir una misma jugada.
 6. **Ciclo de AGV +40 atiende el pedido más antiguo,** si hay alguno pendiente.
-7. **Intento bloqueado** incluye el bloqueo por Celda_libre además del supervisor CNC ‖ Brazo.
+7. **Intento bloqueado** es solo el bloqueo del supervisor CNC ‖ Brazo. El bloqueo por Celda_libre
+   muestra el aviso "Controlador de celda activo" y no resta puntos.
 8. **Los tiempos de clic del jugador** (1 s por acción) usados en el balance son una suposición.
