@@ -199,6 +199,10 @@ export class Celda {
             },
           };
         }
+        case 'volver':
+          // Vuelta manual a reposo (tr_volver): el mismo evento m, desde Mandril_Cerrado.
+          if (brazo.estado !== 'Mandril_Cerrado') return { error: 'indefinido' };
+          return { pasos: [['BRAZO', 'mover']], transicion: 'tr_volver', despues: () => { this.atendida = null; } };
         case 'abrir_mandril':
           return { pasos: [['BRAZO', 'abrir_mandril']], supervisada: this.atendida };
         case 'cerrar_mandril':

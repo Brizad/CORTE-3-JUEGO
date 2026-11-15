@@ -232,3 +232,16 @@ test('el piloto no toca las máquinas con el HUD abierto (CNC1 bloqueada durante
   for (let i = 0; i < 400; i++) reloj.avanzar(0.25);
   assert.ok(celda.bitacora.some((e) => e.tipo === 'automata' && e.maquina === 'CNC1'));
 });
+
+test('volver: el brazo regresa a reposo a mano (tr_volver) solo desde Mandril_Cerrado', () => {
+  const { reloj, celda } = nueva();
+  assert.deepEqual(celda.solicitar('BRAZO', 'volver'), { ok: false, motivo: 'indefinido' }); // en Reposo
+  celda.solicitar('BRAZO', 'mover', { objetivo: 'CNC1' });
+  assert.deepEqual(celda.solicitar('BRAZO', 'volver'), { ok: false, motivo: 'indefinido' }); // Moviendo
+  reloj.avanzar(2);
+  assert.equal(celda.red.fichas('Robot_en_CNC'), 1);
+  assert.deepEqual(celda.solicitar('BRAZO', 'volver'), { ok: true });
+  assert.equal(celda.estado('BRAZO'), 'Reposo');
+  assert.equal(celda.atendida, null);
+  assert.equal(celda.red.fichas('Robot_libre'), 1);
+});

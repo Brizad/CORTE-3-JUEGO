@@ -46,13 +46,16 @@ export class HUDMaquina extends Phaser.Scene {
     this.gfxFijo = this.add.graphics(); // aristas y nodos sin iluminar
     this.gfxNodo = this.add.graphics(); // nodo del estado actual (con glow)
     this.gfxNodo.enableFilters();
-    this.glow = this.gfxNodo.filters.internal.addGlow(COLORES.texto, 4, 0);
+    // setPaddingOverride(null): Phaser 4 no da margen al filtro por defecto y el borde del nodo se estira por la pantalla.
+    this.glow = this.gfxNodo.filters.internal.addGlow(COLORES.texto, 4, 0).setPaddingOverride(null);
     this.gfxParpadeo = this.add.graphics(); // última transición
     this.capaTextos = this.add.container(0, 0);
     this.capaBotones = this.add.container(0, 0);
     this.listaIzq = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
     this.listaDer = this.add.text(12 + 160, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
     this.cabeceraLista = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    this.cabeceraBrazo = this.add.text(12, 0, 'Brazo en esta CNC', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera }).setVisible(false);
+    this.aviso = this.add.text(PANEL.ancho - 40, 8, '', { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.operacion }).setOrigin(1, 0).setVisible(false);
     this.tip = this.add
       .text(8, PANEL.alto - 8, '', {
         fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, wordWrap: { width: PANEL.ancho - 28 },
@@ -63,7 +66,7 @@ export class HUDMaquina extends Phaser.Scene {
 
     this.contenedor.add([
       marco, this.titulo, this.cerrarBoton, this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos,
-      this.capaBotones, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
+      this.capaBotones, this.cabeceraBrazo, this.aviso, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
     ]);
     this.botones = [];
     this._firmaBotones = '';
@@ -128,10 +131,10 @@ export class HUDMaquina extends Phaser.Scene {
     const ys = Object.values(pos).map((p) => p[1]);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const sx = (GRAFO.ancho - 2 * GRAFO.margen) / Math.max(1, x1 - x0);
-    const sy = (GRAFO.alto - 2 * GRAFO.margen) / Math.max(1, y1 - y0);
+    const sy = (this._altoGrafo - 2 * this._margenY) / Math.max(1, y1 - y0);
     const salida = {};
     for (const [nombre, [x, y]] of Object.entries(pos)) {
-      salida[nombre] = { x: GRAFO.x + GRAFO.margen + (x - x0) * sx, y: GRAFO.y + GRAFO.margen + (y - y0) * sy };
+      salida[nombre] = { x: GRAFO.x + GRAFO.margen + (x - x0) * sx, y: GRAFO.y + this._margenY + (y - y0) * sy };
     }
     return salida;
   }
@@ -140,6 +143,10 @@ export class HUDMaquina extends Phaser.Scene {
     const g = this.gfxFijo;
     g.clear();
     this.capaTextos.removeAll(true);
+    // Las CNC llevan además la sección del brazo, así que su grafo es más bajo.
+    this._altoGrafo = this.tipo === 'CNC' ? 150 : GRAFO.alto;
+    this._margenY = this.tipo === 'CNC' ? 22 : GRAFO.margen;
+    this._yBotones = GRAFO.y + this._altoGrafo + 4;
     this.pos = this._posiciones();
     this.aristas = this._calcularAristas();
 
@@ -263,6 +270,7 @@ export class HUDMaquina extends Phaser.Scene {
       if (this.modelo.marcados.includes(estado)) g.strokeCircle(p.x, p.y, RADIO - 4);
     }
     this.glow.outerStrength = 4 + 3 * Math.sin(this.time.now / 250);
+    this.aviso.setText('Brazo en camino…').setVisible(this.celda.estado('BRAZO') === 'Moviendo');
 
     // Última transición recorrida: parpadea PARPADEO s de simulación.
     const b = this.gfxParpadeo;
@@ -297,19 +305,71 @@ export class HUDMaquina extends Phaser.Scene {
 
   // ---- Botones ----
 
-  /** Un botón por cada evento de Γ(q). */
+  /** Texto de un aviso cuando el evento no se puede ejecutar y por qué. */
+  _explicar(motivo, cnc) {
+    const c = this.celda;
+    if (motivo === 'supervisor') {
+      return `Supervisor: ${c.supervisor.razon}. Estado (${c.estado(cnc)}, ${c.estado('BRAZO')}).`;
+    }
+    if (motivo === 'recurso') return 'Recurso ocupado: la red de Petri no habilita la transición (Robot_libre o Mesa_libre sin ficha).';
+    return 'Ahora no se puede.';
+  }
+
+  /** Qué falta para un evento compartido (cargar o descargar) de la CNC `cnc`. */
+  _faltaCompartido(cnc, ev) {
+    const c = this.celda;
+    const brazo = c.estado('BRAZO');
+    if (c.atendida !== cnc) {
+      return c.atendida
+        ? `El brazo atiende a ${c.atendida}, no a esta CNC. Usa "volver" y luego "mover".`
+        : 'El brazo debe estar frente a esta CNC: usa "mover" en "Brazo en esta CNC".';
+    }
+    if (brazo !== 'Mandril_Abierto') {
+      const extra = brazo === 'Moviendo' ? ' (en camino)' : '';
+      return `El brazo debe estar en Mandril_Abierto frente a esta CNC (ahora: ${brazo}${extra}).`;
+    }
+    const necesita = ev === 'cargar' ? 'Libre' : 'Terminado';
+    return `La CNC debe estar en ${necesita} (ahora: ${c.estado(cnc)}).`;
+  }
+
+  /** Botones del brazo que sirven para la CNC `cnc`: mover, abrir_mandril, cerrar_mandril y volver. */
+  _botonesBrazoEnCnc(cnc) {
+    const c = this.celda;
+    const brazo = c.estado('BRAZO');
+    const frente = c.atendida === cnc;
+    const gris = (etiqueta, tip) => ({ etiqueta, tipo: 'gris', tip });
+    const ejecutable = (etiqueta, evento, opciones, motivo, faltaSiIndefinido) => {
+      if (motivo === null) return { etiqueta, maquina: 'BRAZO', evento, opciones, tipo: 'verde', tip: 'Ejecutar el evento (δ del brazo)' };
+      if (motivo === 'supervisor') return { etiqueta, maquina: 'BRAZO', evento, opciones, tipo: 'rojo', tip: this._explicar(motivo, cnc) };
+      return gris(etiqueta, motivo === 'indefinido' ? faltaSiIndefinido : this._explicar(motivo, cnc));
+    };
+    const ocupado = c.atendida ? `El brazo atiende a ${c.atendida}.` : 'El brazo no está en esta CNC: usa "mover".';
+    const op = { objetivo: cnc };
+    return [
+      ejecutable('m · mover', 'mover', op, c.evaluar('BRAZO', 'mover', op),
+        `El brazo debe estar en Reposo (ahora: ${brazo}${c.atendida ? `, atendiendo a ${c.atendida}` : ''}). Usa "volver" primero.`),
+      frente
+        ? ejecutable('a · abrir', 'abrir_mandril', undefined, c.evaluar('BRAZO', 'abrir_mandril'), `El brazo debe estar en Mandril_Cerrado (ahora: ${brazo}).`)
+        : gris('a · abrir', ocupado),
+      frente
+        ? ejecutable('e · cerrar', 'cerrar_mandril', undefined, c.evaluar('BRAZO', 'cerrar_mandril'), `El brazo debe estar en Mandril_Abierto (ahora: ${brazo}).`)
+        : gris('e · cerrar', ocupado),
+      frente
+        ? ejecutable('m · volver', 'volver', undefined, c.evaluar('BRAZO', 'volver'), `El brazo debe estar en Mandril_Cerrado (ahora: ${brazo}).`)
+        : gris('m · volver', ocupado),
+    ];
+  }
+
+  /** Botones de la máquina: uno por cada evento de Γ(q) y, en las CNC, la sección del brazo. */
   _describirBotones() {
     const c = this.celda;
     const id = this.maquinaId;
-    const lista = [];
-    const razonSupervisor = (cnc) =>
-      `Supervisor: ${c.supervisor.razon}. Estado (${c.estado(cnc)}, ${c.estado('BRAZO')}).`;
+    const principales = [];
     // Convierte el resultado de evaluar() en el tipo de botón y su explicación.
-    const segun = (motivo, cnc) => {
+    const segun = (motivo, cnc, ev) => {
       if (motivo === null) return { tipo: 'verde', tip: 'Ejecutar el evento (δ)' };
-      if (motivo === 'supervisor') return { tipo: 'rojo', tip: razonSupervisor(cnc) };
-      if (motivo === 'recurso') return { tipo: 'gris', tip: 'Recurso ocupado: la red de Petri no habilita la transición.' };
-      if (motivo === 'indefinido') return { tipo: 'gris', tip: 'Ahora no se puede: el brazo no atiende a esta CNC.' };
+      if (motivo === 'supervisor' || motivo === 'recurso') return { tipo: motivo === 'supervisor' ? 'rojo' : 'gris', tip: this._explicar(motivo, cnc) };
+      if (motivo === 'indefinido' && (ev === 'cargar' || ev === 'descargar')) return { tipo: 'gris', tip: this._faltaCompartido(cnc, ev) };
       return { tipo: 'gris', tip: 'Lo dispara el sistema.' };
     };
 
@@ -317,68 +377,58 @@ export class HUDMaquina extends Phaser.Scene {
       const info = this.automata.eventos.get(ev);
       const etiqueta = `${info.codigo} · ${ev}`;
       if (!info.controlable) {
-        lista.push({ etiqueta, tipo: 'gris', tip: 'No controlable: lo dispara el sistema (solo informativo).' });
+        principales.push({ etiqueta, tipo: 'gris', tip: 'No controlable: lo dispara el sistema (solo informativo).' });
       } else if (this.tipo === 'CNC') {
         if (ev === 'reset') {
-          lista.push({ etiqueta, tipo: 'gris', tip: 'Reparar exige la palabra de la consola (H, C, T, R): aún no está disponible.' });
+          principales.push({ etiqueta, tipo: 'gris', tip: 'Reparar exige la palabra de la consola (H, C, T, R): aún no está disponible.' });
         } else {
-          lista.push({ etiqueta, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id) });
+          principales.push({ etiqueta, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev) });
         }
       } else if (this.tipo === 'BRAZO') {
         if (ev === 'mover') {
           if (this.automata.estado === 'Reposo') {
             for (const objetivo of ['CNC1', 'CNC2']) {
-              lista.push({ etiqueta: `m → ${objetivo}`, maquina: 'BRAZO', evento: ev, opciones: { objetivo }, ...segun(c.evaluar('BRAZO', ev, { objetivo }), objetivo) });
+              principales.push({ etiqueta: `m → ${objetivo}`, maquina: 'BRAZO', evento: ev, opciones: { objetivo }, ...segun(c.evaluar('BRAZO', ev, { objetivo }), objetivo, ev) });
             }
           } else {
-            lista.push({ etiqueta, tipo: 'gris', tip: 'El brazo vuelve solo (tr_volver) después de e o d.' });
+            principales.push({ etiqueta: 'm · volver', maquina: 'BRAZO', evento: 'volver', ...segun(c.evaluar('BRAZO', 'volver'), c.atendida, 'volver') });
           }
         } else if (ev === 'cargar' || ev === 'descargar') {
           const cnc = c.atendida;
-          lista.push(cnc
-            ? { etiqueta, maquina: cnc, evento: ev, ...segun(c.evaluar(cnc, ev), cnc) }
+          principales.push(cnc
+            ? { etiqueta, maquina: cnc, evento: ev, ...segun(c.evaluar(cnc, ev), cnc, ev) }
             : { etiqueta, tipo: 'gris', tip: 'El brazo no atiende a ninguna CNC.' });
         } else {
-          lista.push({ etiqueta, maquina: 'BRAZO', evento: ev, ...segun(c.evaluar('BRAZO', ev), c.atendida) });
+          principales.push({ etiqueta, maquina: 'BRAZO', evento: ev, ...segun(c.evaluar('BRAZO', ev), c.atendida, ev) });
         }
       } else if (ev === 'reservar') {
-        lista.push({ etiqueta: `v · Despachar ${id}`, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id) });
+        principales.push({ etiqueta: `v · Despachar ${id}`, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev) });
       } else {
-        lista.push({ etiqueta, tipo: 'gris', tip: 'Transición automática de la red: se dispara sola cuando hay mesa y brazo.' });
+        principales.push({ etiqueta, tipo: 'gris', tip: 'Transición automática de la red: se dispara sola cuando hay mesa y brazo.' });
       }
     }
-    // Mandar el brazo a esta CNC (GDD 14.1): evento m y transición tr_ir.
-    if (this.tipo === 'CNC' && this.celda.estado('BRAZO') === 'Reposo') {
-      const op = { objetivo: id };
-      lista.push({ etiqueta: 'm · Mandar brazo', maquina: 'BRAZO', evento: 'mover', opciones: op, ...segun(c.evaluar('BRAZO', 'mover', op), id) });
-    }
-    return lista;
+    const brazo = this.tipo === 'CNC' ? this._botonesBrazoEnCnc(id) : [];
+    return { principales, brazo };
   }
 
-  _actualizarBotones() {
-    const descripcion = this._describirBotones();
-    const firma = JSON.stringify(descripcion.map((d) => [d.etiqueta, d.tipo, d.tip]));
-    if (firma === this._firmaBotones) return;
-    this._firmaBotones = firma;
-    this._filas = Math.max(1, Math.ceil(descripcion.length / 3));
-    this.tip.setVisible(false); // los botones se rehicieron: el aviso anterior ya no corresponde
-    this.capaBotones.removeAll(true);
-    this.botones = [];
+  /** Coloca una fila de botones (hasta 4) en la altura y. */
+  _colocarFila(lista, y) {
+    const n = lista.length;
+    const ancho = Math.min(BOTON.ancho, (GRAFO.ancho - (n - 1) * BOTON.hueco) / Math.max(1, n));
     const colores = { verde: COLORES.operacion, gris: COLORES.banda, rojo: COLORES.fallo };
-    descripcion.forEach((d, i) => {
-      const x = GRAFO.x + (i % 3) * (BOTON.ancho + BOTON.hueco);
-      const y = BOTON.y + Math.floor(i / 3) * (BOTON.alto + 4);
-      const rect = this.add.rectangle(x, y, BOTON.ancho, BOTON.alto, colores[d.tipo]).setOrigin(0).setStrokeStyle(2, COLORES.texto, d.tipo === 'gris' ? 0.25 : 0.9);
+    lista.forEach((d, i) => {
+      const x = GRAFO.x + i * (ancho + BOTON.hueco);
+      const rect = this.add.rectangle(x, y, ancho, BOTON.alto, colores[d.tipo]).setOrigin(0).setStrokeStyle(2, COLORES.texto, d.tipo === 'gris' ? 0.25 : 0.9);
       rect.setInteractive({ useHandCursor: d.tipo !== 'gris' });
       const texto = this.add
-        .text(x + BOTON.ancho / 2, y + BOTON.alto / 2, d.etiqueta, {
-          fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: d.tipo === 'gris' ? '#8794a3' : TEXTO_HEX.texto, align: 'center', wordWrap: { width: BOTON.ancho - 8 },
+        .text(x + ancho / 2, y + BOTON.alto / 2, d.etiqueta, {
+          fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: d.tipo === 'gris' ? '#8794a3' : TEXTO_HEX.texto, align: 'center', wordWrap: { width: ancho - 8 },
         })
         .setOrigin(0.5);
       const boton = { rect, texto, d, glow: null };
       if (d.tipo === 'rojo') {
         rect.enableFilters();
-        boton.glow = rect.filters.internal.addGlow(COLORES.fallo, 4, 0);
+        boton.glow = rect.filters.internal.addGlow(COLORES.fallo, 4, 0).setPaddingOverride(null);
       }
       rect.on('pointerover', () => this._mostrarTip(d.tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
@@ -386,6 +436,27 @@ export class HUDMaquina extends Phaser.Scene {
       this.capaBotones.add([rect, texto]);
       this.botones.push(boton);
     });
+  }
+
+  _actualizarBotones() {
+    const { principales, brazo } = this._describirBotones();
+    const firma = JSON.stringify([principales, brazo].map((l) => l.map((d) => [d.etiqueta, d.tipo, d.tip])));
+    if (firma === this._firmaBotones) return;
+    this._firmaBotones = firma;
+    this.tip.setVisible(false); // los botones se rehicieron: el aviso anterior ya no corresponde
+    this.capaBotones.removeAll(true);
+    this.botones = [];
+    const y1 = this._yBotones;
+    this._colocarFila(principales, y1);
+    this._yLista = y1 + BOTON.alto + 8;
+    if (brazo.length > 0) {
+      const yCab = y1 + BOTON.alto + 6;
+      this.cabeceraBrazo.setPosition(12, yCab).setVisible(true);
+      this._colocarFila(brazo, yCab + 14);
+      this._yLista = yCab + 14 + BOTON.alto + 8;
+    } else {
+      this.cabeceraBrazo.setVisible(false);
+    }
   }
 
   _mostrarTip(texto) {
@@ -407,7 +478,7 @@ export class HUDMaquina extends Phaser.Scene {
     const eventos = this.celda.bitacora.filter((e) => e.tipo === 'automata' && e.maquina === this.maquinaId).slice(-10);
     const codigo = new Map(this.modelo.eventos.map((e) => [e.id, e.codigo]));
     const palabra = eventos.map((e) => codigo.get(e.evento)).join(' ');
-    const y = BOTON.y + (this._filas ?? 1) * (BOTON.alto + 4) + 8;
+    const y = this._yLista ?? 300;
     this.cabeceraLista.setPosition(12, y).setText(`Palabra observada (últimos 10): ${palabra || '—'}`);
     const lineas = eventos.map((e) => `${e.t.toFixed(1).padStart(5)} s  ${codigo.get(e.evento)}  ${e.de} → ${e.a}`).reverse();
     this.listaIzq.setPosition(12, y + 14).setText(lineas.slice(0, 5).join('\n'));
