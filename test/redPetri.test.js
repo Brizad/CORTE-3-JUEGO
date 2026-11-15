@@ -152,3 +152,15 @@ test('las columnas p1..p9 de la red corregida son las de la red original', () =>
   // Solo cambia p10: t1a y t2a la toman, t1c y t2c la devuelven.
   assert.deepEqual(b.transiciones.map((_, i) => b.post[i][9] - b.pre[i][9]), [-1, 0, 1, -1, 0, 1, 0, 0]);
 });
+
+test('faltantes: qué ficha falta para cada transición (AND-join) y lugares llenos', () => {
+  const red = nueva();
+  assert.deepEqual(red.faltantes(red.M, 't1a'), []);
+  red.disparar('tr_ir'); // el brazo sale: Robot_libre = 0
+  assert.deepEqual(red.faltantes(red.M, 't2a'), ['Robot_libre']);
+  red.disparar('t1a'); // AGV1 con la mesa
+  assert.deepEqual(red.faltantes(red.M, 't1b'), ['Robot_libre']); // AGV1 espera al robot
+  assert.deepEqual(red.faltantes(red.M, 't2b'), ['Mesa_libre', 'AGV2_con_robot']);
+  red.reiniciar([1, 1, 1, 1, 0, 0, 0, 0, 1]);
+  assert.deepEqual(red.faltantes(red.M, 'tr_volver'), ['Robot_libre (llena)']);
+});

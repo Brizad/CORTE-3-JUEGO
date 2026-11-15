@@ -72,6 +72,22 @@ export class RedPetri {
     return M.map((v, j) => v + this.A[i][j]);
   }
 
+  /**
+   * Qué impide disparar t en M (AND-join): los lugares con menos fichas que Pre(t) y los lugares llenos
+   * (capacidad estricta) que no admitirían la ficha que produce. Vacío si t está habilitada.
+   * @returns {string[]} Nombres de lugar; los llenos llevan " (llena)".
+   */
+  faltantes(M, t) {
+    const i = this.indiceT(t);
+    const lista = [];
+    for (let j = 0; j < this.lugares.length; j++) {
+      const l = this.lugares[j];
+      if (M[j] < this.pre[i][j]) lista.push(l.nombre);
+      else if (l.capacidad === 'estricta' && Number.isFinite(M[j]) && M[j] + this.A[i][j] > l.k) lista.push(`${l.nombre} (llena)`);
+    }
+    return lista;
+  }
+
   /** Ids de las transiciones habilitadas en M. */
   habilitadasEn(M) {
     return this.transiciones.filter((_, i) => this.habilitadaEn(M, i)).map((t) => t.id);

@@ -362,12 +362,14 @@ Regla: ${this.celda.razonSupervisor}`,
   // ---- Botones ----
 
   /** Texto de un aviso cuando el evento no se puede ejecutar y por qué. */
-  _explicar(motivo, cnc) {
+  _explicar(motivo, cnc, falta = []) {
     const c = this.celda;
     if (motivo === 'supervisor') {
       return `Supervisor: ${c.razonSupervisor}. Estado (${c.estado(cnc)}, ${c.estado('BRAZO')}).`;
     }
-    if (motivo === 'recurso') return 'Recurso ocupado: la red de Petri no habilita la transición (Robot_libre o Mesa_libre sin ficha).';
+    if (motivo === 'recurso') {
+      return falta.length ? `Falta: ${falta.join(', ')} (la red de Petri no habilita la transición).` : 'Recurso ocupado: la red de Petri no habilita la transición.';
+    }
     return 'Ahora no se puede.';
   }
 
@@ -397,7 +399,7 @@ Regla: ${this.celda.razonSupervisor}`,
     const ejecutable = (etiqueta, evento, opciones, motivo, faltaSiIndefinido) => {
       if (motivo === null) return { etiqueta, maquina: 'BRAZO', evento, opciones, tipo: 'verde', tip: 'Ejecutar el evento (δ del brazo)' };
       if (motivo === 'supervisor') return { etiqueta, maquina: 'BRAZO', evento, opciones, tipo: 'rojo', tip: this._explicar(motivo, cnc) };
-      return gris(etiqueta, motivo === 'indefinido' ? faltaSiIndefinido : this._explicar(motivo, cnc));
+      return gris(etiqueta, motivo === 'indefinido' ? faltaSiIndefinido : this._explicar(motivo, cnc, c.faltaPara('BRAZO', evento, opciones ?? {})));
     };
     const ocupado = c.atendida ? `El brazo atiende a ${c.atendida}.` : 'El brazo no está en esta CNC: usa "mover".';
     const op = { objetivo: cnc };
@@ -422,9 +424,9 @@ Regla: ${this.celda.razonSupervisor}`,
     const id = this.maquinaId;
     const principales = [];
     // Convierte el resultado de evaluar() en el tipo de botón y su explicación.
-    const segun = (motivo, cnc, ev) => {
+    const segun = (motivo, cnc, ev, falta = []) => {
       if (motivo === null) return { tipo: 'verde', tip: 'Ejecutar el evento (δ)' };
-      if (motivo === 'supervisor' || motivo === 'recurso') return { tipo: motivo === 'supervisor' ? 'rojo' : 'gris', tip: this._explicar(motivo, cnc) };
+      if (motivo === 'supervisor' || motivo === 'recurso') return { tipo: motivo === 'supervisor' ? 'rojo' : 'gris', tip: this._explicar(motivo, cnc, falta) };
       if (motivo === 'indefinido' && (ev === 'cargar' || ev === 'descargar')) return { tipo: 'gris', tip: this._faltaCompartido(cnc, ev) };
       return { tipo: 'gris', tip: 'Lo dispara el sistema.' };
     };
@@ -444,7 +446,7 @@ Regla: ${this.celda.razonSupervisor}`,
         if (ev === 'mover') {
           if (this.automata.estado === 'Reposo') {
             for (const objetivo of ['CNC1', 'CNC2']) {
-              principales.push({ etiqueta: `m → ${objetivo}`, maquina: 'BRAZO', evento: ev, opciones: { objetivo }, ...segun(c.evaluar('BRAZO', ev, { objetivo }), objetivo, ev) });
+              principales.push({ etiqueta: `m → ${objetivo}`, maquina: 'BRAZO', evento: ev, opciones: { objetivo }, ...segun(c.evaluar('BRAZO', ev, { objetivo }), objetivo, ev, c.faltaPara('BRAZO', ev, { objetivo })) });
             }
           } else {
             principales.push({ etiqueta: 'm · volver', maquina: 'BRAZO', evento: 'volver', ...segun(c.evaluar('BRAZO', 'volver'), c.atendida, 'volver') });
@@ -458,7 +460,7 @@ Regla: ${this.celda.razonSupervisor}`,
           principales.push({ etiqueta, maquina: 'BRAZO', evento: ev, ...segun(c.evaluar('BRAZO', ev), c.atendida, ev) });
         }
       } else if (ev === 'reservar') {
-        principales.push({ etiqueta: `v · Despachar ${id}`, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev) });
+        principales.push({ etiqueta: `v · Despachar ${id}`, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev, c.faltaPara(id, ev)) });
       } else {
         principales.push({ etiqueta, tipo: 'gris', tip: 'Transición automática de la red: se dispara sola cuando hay mesa y brazo.' });
       }

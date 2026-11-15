@@ -4,6 +4,7 @@
 import { COLORES, TEXTO_HEX, POSICIONES, RUTAS_AGV, ALTOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
 import { oscurecer, puntosPrisma, dibujarPrisma } from '../iso/formas.js';
+import { ANCLAS, ZONAS } from './FichasPlanta.js';
 
 const ANCHO_RUTA = 8; // px (docs/arte.md, sección 3)
 
@@ -13,6 +14,7 @@ export class Escenario {
     this._rutas();
     this._bases();
     this._mesa();
+    this._zonas();
   }
 
   /** Bandas de 8 px en el suelo por donde viajan los AGV. */
@@ -41,6 +43,26 @@ export class Escenario {
         .setOrigin(0.5, 0)
         .setDepth(4)
         .setAlpha(0.85);
+    }
+  }
+
+  /** Zonas de los lugares de la red: base, espera y trabajo de cada AGV, y la zona del robot. */
+  _zonas() {
+    const g = this.escena.add.graphics().setDepth(3);
+    for (const [lugar, rotulo] of Object.entries(ZONAS)) {
+      const x = Math.floor(ANCLAS[lugar][0]);
+      const y = Math.floor(ANCLAS[lugar][1]);
+      const rombo = [aPantalla(x, y), aPantalla(x + 1, y), aPantalla(x + 1, y + 1), aPantalla(x, y + 1)];
+      g.fillStyle(COLORES.banda, 0.5);
+      g.fillPoints(rombo, true);
+      g.lineStyle(1.5, oscurecer(COLORES.banda, 0.2), 1);
+      g.strokePoints(rombo, true);
+      const r = aPantalla(x + 0.5, y + 1.0);
+      this.escena.add
+        .text(r.x, r.y, rotulo, { fontFamily: 'Arial', fontSize: '8px', fontStyle: 'bold', color: TEXTO_HEX.texto })
+        .setOrigin(0.5, 0)
+        .setDepth(4)
+        .setAlpha(0.8);
     }
   }
 

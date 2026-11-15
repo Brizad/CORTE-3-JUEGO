@@ -109,6 +109,7 @@ export class Celda {
         if (this.pedidos.includes(pedido)) {
           pedido.vencido = true;
           this.estadisticas.pedidosVencidos++;
+          this.sumarPuntos(PUNTOS.pedidoVencido, 'pedido vencido');
           this._emitir({ tipo: 'pedidoVencido', pedido });
         }
       });
@@ -155,6 +156,20 @@ export class Celda {
   deshabilitadosPorSupervisor(cnc) {
     if (this.atendida !== cnc) return [];
     return this.supervisores[cnc].deshabilitadosEn(this._claveSupervisor(cnc));
+  }
+
+  /**
+   * Qué fichas faltan para un evento controlable que dispara una transición (AND-join), por ejemplo
+   * ['Robot_libre']. Vacío si no hay transición o si no falta ninguna.
+   */
+  faltaPara(maquina, evento, opciones = {}) {
+    const plan = this._plan(maquina, evento, opciones);
+    return plan.transicion ? this.red.faltantes(this.red.M, plan.transicion) : [];
+  }
+
+  /** Qué fichas faltan para que una transición automática (t1b, t2b…) se dispare ahora. */
+  faltantes(transicion) {
+    return this.red.faltantes(this.red.M, transicion);
   }
 
   /** Estado compuesto (CNC, Brazo) de la CNC dada, por ejemplo ['Cargado', 'Mandril_Abierto']. */

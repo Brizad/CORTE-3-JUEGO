@@ -260,7 +260,7 @@ El juego es 960 × 540 px con escala FIT.
 | **Arriba izquierda** | Reloj del turno (s restantes de 180 s), número de turno, velocidad actual |
 | **Arriba centro** | Puntaje y piezas / meta (por ejemplo 2 / 5) |
 | **Arriba derecha** | Radar del Árbol de Cobertura (verde, amarillo parpadeante o rojo) |
-| **Abajo izquierda** | Fichas por lugar: p1..p9, y p10 si el Controlador está activo. Cada ficha con su forma y color |
+| **Abajo izquierda** | **Barra de despacho:** botones "Despachar AGV1" (t1a) y "Despachar AGV2" (t2a), verdes si hay fichas y grises si no; al pasar el mouse explican qué ficha falta. Muestra los pedidos pendientes y la edad del más antiguo. Las fichas por lugar (p1..p9, y p10 con el Controlador) se ven sobre la planta, junto a su objeto |
 | **Abajo derecha** | Alertas: pedido por vencer, falla de husillo, intento bloqueado, deadlock, logro |
 | **Centro** | Planta isométrica de 12 × 10 celdas y el HUD de la máquina seleccionada |
 

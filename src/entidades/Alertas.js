@@ -42,9 +42,9 @@ export class Alertas {
   _alEvento(e) {
     if (e.tipo === 'automata' && e.evento === 'falla_husillo') {
       this.avisar(`${e.maquina}: falla del husillo. Abre su HUD y repárala (H, C, T, R).`, 'fallo');
-    } else if (e.tipo === 'puntos' && e.maquina) {
+    } else if (e.tipo === 'puntos') {
       const signo = e.puntos > 0 ? '+' : '';
-      this.avisar(`${e.maquina}: ${signo}${e.puntos} puntos (${e.motivo})`, e.puntos > 0 ? 'operacion' : 'espera');
+      this.avisar(`${e.maquina ? `${e.maquina}: ` : ''}${signo}${e.puntos} puntos (${e.motivo})`, e.puntos > 0 ? 'operacion' : 'espera');
     } else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') {
       this.avisar(`Bloqueado: ${this.celda.razonSupervisor}`, 'fallo');
     } else if (e.tipo === 'deadlock') {

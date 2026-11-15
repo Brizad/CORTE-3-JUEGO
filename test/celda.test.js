@@ -320,3 +320,54 @@ test('10 000 eventos aleatorios pedidos a la Celda nunca llegan al estado prohib
   assert.equal(celda.estadisticas.bloqueos, rechazos);
   assert.equal(celda.supervisores.CNC1.bloqueos + celda.supervisores.CNC2.bloqueos, rechazos);
 });
+
+test('AND-join: AGV1 con la mesa espera en la estación hasta que el robot vuelve', () => {
+  const { reloj, celda } = nueva({ ...TURNOS[0], probFalla: 0 });
+  celda.solicitar('BRAZO', 'mover', { objetivo: 'CNC1' }); // el brazo sale: Robot_libre = 0
+  celda.solicitar('AGV1', 'reservar'); // t1a: AGV1 con la mesa
+  reloj.avanzar(10);
+  assert.equal(celda.estado('AGV1'), 'Esperando');
+  assert.equal(celda.red.habilitada('t1b'), false);
+  assert.deepEqual(celda.faltantes('t1b'), ['Robot_libre']); // "AGV1 espera: falta Robot_libre"
+  assert.equal(celda.estado('AGV1'), 'Esperando'); // sigue esperando: no se dispara con M < Pre
+  celda.solicitar('BRAZO', 'abrir_mandril');
+  celda.solicitar('BRAZO', 'cerrar_mandril'); // vuelve solo: Robot_libre = 1
+  assert.equal(celda.estado('AGV1'), 'Descargando'); // t1b se disparó en cuanto hubo robot
+  assert.deepEqual(celda.faltantes('t1b'), ['Robot_libre', 'AGV1_con_mesa', 'AGV1_trabajando (llena)']); // ya se disparó
+});
+
+test('conflictos de la red: Robot_libre en M0 y tras t1a (t2a, t1b y tr_ir)', () => {
+  const { celda } = nueva();
+  assert.deepEqual(celda.red.conflictos(), [{ lugar: 'Robot_libre', transiciones: ['t2a', 'tr_ir'] }]);
+  celda.solicitar('AGV1', 'reservar');
+  assert.deepEqual(celda.red.conflictos(), [{ lugar: 'Robot_libre', transiciones: ['t1b', 't2a', 'tr_ir'] }]);
+});
+
+test('despachar AGV1 y luego AGV2: marcado [0,0,0,0,1,1,0,0,0] y ya no se dispara nada', () => {
+  const { reloj, celda } = nueva();
+  celda.solicitar('AGV1', 'reservar');
+  celda.solicitar('AGV2', 'reservar');
+  assert.deepEqual(celda.red.marcado(), [0, 0, 0, 0, 1, 1, 0, 0, 0]);
+  const disparos = () => celda.bitacora.filter((e) => e.tipo === 'disparo').length;
+  const antes = disparos();
+  reloj.avanzar(120); // los AGV llegan a sus estaciones, pero nada más ocurre
+  assert.equal(disparos(), antes);
+  assert.deepEqual(celda.red.marcado(), [0, 0, 0, 0, 1, 1, 0, 0, 0]);
+  assert.equal(celda.estado('AGV1'), 'Esperando');
+  assert.equal(celda.estado('AGV2'), 'Esperando');
+  assert.deepEqual(celda.faltantes('t1b'), ['Robot_libre']);
+  assert.deepEqual(celda.faltantes('t2b'), ['Mesa_libre']);
+  assert.equal(celda.red.habilitadas().length, 0);
+});
+
+test('un pedido que pasa 30 s sin atender vence una sola vez y resta 20 puntos', () => {
+  const { reloj, celda } = nueva();
+  reloj.avanzar(55); // pedidos en 25 s y 50 s; el primero vence a los 55 s
+  assert.equal(celda.puntaje, -20);
+  assert.equal(celda.bitacora.filter((e) => e.tipo === 'pedidoVencido').length, 1);
+  reloj.avanzar(10); // t = 65: el segundo vence a los 80 s, todavía no
+  assert.equal(celda.puntaje, -20);
+  reloj.avanzar(20); // t = 85
+  assert.equal(celda.puntaje, -40);
+  assert.equal(celda.pedidos.length, 3); // los vencidos siguen pendientes
+});

@@ -14,6 +14,7 @@ import { EntidadBrazo } from '../entidades/EntidadBrazo.js';
 import { EntidadAGV } from '../entidades/EntidadAGV.js';
 import { FichasPlanta } from '../entidades/FichasPlanta.js';
 import { Alertas } from '../entidades/Alertas.js';
+import { Estaciones } from '../entidades/Estaciones.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
 const ZOOM_MIN = 0.8;
@@ -43,7 +44,7 @@ export class Planta extends Phaser.Scene {
     this._conectarAcciones();
 
     // Escenas superpuestas (vacías por ahora). Se lanzan una sola vez.
-    for (const clave of ['HUDMaquina', 'Inspector']) {
+    for (const clave of ['HUDMaquina', 'Inspector', 'HUDGeneral']) {
       if (!this.scene.isActive(clave)) this.scene.launch(clave);
     }
 
@@ -52,10 +53,12 @@ export class Planta extends Phaser.Scene {
       this.entidades.forEach((e) => e.destruir());
       this.fichas.destruir();
       this.alertas.destruir();
+      this.estaciones.destruir();
       this._bajaTemblor();
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
+      this.scene.stop('HUDGeneral');
     });
   }
 
@@ -126,6 +129,7 @@ export class Planta extends Phaser.Scene {
     ];
     this.fichas = new FichasPlanta(this, this.celda);
     this.alertas = new Alertas(this, this.celda);
+    this.estaciones = new Estaciones(this, this.celda);
     // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
     this._bajaTemblor = this.celda.alCambiar((e) => {
       if (e.tipo === 'rechazo' && e.motivo === 'supervisor') this.cameras.main.shake(300, 0.004);
@@ -161,6 +165,7 @@ export class Planta extends Phaser.Scene {
     for (const e of this.entidades) e.actualizar(r.ahora);
     this.fichas.actualizar();
     this.alertas.actualizar();
+    this.estaciones.actualizar();
     const est = this.celda.estadisticas;
     this.textoEstado.setText(
       `Velocidad x${r.velocidad}   Piezas ${est.piezas}   Puntos ${this.celda.puntaje}   Ciclos AGV ${est.ciclosAGV}   Pedidos ${this.celda.pedidos.length}`,
@@ -245,6 +250,6 @@ export class Planta extends Phaser.Scene {
 
   /** Verdadero si el punto cae sobre un panel superpuesto abierto (el clic no llega a la planta). */
   _bajoPanel(x, y) {
-    return ['HUDMaquina', 'Inspector'].some((c) => this.scene.get(c)?.contiene?.(x, y));
+    return ['HUDMaquina', 'Inspector', 'HUDGeneral'].some((c) => this.scene.get(c)?.contiene?.(x, y));
   }
 }

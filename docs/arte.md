@@ -172,6 +172,20 @@ Las ubicaciones fueron elegidas por el equipo (opción "sobre el objeto que repr
 Un lugar vacío se dibuja como contorno tenue con el contador 0/k. Cuando se dispara una transición,
 cada ficha consumida viaja al lugar donde se produce otra, con un tween de 0,3 s (dividido por la velocidad).
 
+### 6.2 Red de Petri sobre la planta
+
+- **Zonas del mapa:** cada lugar tiene su objeto o zona: la mesa (Mesa_libre), el brazo y la zona "Robot" (Robot_libre), la
+  base, la zona de espera y la zona de trabajo de cada AGV. Las zonas son baldosas de la rejilla con su rótulo de 8 px.
+- **Vuelo de fichas:** al disparar una transición, cada ficha de entrada viaja (tween de 0,3 s, dividido por la velocidad) a la
+  estación de la transición, en el orden de Pre (p1, p2, …); cuando llegaron todas, las fichas de salida parten de la estación en
+  el orden de Post. Estaciones: t1a, t1b y t1c en S1; t2a, t2b y t2c en S2; tr_ir y tr_volver en el brazo.
+- **Conflictos:** cuando dos o más transiciones habilitadas comparten un lugar de entrada, ese lugar se rodea con un anillo
+  naranja (robot `#f08a24`) que pulsa, y debajo se lee la lista de transiciones, por ejemplo "t1b ↔ t2a ↔ tr_ir".
+- **AND-join:** si un AGV espera en su estación y la transición no está habilitada, la estación muestra
+  "AGV1 espera: falta Robot_libre" (amarillo de espera).
+- **Pedidos:** un círculo con el número de pedidos pendientes sobre la fila libre junto a cada base (D1 y D2). Pasa a rojo
+  si algún pedido ya venció (30 s).
+
 ## 7. HUD de máquina (escena superpuesta)
 
 - Panel `#161b22` al 90 % de opacidad, 300 × 220 px, anclado a la derecha de la máquina seleccionada.
@@ -219,7 +233,7 @@ Distribución del panel de una CNC, de arriba hacia abajo:
 | Arriba izquierda | x 8–200, y 8–48 | Reloj, turno, velocidad |
 | Arriba centro | x 330–630, y 8–48 | Puntaje y piezas / meta |
 | Arriba derecha | x 760–952, y 8–48 | Radar del Árbol de Cobertura |
-| Abajo izquierda | x 8–420, y 450–532 | Fichas por lugar |
+| Abajo izquierda | x 8–420, y 450–532 | Barra de despacho: "Despachar AGV1" y "Despachar AGV2" (44 px de alto) y los pedidos pendientes. El panel de fichas por lugar queda para el HUD de fichas |
 | Abajo derecha | x 540–952, y 450–532 | Alertas |
 
 El radar es un círculo de 32 px con su etiqueta:
