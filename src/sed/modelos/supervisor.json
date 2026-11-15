@@ -1,0 +1,8 @@
+{
+  "nombre": "Supervisor_CNC_Brazo",
+  "plantas": ["CNC", "Brazo"],
+  "prohibidos": [
+    ["Fresando", "Mandril_Abierto"]
+  ],
+  "razon": "¬(CNC = Fresando ∧ Brazo = Mandril_Abierto)"
+}

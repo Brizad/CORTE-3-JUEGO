@@ -1,0 +1,43 @@
+{
+  "nombre": "Reparacion_DFA",
+  "estados": ["q0", "q1", "q2", "q3", "q4"],
+  "inicial": "q0",
+  "marcados": ["q4"],
+  "eventos": [
+    {
+      "id": "home",
+      "codigo": "H",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "chequeo",
+      "codigo": "C",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "cambio_herramienta",
+      "codigo": "T",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "reset",
+      "codigo": "R",
+      "controlable": true,
+      "observable": true
+    }
+  ],
+  "transiciones": [
+    ["q0", "home", "q1"],
+    ["q1", "chequeo", "q2"],
+    ["q2", "cambio_herramienta", "q3"],
+    ["q2", "chequeo", "q2"],
+    ["q2", "reset", "q4"],
+    ["q3", "chequeo", "q2"],
+    ["q3", "reset", "q4"]
+  ],
+  "expresion": "^H(CT?)+R$",
+  "expresionJflap": "H(C(T+!))(C(T+!))*R"
+}

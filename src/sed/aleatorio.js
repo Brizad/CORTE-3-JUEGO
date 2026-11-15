@@ -1,5 +1,5 @@
 // Generador pseudoaleatorio mulberry32 con semilla.
-// Sin Phaser ni DOM: se prueba con Node. Con la misma semilla produce siempre la misma secuencia.
+// Sin motor gráfico ni DOM: se prueba con Node. Con la misma semilla produce siempre la misma secuencia.
 
 /**
  * Crea un generador pseudoaleatorio.

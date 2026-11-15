@@ -1,0 +1,53 @@
+{
+  "nombre": "Brazo",
+  "estados": ["Reposo", "Moviendo", "Mandril_Cerrado", "Mandril_Abierto"],
+  "inicial": "Reposo",
+  "marcados": ["Reposo"],
+  "eventos": [
+    {
+      "id": "mover",
+      "codigo": "m",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "llegar",
+      "codigo": "l",
+      "controlable": false,
+      "observable": true
+    },
+    {
+      "id": "abrir_mandril",
+      "codigo": "a",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "cerrar_mandril",
+      "codigo": "e",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "cargar",
+      "codigo": "c",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "descargar",
+      "codigo": "d",
+      "controlable": true,
+      "observable": true
+    }
+  ],
+  "transiciones": [
+    ["Reposo", "mover", "Moviendo"],
+    ["Moviendo", "llegar", "Mandril_Cerrado"],
+    ["Mandril_Cerrado", "abrir_mandril", "Mandril_Abierto"],
+    ["Mandril_Abierto", "cargar", "Mandril_Abierto"],
+    ["Mandril_Abierto", "descargar", "Mandril_Cerrado"],
+    ["Mandril_Abierto", "cerrar_mandril", "Mandril_Cerrado"],
+    ["Mandril_Cerrado", "mover", "Reposo"]
+  ]
+}

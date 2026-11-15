@@ -1,0 +1,52 @@
+{
+  "nombre": "CNC",
+  "estados": ["Libre", "Cargado", "Fresando", "Terminado", "Falla"],
+  "inicial": "Libre",
+  "marcados": ["Libre"],
+  "eventos": [
+    {
+      "id": "cargar",
+      "codigo": "c",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "iniciar_fresado",
+      "codigo": "i",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "fin_fresado",
+      "codigo": "f",
+      "controlable": false,
+      "observable": true
+    },
+    {
+      "id": "descargar",
+      "codigo": "d",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "falla_husillo",
+      "codigo": "x",
+      "controlable": false,
+      "observable": true
+    },
+    {
+      "id": "reset",
+      "codigo": "r",
+      "controlable": true,
+      "observable": true
+    }
+  ],
+  "transiciones": [
+    ["Libre", "cargar", "Cargado"],
+    ["Cargado", "iniciar_fresado", "Fresando"],
+    ["Fresando", "fin_fresado", "Terminado"],
+    ["Terminado", "descargar", "Libre"],
+    ["Fresando", "falla_husillo", "Falla"],
+    ["Falla", "reset", "Libre"]
+  ]
+}

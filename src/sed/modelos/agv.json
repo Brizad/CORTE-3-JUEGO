@@ -1,0 +1,38 @@
+{
+  "nombre": "AGV",
+  "estados": ["Libre", "Viajando", "Esperando", "Descargando"],
+  "inicial": "Libre",
+  "marcados": ["Libre"],
+  "eventos": [
+    {
+      "id": "reservar",
+      "codigo": "v",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "llegar_estacion",
+      "codigo": "g",
+      "controlable": false,
+      "observable": true
+    },
+    {
+      "id": "iniciar_descarga",
+      "codigo": "u",
+      "controlable": true,
+      "observable": true
+    },
+    {
+      "id": "fin_descarga",
+      "codigo": "z",
+      "controlable": false,
+      "observable": true
+    }
+  ],
+  "transiciones": [
+    ["Libre", "reservar", "Viajando"],
+    ["Viajando", "llegar_estacion", "Esperando"],
+    ["Esperando", "iniciar_descarga", "Descargando"],
+    ["Descargando", "fin_descarga", "Libre"]
+  ]
+}

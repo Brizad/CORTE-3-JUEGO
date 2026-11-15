@@ -1,0 +1,145 @@
+{
+  "nombre": "RoboCell_AGV_corregida",
+  "lugares": [
+    {
+      "id": "p1",
+      "nombre": "Mesa_libre",
+      "m0": 1,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p2",
+      "nombre": "Robot_libre",
+      "m0": 1,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p3",
+      "nombre": "AGV1_listo",
+      "m0": 1,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p4",
+      "nombre": "AGV2_listo",
+      "m0": 1,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p5",
+      "nombre": "AGV1_con_mesa",
+      "m0": 0,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p6",
+      "nombre": "AGV2_con_robot",
+      "m0": 0,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p7",
+      "nombre": "AGV1_trabajando",
+      "m0": 0,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p8",
+      "nombre": "AGV2_trabajando",
+      "m0": 0,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p9",
+      "nombre": "Robot_en_CNC",
+      "m0": 0,
+      "k": 1,
+      "capacidad": "estricta"
+    },
+    {
+      "id": "p10",
+      "nombre": "Celda_libre",
+      "m0": 1,
+      "k": 1,
+      "capacidad": "estricta"
+    }
+  ],
+  "transiciones": [
+    {
+      "id": "t1a",
+      "nombre": "reservar_AGV1",
+      "disparo": "jugador",
+      "evento": "reservar"
+    },
+    {
+      "id": "t1b",
+      "nombre": "iniciar_descarga_AGV1",
+      "disparo": "automatica",
+      "evento": "iniciar_descarga"
+    },
+    {
+      "id": "t1c",
+      "nombre": "fin_descarga_AGV1",
+      "disparo": "automatica",
+      "evento": "fin_descarga"
+    },
+    {
+      "id": "t2a",
+      "nombre": "reservar_AGV2",
+      "disparo": "jugador",
+      "evento": "reservar"
+    },
+    {
+      "id": "t2b",
+      "nombre": "iniciar_descarga_AGV2",
+      "disparo": "automatica",
+      "evento": "iniciar_descarga"
+    },
+    {
+      "id": "t2c",
+      "nombre": "fin_descarga_AGV2",
+      "disparo": "automatica",
+      "evento": "fin_descarga"
+    },
+    {
+      "id": "tr_ir",
+      "nombre": "brazo_ir",
+      "disparo": "jugador",
+      "evento": "mover"
+    },
+    {
+      "id": "tr_volver",
+      "nombre": "brazo_volver",
+      "disparo": "automatica",
+      "evento": "mover"
+    }
+  ],
+  "pre": [
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    [0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+  ],
+  "post": [
+    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+    [1, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+  ]
+}

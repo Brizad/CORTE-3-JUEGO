@@ -1,5 +1,5 @@
 // Reloj de simulación: calendario de eventos futuros con cola de prioridad (montículo binario).
-// Sin Phaser ni DOM: se prueba con Node.
+// Sin motor gráfico ni DOM: se prueba con Node.
 // El tiempo es siempre "segundos de simulación". Con tiempos iguales se respeta el orden de programación.
 
 export class Reloj {
