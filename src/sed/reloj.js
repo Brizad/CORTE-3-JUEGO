@@ -62,6 +62,7 @@ export class Reloj {
       this.ahora = Math.max(this.ahora, cima.t);
       this._ejecutar(cima);
       disparados.push({ id: cima.id, t: cima.t, evento: cima.evento });
+      if (this.enPausa) return disparados; // un evento pausó el reloj (deadlock o fin de turno): se queda en ese instante
     }
     this.ahora = objetivo;
     return disparados;

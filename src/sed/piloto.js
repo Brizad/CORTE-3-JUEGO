@@ -55,7 +55,7 @@ export class Piloto {
     this._pendiente = this.reloj.programarEn(this.periodo, () => {
       this._pendiente = null;
       if (!this.activo) return;
-      if (!this.celda.deadlock) this.decidir();
+      if (!this.celda.deadlock && !this.celda.terminado) this.decidir();
       this._programar();
     });
   }

@@ -230,11 +230,11 @@ Distribución del panel de una CNC, de arriba hacia abajo:
 
 | Zona | Posición | Contenido |
 |---|---|---|
-| Arriba izquierda | x 8–200, y 8–48 | Reloj, turno, velocidad |
-| Arriba centro | x 330–630, y 8–48 | Puntaje y piezas / meta |
+| Arriba izquierda | x 8–190, y 8–48 | Reloj (s restantes), turno y velocidad. A su derecha, los botones x1, x2 y x4 (x 192–324) |
+| Arriba centro | x 330–630, y 8–48 | Puntaje y piezas / meta (20 px, en blanco; el puntaje negativo en rojo). Junto al radar: botones de pausa e inspector (x 636–728) |
 | Arriba derecha | x 760–952, y 8–48 | Radar del Árbol de Cobertura |
-| Abajo izquierda | x 8–420, y 450–532 | Barra de despacho: "Despachar AGV1" y "Despachar AGV2" (44 px de alto) y los pedidos pendientes. El panel de fichas por lugar queda para el HUD de fichas |
-| Abajo derecha | x 540–952, y 450–532 | Alertas |
+| Abajo izquierda | x 8–420, y 450–532 | Fichas por lugar: p1..p9 (y p10), cada una con su forma y color a 14 px, el contador m/k y el nombre del lugar |
+| Abajo derecha | x 540–952, y 450–532 | Alertas. En el hueco central (x 424–536) van "Despachar AGV1", "Despachar AGV2" y "Controlador de celda" |
 
 El radar es un círculo de 32 px con su etiqueta y, a su derecha, un mini-grafo con los últimos 5 marcados (cuadros de 22 × 14 px
 con el nombre M0…M7, del color del radar en ese marcado, unidos por flechas; el último con borde blanco):

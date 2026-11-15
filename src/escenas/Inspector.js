@@ -43,7 +43,7 @@ export class Inspector extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     cerrar.on('pointerup', () => this.cerrar());
     this.pestanas = {};
-    [['matrices', 'Matrices', 250, 80], ['arbol', 'Árbol', 334, 60]].forEach(([clave, etiqueta, x, ancho]) => {
+    [['matrices', 'Matrices', 250, 80], ['arbol', 'Árbol', 334, 60], ['logros', 'Logros', 398, 64]].forEach(([clave, etiqueta, x, ancho]) => {
       const rect = this.add.rectangle(x, 5, ancho, 20, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true });
       const t = this.add.text(x + ancho / 2, 15, etiqueta, TEXTO({ fontStyle: 'bold' })).setOrigin(0.5);
       rect.on('pointerup', () => this._cambiarPestana(clave));
@@ -83,7 +83,7 @@ export class Inspector extends Phaser.Scene {
     this.contenedor.setVisible(false);
     this.abierto = false;
     // Reanuda solo si no estaba en pausa antes y la partida no terminó por deadlock.
-    if (!this._pausaPrevia && !this.celda.deadlock) this.reloj.reanudar();
+    if (!this._pausaPrevia && !this.celda.deadlock && !this.celda.terminado) this.reloj.reanudar();
   }
 
   _soltar() {
@@ -127,7 +127,8 @@ export class Inspector extends Phaser.Scene {
   _reconstruir() {
     this.dinamico.removeAll(true);
     if (this.pestana === 'matrices') this._matrices();
-    else this._arbol();
+    else if (this.pestana === 'arbol') this._arbol();
+    else this._logros();
   }
 
   /** Pestaña Matrices: Pre, Post, A, la ecuación de estado y la prueba de disparo. */
@@ -306,6 +307,19 @@ export class Inspector extends Phaser.Scene {
     const t = this.add.text(x + ancho / 2, y + alto / 2, etiqueta, TEXTO({ fontStyle: 'bold', fontSize: '11px' })).setOrigin(0.5);
     rect.on('pointerup', accion);
     this.dinamico.add([rect, t]);
+  }
+
+  // ---- Logros (GDD, sección 12) ----
+
+  _logros() {
+    const progreso = this.scene.get('Planta').logros.progreso();
+    this._texto(12, 36, 'Progreso de los logros', { fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    progreso.forEach((l, i) => {
+      const y = 66 + i * 52;
+      this._texto(12, y, `${l.ganado ? '★' : '☆'}  ${l.nombre}`, { fontSize: '14px', fontStyle: 'bold', color: l.ganado ? '#d4af37' : TEXTO_HEX.texto });
+      this._texto(36, y + 20, l.descripcion, { color: '#8794a3' });
+      this._texto(PANEL.ancho - 24, y + 2, l.ganado ? 'conseguido' : l.texto, { color: l.ganado ? TEXTO_HEX.operacion : TEXTO_HEX.texto }).setOrigin(1, 0);
+    });
   }
 
   // ---- Árbol de cobertura ----

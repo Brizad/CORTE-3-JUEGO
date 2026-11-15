@@ -15,6 +15,7 @@ import { EntidadAGV } from '../entidades/EntidadAGV.js';
 import { FichasPlanta } from '../entidades/FichasPlanta.js';
 import { Alertas } from '../entidades/Alertas.js';
 import { Estaciones } from '../entidades/Estaciones.js';
+import { Logros } from '../sed/logros.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
 const ZOOM_MIN = 0.8;
@@ -31,7 +32,15 @@ export class Planta extends Phaser.Scene {
     this.reloj = this.registry.get('reloj');
     this.reloj.reiniciar();
     this.aleatorio = this.registry.get('aleatorio');
-    this.aleatorio.restaurarEstado(SEMILLA); // cada vez que se abre la planta, la misma secuencia
+    this.partida = this.registry.get('partida'); // turno actual, puntaje acumulado y logros
+    this.sonidos = this.registry.get('sonidos');
+    if (this.partida.rngInicio !== null) {
+      // Reintento del turno: la misma semilla y el estado del generador del inicio del turno (GDD, sección 17).
+      this.aleatorio.restaurarEstado(this.partida.rngInicio);
+    } else {
+      if (this.partida.turno === 0) this.aleatorio.restaurarEstado(SEMILLA); // la partida siempre empieza igual
+      this.partida.rngInicio = this.aleatorio.obtenerEstado();
+    }
 
     this.cameras.main.setBackgroundColor(COLORES.panel);
     this._dibujarSuelo();
@@ -43,9 +52,11 @@ export class Planta extends Phaser.Scene {
     this.entrada = new GestorEntrada(this);
     this._conectarAcciones();
 
-    // Escenas superpuestas (vacías por ahora). Se lanzan una sola vez.
+    // Escenas superpuestas. Al reiniciar la planta (otro turno) todavía hay una parada en cola de la partida anterior:
+    // se vuelve a pedir la parada y luego el lanzamiento, así quedan siempre recién creadas.
     for (const clave of ['HUDMaquina', 'Inspector', 'HUDGeneral']) {
-      if (!this.scene.isActive(clave)) this.scene.launch(clave);
+      this.scene.stop(clave);
+      this.scene.launch(clave);
     }
 
     this.events.once('shutdown', () => {
@@ -55,6 +66,8 @@ export class Planta extends Phaser.Scene {
       this.alertas.destruir();
       this.estaciones.destruir();
       this._bajaTemblor();
+      this.logros.detener();
+      this.scene.stop('Resultados');
       this.scene.stop('GameOver');
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
@@ -117,8 +130,22 @@ export class Planta extends Phaser.Scene {
 
   /** Crea el núcleo (2 CNC, 1 brazo, 2 AGV y la red de Petri) y la parte visible de cada máquina. */
   _crearCelda() {
-    this.celda = new Celda({ modelos: MODELOS, reloj: this.reloj, aleatorio: this.aleatorio, turno: TURNOS[0] });
-    this.celda.arrancar(); // programa los pedidos de AGV en el reloj
+    this.celda = new Celda({
+      modelos: MODELOS,
+      reloj: this.reloj,
+      aleatorio: this.aleatorio,
+      turno: this.partida.parametros, // meta, probabilidad de falla y pedidos del turno
+      puntajeInicial: this.partida.puntaje,
+    });
+    // Logros del GDD: se vigilan con los eventos de la Celda y avisan con un tween en el HUD.
+    this.logrosDelTurno = [];
+    this.logros = new Logros(this.partida.logros, this.partida.turno, (logro) => {
+      this.logrosDelTurno.push(logro.id);
+      this.events.emit('logro', logro);
+      this.sonidos.logro();
+    });
+    this.logros.vigilar(this.celda);
+    this.celda.arrancar(); // programa los pedidos de AGV y el fin del turno en el reloj
     this.piloto = new Piloto(this.celda);
     this.escenario = new Escenario(this);
     this.entidades = [
@@ -145,6 +172,15 @@ export class Planta extends Phaser.Scene {
         this.fichas = new FichasPlanta(this, this.celda);
       }
       if (e.tipo === 'restaurado') this.piloto.reprogramar();
+      // Fin del turno (meta cumplida o se acabó el tiempo): resultados.
+      if (e.tipo === 'finTurno') {
+        this.scene.get('HUDMaquina').cerrar?.();
+        this.scene.get('Inspector').cerrar?.();
+        this.scene.stop('GameOver');
+        this.partida.terminarTurno(e.resumen);
+        this.scene.launch('Resultados');
+      }
+      this._sonar(e);
     });
   }
 
@@ -152,7 +188,6 @@ export class Planta extends Phaser.Scene {
 
   _crearTextos() {
     const estilo = { fontFamily: 'Arial', fontSize: '12px', color: TEXTO_HEX.texto };
-    this.textoEstado = this.add.text(8, 8, '', estilo).setDepth(100).setScrollFactor(0);
     this.textoFps = this.add
       .text(8, 24, '', { ...estilo, color: TEXTO_HEX.espera })
       .setDepth(100)
@@ -165,7 +200,7 @@ export class Planta extends Phaser.Scene {
       .setScrollFactor(0)
       .setVisible(false);
     this.textoDemo = this.add
-      .text(ANCHO / 2, 40, '', { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.operacion })
+      .text(ANCHO / 2, 52, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.operacion })
       .setOrigin(0.5)
       .setDepth(100)
       .setScrollFactor(0);
@@ -178,16 +213,22 @@ export class Planta extends Phaser.Scene {
     this.fichas.actualizar();
     this.alertas.actualizar();
     this.estaciones.actualizar();
-    const est = this.celda.estadisticas;
-    this.textoEstado.setText(
-      `Velocidad x${r.velocidad}   Piezas ${est.piezas}   Puntos ${this.celda.puntaje}   Ciclos AGV ${est.ciclosAGV}   Pedidos ${this.celda.pedidos.length}`,
-    );
-    this.textoDemo.setText(this.celda.deadlock ? 'DEADLOCK' : this.piloto.activo ? 'MODO DEMOSTRACIÓN (D para salir)' : '');
-    this.textoDemo.setColor(this.celda.deadlock ? TEXTO_HEX.fallo : TEXTO_HEX.operacion);
+    // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
+    this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
     this.textoPausa.setVisible(r.enPausa);
     if (this.textoFps.visible) {
       this.textoFps.setText(`FPS: ${Math.round(this.game.loop.actualFps)}   t simulación: ${r.ahora.toFixed(1)} s`);
     }
+  }
+
+  /** Sonidos cortos: disparo de transición, falla, reparación, botón bloqueado y deadlock (el del logro suena al ganarlo). */
+  _sonar(e) {
+    const s = this.sonidos;
+    if (e.tipo === 'disparo') s.disparo();
+    else if (e.tipo === 'automata' && e.evento === 'falla_husillo') s.falla();
+    else if (e.tipo === 'reparacion' && e.valida) s.reparacion();
+    else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') s.bloqueado();
+    else if (e.tipo === 'deadlock') s.deadlock();
   }
 
   // ---- Acciones de entrada ----
@@ -199,7 +240,7 @@ export class Planta extends Phaser.Scene {
 
     e.on(ACCIONES.PAUSA, () => {
       // El Inspector pausa por su cuenta y tras un deadlock la simulación queda detenida.
-      if (this.celda.deadlock || this.scene.get('Inspector').abierto) return;
+      if (this.celda.deadlock || this.celda.terminado || this.scene.get('Inspector').abierto) return;
       this.reloj.alternarPausa();
     });
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
@@ -210,7 +251,10 @@ export class Planta extends Phaser.Scene {
       if (!import.meta.env?.DEV) return;
       if (!this.celda.forzarFalla()) this.alertas.avisar('Tecla F: no hay ninguna CNC fresando.', 'espera');
     });
-    e.on(ACCIONES.INSPECTOR, () => inspector().alternar?.());
+    e.on(ACCIONES.INSPECTOR, () => {
+      if (!this.celda.terminado) inspector().alternar?.();
+    });
+    e.on(ACCIONES.SILENCIO, () => this.sonidos.alternarSilencio());
     e.on(ACCIONES.CERRAR, () => {
       hud().cerrar?.();
       inspector().cerrar?.();
@@ -266,6 +310,6 @@ export class Planta extends Phaser.Scene {
 
   /** Verdadero si el punto cae sobre un panel superpuesto abierto (el clic no llega a la planta). */
   _bajoPanel(x, y) {
-    return ['HUDMaquina', 'Inspector', 'HUDGeneral', 'GameOver'].some((c) => this.scene.get(c)?.contiene?.(x, y));
+    return ['HUDMaquina', 'Inspector', 'HUDGeneral', 'GameOver', 'Resultados'].some((c) => this.scene.get(c)?.contiene?.(x, y));
   }
 }

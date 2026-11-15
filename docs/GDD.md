@@ -253,6 +253,7 @@ El inspector (tecla I) muestra el progreso de cada logro.
 | Consola de reparación: símbolos | Botones H, C, T, R | **H**, **C**, **T**, **R** | Botones H, C, T, R |
 | Consola de reparación: enviar | Botón Enviar | **Enter** | Botón Enviar |
 | Contador de fps | — | **F1** | Botón en el inspector |
+| Silenciar o activar los sonidos | — | **M** | — |
 | Mover la cámara | Arrastrar con el botón izquierdo | — | Arrastrar con un dedo |
 | Acercar y alejar | Rueda del mouse | — | Pellizco con dos dedos |
 
@@ -264,11 +265,11 @@ El juego es 960 × 540 px con escala FIT.
 
 | Zona | Contenido |
 |---|---|
-| **Arriba izquierda** | Reloj del turno (s restantes de 180 s), número de turno, velocidad actual |
+| **Arriba izquierda** | Reloj del turno (s restantes de 180 s), número de turno (por ejemplo "Turno 2 de 3") y velocidad actual |
 | **Arriba centro** | Puntaje y piezas / meta (por ejemplo 2 / 5) |
 | **Arriba derecha** | Radar del Árbol de Cobertura (verde, amarillo parpadeante o rojo) con el mini-grafo de los últimos 5 marcados (M0…M7). Se recalcula tras cada disparo con `explorar(red, M, 1)`. De amarillo a verde suma +25 (enfriamiento de 20 s) |
-| **Abajo izquierda** | **Barra de despacho:** botones "Despachar AGV1" (t1a) y "Despachar AGV2" (t2a), verdes si hay fichas y grises si no; al pasar el mouse explican qué ficha falta. Muestra los pedidos pendientes y la edad del más antiguo. Las fichas por lugar (p1..p9, y p10 con el Controlador) se ven sobre la planta, junto a su objeto |
-| **Abajo derecha** | Alertas: pedido por vencer, falla de husillo, intento bloqueado, deadlock, logro |
+| **Abajo izquierda** | **Fichas por lugar:** p1..p9, y p10 si el Controlador está activo. Cada ficha con su forma y color, 14 px de alto, y su contador m/k. Al pasar el mouse sale el nombre completo del lugar |
+| **Abajo derecha** | Alertas: falla de husillo, intento bloqueado, pedido vencido, puntos, Controlador de celda activo y deadlock. El logro sale como un aviso animado arriba, en el centro |
 | **Centro** | Planta isométrica de 12 × 10 celdas y el HUD de la máquina seleccionada |
 
 ### 14.1 HUD de máquina
@@ -316,6 +317,31 @@ Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba
 - **Árbol:** árbol de cobertura desde M0 (14 nodos y 8 marcados en la red original; 12 y 7 con el Controlador) o desde el
   marcado actual con profundidad 4. Los marcados muertos van en rojo, los repetidos en gris y el marcado actual con borde amarillo.
   Muestra el número de nodos.
+
+### 14.4 Botones táctiles, despacho y textos
+
+- **Botones en pantalla** (táctiles, de 44 × 44 px): velocidad x1, x2 y x4 junto al reloj; pausa e inspector junto al radar.
+  Tocar equivale a hacer clic.
+- **Despacho de AGV:** entre las fichas y las alertas (abajo, en el centro): "Despachar AGV1" (t1a), "Despachar AGV2" (t2a) y
+  "Controlador de celda (−150)". Verdes si se pueden usar y grises si no.
+- **Sin textos de ayuda fijos:** durante la partida no hay instrucciones escritas en pantalla. Las explicaciones salen solo al pasar el
+  mouse o tocar un botón (qué ficha falta, por qué está en gris, qué hace el Controlador).
+
+### 14.5 Turnos, resultados y logros
+
+- **Turnos:** 3 turnos de 180 s con metas de 3, 5 y 7 piezas, falla por fresado de 10, 20 y 30 % y pedidos cada 25, 18 y 12 s.
+  El puntaje se acumula entre turnos. Cada turno empieza en M0 con las 2 CNC y el brazo en su estado inicial.
+- **Fin del turno:** el turno termina al descargar la pieza de la meta (victoria) o al llegar a 180 s sin ella (derrota). Al terminar se
+  llama a `desactivarControlador()` y sale la pantalla de **Resultados**: piezas / meta, fallas reparadas, intentos bloqueados,
+  pedidos vencidos, deadlocks evitados (veces que el radar volvió de amarillo a verde), deadlocks sufridos, ciclos de AGV, puntaje del
+  turno y total, y los logros. Botón **Siguiente turno** si se ganó, **Reintentar** si se perdió. El reintento usa el estado del
+  generador del inicio del turno y conserva el puntaje. Al ganar el turno 3 sale la pantalla de victoria de la partida.
+- **Logros** (aviso animado con un tween al ganarlos; el Inspector muestra el progreso en su pestaña Logros):
+  Primera pieza (primer evento `d` de una CNC), Mecánico fino (3 reparaciones válidas seguidas), Manos seguras (turno ganado con
+  0 intentos bloqueados), Ojo de radar (3 cambios de amarillo a verde en un turno), Sin red de seguridad (ganar el turno 3 sin
+  Controlador y sin deadlock) y Doble husillo (las 2 CNC fresando a la vez, 30 s acumulados en un turno).
+- **Sonidos** (Web Audio, generados con osciladores): disparo de transición, falla del husillo, reparación válida, botón bloqueado
+  por el supervisor, logro y deadlock. La tecla **M** los activa o los silencia.
 
 ### 14.2 Consola de reparación
 
@@ -408,3 +434,7 @@ Estas decisiones cierran huecos de la lista original. El equipo las confirmó, c
 12. **Supervisor:** hay una instancia por CNC (la que el brazo atiende) y se consulta en cada paso con el estado compuesto
     (CNC, Brazo). Una CNC que el brazo no atiende no tiene restricción: puede estar en Fresando mientras el brazo está en
     Mandril_Abierto frente a la otra.
+
+13. **Turnos y resultados:** "deadlocks evitados" cuenta las veces que el radar vuelve de amarillo a verde en el turno (el premio de +25
+    sigue con su enfriamiento de 20 s). Al perder por tiempo no hay penalización de puntos extra. Tras un deadlock, el game over
+    (reintentar desde el último verde) sigue siendo la pantalla de ese momento; el turno continúa si se reintenta.

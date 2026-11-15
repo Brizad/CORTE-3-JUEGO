@@ -85,16 +85,16 @@ export function dibujarBase(g, tipo, x, y, escala = 1, alfa = 1) {
  * Dibuja la ficha de un lugar, con su composición (AGV con mesa, etc.).
  * @param {string} lugar Nombre del lugar (por ejemplo "AGV1_con_mesa").
  */
-export function dibujarFicha(g, lugar, x, y, alfa = 1) {
+export function dibujarFicha(g, lugar, x, y, alfa = 1, escala = 1) {
   const f = FICHAS_DE_LUGAR[lugar];
   if (!f) throw new Error(`Lugar sin ficha: ${lugar}`);
-  dibujarBase(g, f.base, x, y, 1, alfa);
+  dibujarBase(g, f.base, x, y, escala, alfa);
   if (f.base === 'robot' && f.extras?.[0] === 'cnc') {
-    dibujarBase(g, 'cnc', x + 11, y + 6, 0.8, alfa);
+    dibujarBase(g, 'cnc', x + 11 * escala, y + 6 * escala, 0.8 * escala, alfa);
     return;
   }
   const pequenos = f.extras ?? [];
   // Un extra va en la esquina superior derecha; dos, a los lados de la parte superior.
   const sitios = pequenos.length === 1 ? [[9, -7]] : [[-9, -8], [9, -8]];
-  pequenos.forEach((tipo, i) => dibujarBase(g, tipo, x + sitios[i][0], y + sitios[i][1], 0.5, alfa));
+  pequenos.forEach((tipo, i) => dibujarBase(g, tipo, x + sitios[i][0] * escala, y + sitios[i][1] * escala, 0.5 * escala, alfa));
 }

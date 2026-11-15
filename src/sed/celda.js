@@ -34,8 +34,9 @@ export class Celda {
    * @param {{siguiente:()=>number, entre:(a:number,b:number)=>number}} opciones.aleatorio Generador con semilla.
    * @param {object} [opciones.turno] Parámetros del turno (por defecto el turno 1 del GDD).
    * @param {object} [opciones.tiempos] Duraciones en s de simulación (por defecto las del GDD).
+   * @param {number} [opciones.puntajeInicial] Puntaje acumulado de los turnos anteriores.
    */
-  constructor({ modelos, reloj, aleatorio, turno = TURNOS[0], tiempos = TIEMPOS }) {
+  constructor({ modelos, reloj, aleatorio, turno = TURNOS[0], tiempos = TIEMPOS, puntajeInicial = 0 }) {
     this.modelos = modelos;
     this.reloj = reloj;
     this.aleatorio = aleatorio;
@@ -65,9 +66,16 @@ export class Celda {
 
     this.atendida = null; // CNC que el brazo atiende ('CNC1', 'CNC2' o null con el brazo en reposo)
     this.pedidos = []; // pedidos de AGV pendientes: {id, t, vencido}
-    this.estadisticas = { piezas: 0, ciclosAGV: 0, fallas: 0, reparaciones: 0, pedidosVencidos: 0, bloqueos: 0 };
+    this.estadisticas = {
+      piezas: 0, ciclosAGV: 0, fallas: 0, reparaciones: 0, pedidosVencidos: 0, bloqueos: 0,
+      radarVerdes: 0, // veces que el radar volvió de amarillo a verde (deadlocks evitados)
+      deadlocks: 0,
+    };
+    this.terminado = false; // el turno ya terminó (meta cumplida o se acabó el tiempo)
+    this.resultado = null; // 'victoria' | 'tiempo' cuando terminado
     this.deadlock = false;
-    this.puntaje = 0; // puntos acumulados (GDD, sección 8)
+    this.puntajeInicial = puntajeInicial;
+    this.puntaje = puntajeInicial; // puntos acumulados (GDD, sección 8)
     this.ayudaHasta = 0; // tiempo de simulación hasta el que se muestra la expresión regular
     this._fresado = { CNC1: null, CNC2: null }; // evento del reloj pendiente de cada fresado
     this.bitacora = []; // todo lo que ocurrió: {t, ...evento}
@@ -106,6 +114,7 @@ export class Celda {
   /** Programa los pedidos de AGV en el reloj (t = n × intervalo, t < duración del turno). */
   arrancar() {
     this._programarPedido(1);
+    this._programarFinTurno();
     this._recalcularRadar(null);
     this.ultimoVerde = this.capturar();
   }
@@ -207,6 +216,7 @@ export class Celda {
    *   de la red no está habilitada. 'supervisor' = lo inhibe el supervisor CNC || Brazo.
    */
   evaluar(maquina, evento, opciones = {}) {
+    if (this.terminado) return 'turno_terminado';
     const plan = this._plan(maquina, evento, opciones);
     return plan.error ?? this._comprobar(plan);
   }
@@ -216,6 +226,7 @@ export class Celda {
    * @returns {{ok:boolean, motivo?:string}}
    */
   solicitar(maquina, evento, opciones = {}) {
+    if (this.terminado) return { ok: false, motivo: 'turno_terminado' };
     const plan = this._plan(maquina, evento, opciones);
     const motivo = plan.error ?? this._comprobar(plan);
     if (motivo) {
@@ -228,7 +239,10 @@ export class Celda {
         this.supervisores[cnc].bloqueos++;
         this.sumarPuntos(PUNTOS.intentoBloqueado, 'intento bloqueado por el supervisor', cnc);
       }
-      if (motivo === 'palabra_invalida') this.sumarPuntos(PUNTOS.palabraInvalida, 'palabra de reparación inválida', maquina);
+      if (motivo === 'palabra_invalida') {
+        this.sumarPuntos(PUNTOS.palabraInvalida, 'palabra de reparación inválida', maquina);
+        this._emitir({ tipo: 'reparacion', maquina, valida: false });
+      }
       this._emitir({ tipo: 'rechazo', maquina, evento, motivo, cnc });
       return { ok: false, motivo };
     }
@@ -248,7 +262,9 @@ export class Celda {
         case 'descargar':
           return this._compartido(cnc, 'descargar', () => {
             this.estadisticas.piezas++;
+            this.sumarPuntos(PUNTOS.pieza, 'pieza descargada', cnc);
             this._volverBrazo();
+            if (this.estadisticas.piezas >= this.turno.meta) this._terminarTurno('victoria');
           });
         case 'iniciar_fresado':
           return {
@@ -268,6 +284,7 @@ export class Celda {
             despues: () => {
               this.estadisticas.reparaciones++;
               this.sumarPuntos(PUNTOS.reparacion, 'reparación válida', cnc);
+              this._emitir({ tipo: 'reparacion', maquina: cnc, valida: true });
             },
           };
         }
@@ -379,6 +396,46 @@ export class Celda {
     if (!this.deadlock && this.red.esMuerto()) this._declararDeadlock();
   }
 
+  // ---- Fin del turno ----
+
+  /** El turno dura `duracion` s de simulación (GDD, sección 7): al llegar a ese tiempo sin la meta, se pierde. */
+  _programarFinTurno() {
+    this.reloj.programar(this.turno.duracion, () => this._terminarTurno('tiempo'));
+  }
+
+  /**
+   * Termina el turno: desactiva el Controlador, detiene el reloj y avisa con el resumen.
+   * @param {'victoria'|'tiempo'} resultado Meta cumplida antes de que se acabe el tiempo, o se acabó el tiempo.
+   */
+  _terminarTurno(resultado) {
+    if (this.terminado) return;
+    this.terminado = true;
+    this.resultado = resultado;
+    this.desactivarControlador();
+    this.reloj.pausar();
+    this._emitir({ tipo: 'finTurno', resultado, resumen: this.resumen() });
+  }
+
+  /** Resumen del turno para la pantalla de Resultados. */
+  resumen() {
+    const e = this.estadisticas;
+    return {
+      resultado: this.resultado,
+      meta: this.turno.meta,
+      piezas: e.piezas,
+      fallasReparadas: e.reparaciones,
+      fallas: e.fallas,
+      intentosBloqueados: e.bloqueos,
+      pedidosVencidos: e.pedidosVencidos,
+      deadlocksEvitados: e.radarVerdes,
+      deadlocks: e.deadlocks,
+      ciclosAGV: e.ciclosAGV,
+      puntajeTurno: this.puntaje - this.puntajeInicial,
+      puntaje: this.puntaje,
+      tiempo: Math.min(this.reloj.ahora, this.turno.duracion),
+    };
+  }
+
   // ---- Radar, deadlock, Controlador de celda y reintento ----
 
   /** Recalcula el radar con explorar(red, M, 1) y da +25 al volver de amarillo a verde (enfriamiento de 20 s). */
@@ -388,6 +445,7 @@ export class Celda {
     this.radar = { nivel: r.nivel, muertosAlcanzables: r.muertosAlcanzables };
     this.historialMarcados.push({ M: this.red.marcado(), nivel: r.nivel, transicion, t: this.reloj.ahora });
     if (this.historialMarcados.length > 12) this.historialMarcados.shift();
+    if (anterior === 'amarillo' && r.nivel === 'verde') this.estadisticas.radarVerdes++;
     if (anterior === 'amarillo' && r.nivel === 'verde' && this.reloj.ahora - this._ultimoPremioRadar >= ENFRIAMIENTO_RADAR) {
       this._ultimoPremioRadar = this.reloj.ahora;
       this.sumarPuntos(PUNTOS.radarVerde, 'radar de amarillo a verde');
@@ -398,6 +456,7 @@ export class Celda {
   /** Marcado muerto: la simulación se detiene y se restan 200 puntos (una sola vez). */
   _declararDeadlock() {
     this.deadlock = true;
+    this.estadisticas.deadlocks++;
     const desde = this.ultimoVerde ? this.ultimoVerde.historial.length : 0;
     this.secuenciaDeadlock = this.red.historial.slice(desde);
     this.sumarPuntos(PUNTOS.deadlock, 'deadlock');
@@ -463,6 +522,7 @@ export class Celda {
       if (q === 'Descargando') this.reloj.programarEn(this.tiempos.agvDescarga, () => this._finDescarga(agv));
     }
     for (const cnc of CNCS) if (this.estado(cnc) === 'Fresando') this._programarFresado(cnc);
+    this._programarFinTurno();
     this._programarPedido(Math.floor(snap.t / this.turno.intervaloPedidos) + 1);
     for (const p of this.pedidos) if (!p.vencido) this._programarVencimiento(p, Math.max(snap.t, p.t + this.tiempos.pedidoVence));
     this._emitir({ tipo: 'restaurado', t: snap.t });
@@ -534,6 +594,7 @@ export class Celda {
   _finDescarga(agv) {
     this._interno([[agv, 'fin_descarga']], TRANSICIONES_AGV[agv].c, () => {
       this.estadisticas.ciclosAGV++;
+      this.sumarPuntos(PUNTOS.cicloAGV, 'ciclo de AGV', agv);
       const atendido = this.pedidos.shift(); // atiende el pedido pendiente más antiguo, si hay
       if (atendido) this._emitir({ tipo: 'pedidoAtendido', pedido: atendido, agv });
     });

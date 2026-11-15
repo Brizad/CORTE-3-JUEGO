@@ -18,9 +18,12 @@ const modelos = () => ({
   reparacion: cargarModelo('reparacion_dfa.json'),
 });
 
-function nueva(turno = TURNOS[0]) {
+// Las pruebas de reglas sueltas usan un turno sin meta alcanzable y muy largo, para que el turno no termine solo.
+// Las pruebas del fin de turno usan nuevaReal() con los valores del GDD.
+function nueva(turno = TURNOS[0], real = false) {
   const reloj = new Reloj();
-  const celda = new Celda({ modelos: modelos(), reloj, aleatorio: crearAleatorio(SEMILLA), turno });
+  const parametros = real ? turno : { ...turno, meta: 999, duracion: 100000 };
+  const celda = new Celda({ modelos: modelos(), reloj, aleatorio: crearAleatorio(SEMILLA), turno: parametros });
   celda.arrancar();
   return { reloj, celda };
 }
@@ -376,16 +379,17 @@ test('radar: verde en M0, amarillo tras t1a, verde al volver (+25 con enfriamien
   assert.equal(celda.radar.nivel, 'amarillo'); // M1
   reloj.avanzar(4); // llega a la estación y t1b se dispara: M4, verde
   assert.equal(celda.radar.nivel, 'verde');
-  assert.equal(celda.puntaje, 25);
+  const premios = () => celda.puntaje - 40 * celda.estadisticas.ciclosAGV; // sin los +40 de los ciclos
+  assert.equal(premios(), 25);
   reloj.avanzar(5); // t1c: vuelve a M0
   celda.solicitar('AGV1', 'reservar'); // t = 9: amarillo otra vez
   reloj.avanzar(4); // t = 13: verde, pero solo pasaron 9 s desde el último premio
   assert.equal(celda.radar.nivel, 'verde');
-  assert.equal(celda.puntaje, 25);
+  assert.equal(premios(), 25);
   reloj.avanzar(14); // t = 27, ya terminó el ciclo
   celda.solicitar('AGV1', 'reservar'); // t = 27: amarillo
   reloj.avanzar(4); // t = 31: pasaron 27 s desde el último premio
-  assert.equal(celda.puntaje, 50);
+  assert.equal(premios(), 50);
   assert.equal(celda.historialMarcados.at(-1).nivel, 'verde');
 });
 
