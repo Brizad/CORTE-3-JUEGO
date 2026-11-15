@@ -1,15 +1,20 @@
 // Escena principal: la planta isométrica de 12 x 10 celdas (docs/arte.md).
 // El update solo avanza el reloj y dibuja. No hay reglas de juego aquí.
 
-import { COLORES, TEXTO_HEX, ANCHO, PLANTA, POSICIONES } from '../config.js';
+import { COLORES, TEXTO_HEX, ANCHO, PLANTA, ALTOS, SEMILLA, TURNOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
-import {
-  oscurecer, aclarar, puntosPrisma, dibujarPrisma, siluetaPrisma, puntoEnPoligono,
-} from '../iso/formas.js';
+import { oscurecer, aclarar, puntoEnPoligono } from '../iso/formas.js';
 import { GestorEntrada, ACCIONES } from '../entrada/gestorEntrada.js';
+import { MODELOS } from '../modelos.js';
+import { Celda } from '../sed/celda.js';
+import { Piloto } from '../sed/piloto.js';
+import { Escenario } from '../entidades/Escenario.js';
+import { EntidadCNC } from '../entidades/EntidadCNC.js';
+import { EntidadBrazo } from '../entidades/EntidadBrazo.js';
+import { EntidadAGV } from '../entidades/EntidadAGV.js';
+import { FichasPlanta } from '../entidades/FichasPlanta.js';
 
-const ALTO_MURO = 24; // px (docs/arte.md, sección 3)
-const ALTO_CNC = 40; // px (docs/arte.md, sección 4)
+const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
 const ZOOM_MIN = 0.8;
 const ZOOM_MAX = 2;
 const DESPLAZAMIENTO_MAX = 240; // px de cámara desde el centro
@@ -24,11 +29,12 @@ export class Planta extends Phaser.Scene {
     this.reloj = this.registry.get('reloj');
     this.reloj.reiniciar();
     this.aleatorio = this.registry.get('aleatorio');
+    this.aleatorio.restaurarEstado(SEMILLA); // cada vez que se abre la planta, la misma secuencia
 
     this.cameras.main.setBackgroundColor(COLORES.panel);
     this._dibujarSuelo();
     this._dibujarMuros();
-    this._crearMaquinas();
+    this._crearCelda();
     this._crearTextos();
 
     // Entrada unificada: mouse, teclado y táctil emiten las mismas acciones.
@@ -41,6 +47,9 @@ export class Planta extends Phaser.Scene {
     }
 
     this.events.once('shutdown', () => {
+      this.piloto.desactivar();
+      this.entidades.forEach((e) => e.destruir());
+      this.fichas.destruir();
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
@@ -97,59 +106,22 @@ export class Planta extends Phaser.Scene {
     );
   }
 
-  // ---- Máquinas ----
+  // ---- Celda: núcleo formal y entidades ----
 
-  /** Crea la CNC de prueba (CNC 1) en su celda de docs/arte.md. */
-  _crearMaquinas() {
-    const { x, y } = POSICIONES.CNC1;
-    const pr = puntosPrisma(x, y, 1, 1, ALTO_CNC);
-    this.maquinas = [
-      {
-        id: 'CNC1',
-        nombre: 'CNC 1',
-        pr,
-        silueta: siluetaPrisma(pr),
-        gfx: this.add.graphics().setDepth(10 + x + y),
-        hover: false,
-        sucia: true, // hay que redibujar
-      },
+  /** Crea el núcleo (2 CNC, 1 brazo, 2 AGV y la red de Petri) y la parte visible de cada máquina. */
+  _crearCelda() {
+    this.celda = new Celda({ modelos: MODELOS, reloj: this.reloj, aleatorio: this.aleatorio, turno: TURNOS[0] });
+    this.celda.arrancar(); // programa los pedidos de AGV en el reloj
+    this.piloto = new Piloto(this.celda);
+    this.escenario = new Escenario(this);
+    this.entidades = [
+      new EntidadCNC(this, this.celda, 'CNC1'),
+      new EntidadCNC(this, this.celda, 'CNC2'),
+      new EntidadBrazo(this, this.celda, 'BRAZO'),
+      new EntidadAGV(this, this.celda, 'AGV1'),
+      new EntidadAGV(this, this.celda, 'AGV2'),
     ];
-  }
-
-  /** Dibuja una CNC: prisma, ventana en la cara frontal, husillo y ícono de estado. */
-  _dibujarCNC(m) {
-    const g = m.gfx;
-    const pr = m.pr;
-    g.clear();
-
-    // Al pasar el mouse, la máquina se aclara y se rodea con el color de espera.
-    dibujarPrisma(g, pr, m.hover ? aclarar(COLORES.maquina, 0.2) : COLORES.maquina);
-
-    // Ventana sobre la cara izquierda (interpolación entre D, C, Dt y Ct).
-    const punto = (u, v) => ({
-      x: pr.D.x + (pr.C.x - pr.D.x) * u + (pr.Dt.x - pr.D.x) * v,
-      y: pr.D.y + (pr.C.y - pr.D.y) * u + (pr.Dt.y - pr.D.y) * v,
-    });
-    g.fillStyle(oscurecer(COLORES.maquina, 0.6), 1);
-    g.fillPoints([punto(0.2, 0.3), punto(0.8, 0.3), punto(0.8, 0.75), punto(0.2, 0.75)], true);
-
-    // Husillo: un prisma pequeño sobre la cara superior.
-    const { x, y } = POSICIONES.CNC1;
-    const h = puntosPrisma(x + 0.375, y + 0.375, 0.25, 0.25, 14);
-    const sube = ALTO_CNC;
-    const arriba = Object.fromEntries(Object.entries(h).map(([k, p]) => [k, { x: p.x, y: p.y - sube }]));
-    dibujarPrisma(g, arriba, oscurecer(COLORES.maquina, 0.3));
-
-    // Ícono del estado Libre: círculo vacío de 16 px en el color de espera.
-    const centro = aPantalla(x + 0.5, y + 0.5);
-    g.lineStyle(2, COLORES.espera, 1);
-    g.strokeCircle(centro.x, centro.y - ALTO_CNC - 18, 7);
-
-    if (m.hover) {
-      g.lineStyle(2, COLORES.espera, 0.9);
-      g.strokePoints(m.silueta, true);
-    }
-    m.sucia = false;
+    this.fichas = new FichasPlanta(this, this.celda);
   }
 
   // ---- Textos de depuración ----
@@ -168,13 +140,24 @@ export class Planta extends Phaser.Scene {
       .setDepth(100)
       .setScrollFactor(0)
       .setVisible(false);
+    this.textoDemo = this.add
+      .text(ANCHO / 2, 40, '', { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.operacion })
+      .setOrigin(0.5)
+      .setDepth(100)
+      .setScrollFactor(0);
   }
 
-  /** Redibuja lo que cambió y actualiza los textos. */
+  /** Redibuja las entidades y las fichas, y actualiza los textos. */
   _dibujar() {
-    for (const m of this.maquinas) if (m.sucia) this._dibujarCNC(m);
     const r = this.reloj;
-    this.textoEstado.setText(`Velocidad x${r.velocidad}`);
+    for (const e of this.entidades) e.actualizar(r.ahora);
+    this.fichas.actualizar();
+    const est = this.celda.estadisticas;
+    this.textoEstado.setText(
+      `Velocidad x${r.velocidad}   Piezas ${est.piezas}   Ciclos AGV ${est.ciclosAGV}   Pedidos ${this.celda.pedidos.length}`,
+    );
+    this.textoDemo.setText(this.celda.deadlock ? 'DEADLOCK' : this.piloto.activo ? 'MODO DEMOSTRACIÓN (D para salir)' : '');
+    this.textoDemo.setColor(this.celda.deadlock ? TEXTO_HEX.fallo : TEXTO_HEX.operacion);
     this.textoPausa.setVisible(r.enPausa);
     if (this.textoFps.visible) {
       this.textoFps.setText(`FPS: ${Math.round(this.game.loop.actualFps)}   t simulación: ${r.ahora.toFixed(1)} s`);
@@ -191,6 +174,7 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.PAUSA, () => this.reloj.alternarPausa());
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
     e.on(ACCIONES.FPS, () => this.textoFps.setVisible(!this.textoFps.visible));
+    e.on(ACCIONES.DEMO, () => this.piloto.alternar());
     e.on(ACCIONES.INSPECTOR, () => inspector().alternar?.());
     e.on(ACCIONES.CERRAR, () => {
       hud().cerrar?.();
@@ -205,8 +189,9 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.PUNTERO, ({ x, y }) => {
       const mundo = this.cameras.main.getWorldPoint(x, y);
       let sobreAlguna = false;
-      for (const m of this.maquinas) {
-        const dentro = !this._bajoPanel(x, y) && puntoEnPoligono(mundo.x, mundo.y, m.silueta);
+      const bajo = this._entidadEn(mundo.x, mundo.y);
+      for (const m of this.entidades) {
+        const dentro = !this._bajoPanel(x, y) && m === bajo;
         if (dentro !== m.hover) {
           m.hover = dentro;
           m.sucia = true;
@@ -220,7 +205,7 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.SELECCIONAR, ({ x, y }) => {
       if (this._bajoPanel(x, y)) return;
       const mundo = this.cameras.main.getWorldPoint(x, y);
-      const m = this.maquinas.find((q) => puntoEnPoligono(mundo.x, mundo.y, q.silueta));
+      const m = this._entidadEn(mundo.x, mundo.y);
       if (m) hud().abrir?.(m.id, m.nombre);
       else hud().cerrar?.();
     });
@@ -235,6 +220,13 @@ export class Planta extends Phaser.Scene {
       const cam = this.cameras.main;
       cam.setZoom(Phaser.Math.Clamp(cam.zoom * factor, ZOOM_MIN, ZOOM_MAX));
     });
+  }
+
+  /** La entidad bajo un punto del mundo (la de adelante si se solapan), o undefined. */
+  _entidadEn(x, y) {
+    return this.entidades
+      .filter((e) => puntoEnPoligono(x, y, e.silueta))
+      .sort((a, b) => b.cuerpo.depth - a.cuerpo.depth)[0];
   }
 
   /** Verdadero si el punto cae sobre un panel superpuesto abierto (el clic no llega a la planta). */

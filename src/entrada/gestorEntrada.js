@@ -12,6 +12,7 @@ export const ACCIONES = {
   VELOCIDAD: 'velocidad', // teclas 1, 2 y 4: {valor}
   CERRAR: 'cerrar', // tecla Esc
   FPS: 'fps', // tecla F1
+  DEMO: 'demo', // tecla D: modo demostración (provisional, hasta que exista el HUD de eventos)
   PUNTERO: 'puntero', // el puntero se mueve: {x, y}
   ARRASTRE: 'arrastre', // arrastre con mouse o un dedo: {dx, dy}
   ZOOM: 'zoom', // rueda o pellizco: {factor}
@@ -121,6 +122,7 @@ export class GestorEntrada {
     const tecla = evento.key;
     if (tecla === 'p' || tecla === 'P') this._emitir(ACCIONES.PAUSA);
     else if (tecla === 'i' || tecla === 'I') this._emitir(ACCIONES.INSPECTOR);
+    else if (tecla === 'd' || tecla === 'D') this._emitir(ACCIONES.DEMO);
     else if (tecla === 'Escape') this._emitir(ACCIONES.CERRAR);
     else if (tecla === 'F1') {
       evento.preventDefault(); // evita la ayuda del navegador

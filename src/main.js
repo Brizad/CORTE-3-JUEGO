@@ -22,4 +22,5 @@ const configuracion = {
   scene: [Arranque, Titulo, Planta, HUDMaquina, Inspector, Resultados],
 };
 
-new Phaser.Game(configuracion);
+// Se deja accesible para las pruebas en el navegador (consola y scripts de verificación).
+window.juego = new Phaser.Game(configuracion);

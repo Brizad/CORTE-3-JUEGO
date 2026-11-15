@@ -65,3 +65,24 @@ export function puntoEnPoligono(px, py, puntos) {
   }
   return dentro;
 }
+
+/**
+ * Dibuja un cilindro isométrico (base elíptica 2:1) centrado en la celda fraccionaria (cx, cy).
+ * @param {number} radio Radio en celdas (la elipse mide 2·radio·TILE_W/2 de ancho).
+ * @param {number} alto Alto en px.
+ */
+export function dibujarCilindro(g, cx, cy, radio, alto, color) {
+  const c = aPantalla(cx, cy);
+  const rx = radio * 32; // TILE_W / 2 por celda
+  const ry = rx / 2; // proyección 2:1
+  // Costado: rectángulo con las dos elipses; la parte visible usa el color −20 %.
+  g.fillStyle(oscurecer(color, 0.2), 1);
+  g.fillRect(c.x - rx, c.y - alto, rx * 2, alto);
+  g.fillEllipse(c.x, c.y, rx * 2, ry * 2);
+  // Franja derecha más oscura (−35 %) para dar volumen.
+  g.fillStyle(oscurecer(color, 0.35), 1);
+  g.fillRect(c.x + rx * 0.35, c.y - alto, rx * 0.65, alto);
+  // Tapa.
+  g.fillStyle(color, 1);
+  g.fillEllipse(c.x, c.y - alto, rx * 2, ry * 2);
+}

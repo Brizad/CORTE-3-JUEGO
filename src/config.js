@@ -53,4 +53,35 @@ export const POSICIONES = {
   CNC2: { x: 3, y: 6 },
   BRAZO: { x: 5, y: 4 },
   MESA: { x: 7, y: 4 },
+  S1: { x: 8, y: 3 },
+  S2: { x: 8, y: 5 },
+  D1: { x: 10, y: 1 },
+  D2: { x: 10, y: 8 },
 };
+
+// Rutas de los AGV (docs/arte.md, sección 9.1): waypoints en celdas, del depósito a la estación.
+export const RUTAS_AGV = {
+  AGV1: [[10, 1], [10, 3], [8, 3]],
+  AGV2: [[10, 8], [10, 5], [8, 5]],
+};
+
+// Alto de cada objeto en píxeles (docs/arte.md, sección 4).
+export const ALTOS = { CNC: 40, BRAZO: 56, MESA: 12, AGV: 14, MURO: 24 };
+
+// Tiempos del GDD (sección 6), en segundos de simulación.
+export const TIEMPOS = {
+  brazoLlegar: 2, // mover -> llegar
+  fresado: 10, // iniciar_fresado -> fin_fresado
+  fallaMin: 2, // falla_husillo: mínimo después de iniciar_fresado
+  fallaMax: 8, // falla_husillo: máximo después de iniciar_fresado
+  agvViaje: 4, // reservar -> llegar_estacion
+  agvDescarga: 5, // iniciar_descarga -> fin_descarga
+  pedidoVence: 30, // un pedido sin atender vence a los 30 s
+};
+
+// Turnos del GDD (secciones 6.1 y 7). Tiempos en s; probFalla es una probabilidad (0 a 1).
+export const TURNOS = [
+  { duracion: 180, meta: 3, probFalla: 0.1, intervaloPedidos: 25 },
+  { duracion: 180, meta: 5, probFalla: 0.2, intervaloPedidos: 18 },
+  { duracion: 180, meta: 7, probFalla: 0.3, intervaloPedidos: 12 },
+];

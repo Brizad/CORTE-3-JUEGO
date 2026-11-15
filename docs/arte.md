@@ -151,6 +151,27 @@ Lugares combinados (se componen con los tokens base, sin colores nuevos):
 Los flujos entre lugares se animan con partículas del color del token. Un token que cambia de lugar
 viaja en una línea corta entre los dos lugares del panel (0,3 s).
 
+### 6.1 Ubicación de las fichas en la planta
+
+Cada lugar flota sobre el objeto que representa y muestra su contador m/k debajo.
+Las ubicaciones fueron elegidas por el equipo (opción "sobre el objeto que representan").
+
+| Lugar | Celda (gx, gy) | Altura |
+|---|---|---|
+| p1 Mesa_libre | (7, 4), sobre la mesa | 28 px |
+| p2 Robot_libre | (5, 5), junto a la base del brazo | 10 px |
+| p3 AGV1_listo | (11, 1), junto a D1 | 10 px |
+| p4 AGV2_listo | (11, 8), junto a D2 | 10 px |
+| p5 AGV1_con_mesa | (8, 2), junto a S1 | 10 px |
+| p7 AGV1_trabajando | (9, 2), junto a S1 | 10 px |
+| p6 AGV2_con_robot | (8, 6), junto a S2 | 10 px |
+| p8 AGV2_trabajando | (9, 6), junto a S2 | 10 px |
+| p9 Robot_en_CNC | (4, 2) junto a CNC 1 o (4, 6) junto a CNC 2, según la CNC atendida; en reposo (4, 4) | 10 px |
+| p10 Celda_libre | (6, 2) (solo con el Controlador de celda) | 10 px |
+
+Un lugar vacío se dibuja como contorno tenue con el contador 0/k. Cuando se dispara una transición,
+cada ficha consumida viaja al lugar donde se produce otra, con un tween de 0,3 s (dividido por la velocidad).
+
 ## 7. HUD de máquina (escena superpuesta)
 
 - Panel `#161b22` al 90 % de opacidad, 300 × 220 px, anclado a la derecha de la máquina seleccionada.
@@ -205,6 +226,11 @@ Después de la descarga vuelve al depósito.
 | AGV2 | D2 (10, 8) → (10, 5) → S2 (8, 5) |
 
 La velocidad del recorrido se ajusta para que dure exactamente 4 s de simulación, también a x2 y x4.
+
+**Supuestos visuales por confirmar** (el modelo y el GDD no los fijan; no cambian ningún estado ni tiempo):
+
+- El regreso del AGV al depósito tras `z` (fin_descarga) dura 4 s en pantalla (igual que la ida). El autómata ya está en Libre.
+- El brazo tarda 0,5 s en regresar a su reposo en pantalla; el modelo dice 0 s (tr_volver). La pinza tarda 0,3 s en abrir o cerrar.
 
 ## 10. Reglas de producción
 
