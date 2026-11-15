@@ -39,6 +39,7 @@ export class Entidad {
     // La Celda avisa de cada cambio de estado: aquí solo se anota que hay que redibujar.
     this._baja = celda.alCambiar((e) => {
       if (e.tipo === 'automata' && e.maquina === this.id) this.alCambiarEstado(e);
+      if (e.tipo === 'restaurado') this.alRestaurar();
     });
   }
 
@@ -55,6 +56,11 @@ export class Entidad {
 
   /** Gancho para las subclases: la Celda cambió el estado de este autómata. */
   alCambiarEstado(_evento) {
+    this.sucia = true;
+  }
+
+  /** Gancho: el sistema volvió a un instante anterior (reintento): hay que cuadrar las animaciones con el estado. */
+  alRestaurar() {
     this.sucia = true;
   }
 

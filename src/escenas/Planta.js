@@ -55,6 +55,7 @@ export class Planta extends Phaser.Scene {
       this.alertas.destruir();
       this.estaciones.destruir();
       this._bajaTemblor();
+      this.scene.stop('GameOver');
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
@@ -133,6 +134,17 @@ export class Planta extends Phaser.Scene {
     // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
     this._bajaTemblor = this.celda.alCambiar((e) => {
       if (e.tipo === 'rechazo' && e.motivo === 'supervisor') this.cameras.main.shake(300, 0.004);
+      // Interbloqueo: el radar se pone rojo, la cámara tiembla y sale el game over (la simulación ya está detenida).
+      if (e.tipo === 'deadlock') {
+        this.cameras.main.shake(300, 0.006);
+        this.scene.launch('GameOver');
+      }
+      // Controlador de celda: la red tiene un lugar más, se rehacen las fichas.
+      if (e.tipo === 'controlador') {
+        this.fichas.destruir();
+        this.fichas = new FichasPlanta(this, this.celda);
+      }
+      if (e.tipo === 'restaurado') this.piloto.reprogramar();
     });
   }
 
@@ -185,7 +197,11 @@ export class Planta extends Phaser.Scene {
     const hud = () => this.scene.get('HUDMaquina');
     const inspector = () => this.scene.get('Inspector');
 
-    e.on(ACCIONES.PAUSA, () => this.reloj.alternarPausa());
+    e.on(ACCIONES.PAUSA, () => {
+      // El Inspector pausa por su cuenta y tras un deadlock la simulación queda detenida.
+      if (this.celda.deadlock || this.scene.get('Inspector').abierto) return;
+      this.reloj.alternarPausa();
+    });
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
     e.on(ACCIONES.FPS, () => this.textoFps.setVisible(!this.textoFps.visible));
     e.on(ACCIONES.DEMO, () => this.piloto.alternar());
@@ -250,6 +266,6 @@ export class Planta extends Phaser.Scene {
 
   /** Verdadero si el punto cae sobre un panel superpuesto abierto (el clic no llega a la planta). */
   _bajoPanel(x, y) {
-    return ['HUDMaquina', 'Inspector', 'HUDGeneral'].some((c) => this.scene.get(c)?.contiene?.(x, y));
+    return ['HUDMaquina', 'Inspector', 'HUDGeneral', 'GameOver'].some((c) => this.scene.get(c)?.contiene?.(x, y));
   }
 }

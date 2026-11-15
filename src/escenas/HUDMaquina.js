@@ -426,6 +426,7 @@ Regla: ${this.celda.razonSupervisor}`,
     // Convierte el resultado de evaluar() en el tipo de botón y su explicación.
     const segun = (motivo, cnc, ev, falta = []) => {
       if (motivo === null) return { tipo: 'verde', tip: 'Ejecutar el evento (δ)' };
+      if (motivo === 'celda') return { tipo: 'gris', tip: 'Controlador de celda activo: Celda_libre no tiene ficha (el otro AGV está en la celda).' };
       if (motivo === 'supervisor' || motivo === 'recurso') return { tipo: motivo === 'supervisor' ? 'rojo' : 'gris', tip: this._explicar(motivo, cnc, falta) };
       if (motivo === 'indefinido' && (ev === 'cargar' || ev === 'descargar')) return { tipo: 'gris', tip: this._faltaCompartido(cnc, ev) };
       return { tipo: 'gris', tip: 'Lo dispara el sistema.' };

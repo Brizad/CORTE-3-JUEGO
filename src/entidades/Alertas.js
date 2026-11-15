@@ -45,6 +45,8 @@ export class Alertas {
     } else if (e.tipo === 'puntos') {
       const signo = e.puntos > 0 ? '+' : '';
       this.avisar(`${e.maquina ? `${e.maquina}: ` : ''}${signo}${e.puntos} puntos (${e.motivo})`, e.puntos > 0 ? 'operacion' : 'espera');
+    } else if (e.tipo === 'rechazo' && e.motivo === 'celda') {
+      this.avisar('Controlador de celda activo', 'espera'); // no resta puntos
     } else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') {
       this.avisar(`Bloqueado: ${this.celda.razonSupervisor}`, 'fallo');
     } else if (e.tipo === 'deadlock') {

@@ -10,7 +10,7 @@ import supervisor from './sed/modelos/supervisor.json';
 import reparacion from './sed/modelos/reparacion_dfa.json';
 
 /** Modelos de la red original (la que usa el juego sin el Controlador de celda). */
-export const MODELOS = { cnc, brazo, agv, red, supervisor, reparacion };
+export const MODELOS = { cnc, brazo, agv, red, redCorregida, supervisor, reparacion };
 
 /** Misma celda con la red corregida (Celda_libre), para cuando se compre el Controlador de celda. */
 export const MODELOS_CORREGIDOS = { ...MODELOS, red: redCorregida };

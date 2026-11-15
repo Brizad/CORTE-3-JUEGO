@@ -194,7 +194,8 @@ mientras no haya deadlock, porque el árbol corregido (12 nodos) no tiene marcad
 
 ## 10. Mejora: Controlador de celda
 
-- Cuesta **−150 puntos**. Se puede comprar antes de empezar el turno o durante él.
+- Cuesta **−150 puntos**. Se puede comprar antes de empezar el turno o durante él, con el botón "Controlador de celda (−150)"
+  de la barra de despacho (abajo a la izquierda). Cambia a `red_agv_corregida.json` conservando el marcado.
 - Activa el lugar monitor **Celda_libre** (p10, k = 1) de la red corregida `robocell_corregida.pnml`.
 - Al activarse, Celda_libre recibe 1 − (p5 + p6 + p7 + p8) fichas, para respetar el invariante IP5.
   No se puede comprar en el marcado muerto (suma = 2).
@@ -215,6 +216,12 @@ mientras no haya deadlock, porque el árbol corregido (12 nodos) no tiene marcad
 |---|---|
 | **Deadlock** (marcado muerto, sin transición habilitada) | Game over del turno. Se aplica **−200**. La pantalla muestra el marcado muerto [0,0,0,0,1,1,0,0,0] y la secuencia que lo produjo |
 | Se acaban los 180 s sin cumplir la meta | Turno fallido. Sin penalización de puntos extra |
+
+**Pantalla de game over por interbloqueo:** la simulación se detiene (reloj en pausa) y se aplica −200 una sola vez. Muestra el
+marcado muerto [0,0,0,0,1,1,0,0,0], la secuencia de disparos desde el último marcado verde (t1a → t2a), qué espera cada AGV y la
+regla de prevención: el lugar monitor Celda_libre (p10) y el invariante IP5. Dos botones: **Reintentar desde el último marcado
+verde** y **Reintentar y comprar el Controlador de celda** (−150). El reintento restaura el marcado, los autómatas, los pedidos y el
+generador de ese instante, y vuelve a programar los eventos que estaban en curso con su duración completa. El puntaje se conserva.
 
 Tras una derrota, el jugador puede **reintentar el turno** con la misma semilla y el estado del generador
 del inicio del turno. El puntaje del turno fallido se conserva (incluido el −200).
@@ -259,7 +266,7 @@ El juego es 960 × 540 px con escala FIT.
 |---|---|
 | **Arriba izquierda** | Reloj del turno (s restantes de 180 s), número de turno, velocidad actual |
 | **Arriba centro** | Puntaje y piezas / meta (por ejemplo 2 / 5) |
-| **Arriba derecha** | Radar del Árbol de Cobertura (verde, amarillo parpadeante o rojo) |
+| **Arriba derecha** | Radar del Árbol de Cobertura (verde, amarillo parpadeante o rojo) con el mini-grafo de los últimos 5 marcados (M0…M7). Se recalcula tras cada disparo con `explorar(red, M, 1)`. De amarillo a verde suma +25 (enfriamiento de 20 s) |
 | **Abajo izquierda** | **Barra de despacho:** botones "Despachar AGV1" (t1a) y "Despachar AGV2" (t2a), verdes si hay fichas y grises si no; al pasar el mouse explican qué ficha falta. Muestra los pedidos pendientes y la edad del más antiguo. Las fichas por lugar (p1..p9, y p10 con el Controlador) se ven sobre la planta, junto a su objeto |
 | **Abajo derecha** | Alertas: pedido por vencer, falla de husillo, intento bloqueado, deadlock, logro |
 | **Centro** | Planta isométrica de 12 × 10 celdas y el HUD de la máquina seleccionada |
@@ -297,6 +304,18 @@ Aparece como escena superpuesta al hacer clic en una máquina:
 - El panel mide 340 × 392 px y se coloca junto a la máquina (a la derecha, o a la izquierda si la máquina está en la mitad
   derecha de la pantalla). Un HUD abierto tapa lo que queda debajo del panel: se cierra con Esc o con la X.
 - Lista de los últimos 10 eventos de la máquina (su palabra observada), con el tiempo de cada uno.
+
+### 14.3 Inspector (tecla I)
+
+Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba en pausa antes). Dos pestañas:
+
+- **Matrices:** Pre, Post y A = Post − Pre con los nombres de lugares y transiciones; las transiciones habilitadas se resaltan en verde.
+  Debajo, la ecuación de estado con números: k, u_k y M_k = M_{k−1} + Aᵀ·u_k. **Probar disparo:** se elige una fila y se ve el
+  marcado que resultaría sin aplicarlo; si la transición no está habilitada, la tabla marca en rojo el lugar que no alcanza
+  (M < Pre, o lugar lleno por la capacidad) y lo explica.
+- **Árbol:** árbol de cobertura desde M0 (14 nodos y 8 marcados en la red original; 12 y 7 con el Controlador) o desde el
+  marcado actual con profundidad 4. Los marcados muertos van en rojo, los repetidos en gris y el marcado actual con borde amarillo.
+  Muestra el número de nodos.
 
 ### 14.2 Consola de reparación
 

@@ -27,6 +27,12 @@ export class Piloto {
     this.bloqueadas = new Set(); // máquinas con el HUD abierto: el piloto no las toca
   }
 
+  /** Después de restaurar el reloj (reintento), vuelve a programar el próximo turno de decisión. */
+  reprogramar() {
+    this._pendiente = null;
+    if (this.activo) this._programar();
+  }
+
   activar() {
     if (this.activo) return;
     this.activo = true;

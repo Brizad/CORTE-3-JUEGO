@@ -236,7 +236,8 @@ Distribución del panel de una CNC, de arriba hacia abajo:
 | Abajo izquierda | x 8–420, y 450–532 | Barra de despacho: "Despachar AGV1" y "Despachar AGV2" (44 px de alto) y los pedidos pendientes. El panel de fichas por lugar queda para el HUD de fichas |
 | Abajo derecha | x 540–952, y 450–532 | Alertas |
 
-El radar es un círculo de 32 px con su etiqueta:
+El radar es un círculo de 32 px con su etiqueta y, a su derecha, un mini-grafo con los últimos 5 marcados (cuadros de 22 × 14 px
+con el nombre M0…M7, del color del radar en ese marcado, unidos por flechas; el último con borde blanco):
 
 | Estado | Color | Comportamiento |
 |---|---|---|

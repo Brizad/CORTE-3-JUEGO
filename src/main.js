@@ -7,6 +7,7 @@ import { Planta } from './escenas/Planta.js';
 import { HUDMaquina } from './escenas/HUDMaquina.js';
 import { Inspector } from './escenas/Inspector.js';
 import { HUDGeneral } from './escenas/HUDGeneral.js';
+import { GameOver } from './escenas/GameOver.js';
 import { Resultados } from './escenas/Resultados.js';
 
 const configuracion = {
@@ -20,7 +21,7 @@ const configuracion = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   // El orden importa: las escenas de la derecha se dibujan encima (HUD e Inspector sobre la planta).
-  scene: [Arranque, Titulo, Planta, HUDMaquina, Inspector, HUDGeneral, Resultados],
+  scene: [Arranque, Titulo, Planta, HUDMaquina, Inspector, HUDGeneral, GameOver, Resultados],
 };
 
 // Se deja accesible para las pruebas en el navegador (consola y scripts de verificación).

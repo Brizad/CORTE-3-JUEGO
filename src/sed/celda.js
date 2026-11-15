@@ -14,7 +14,8 @@ import { Automata } from './automata.js';
 import { componer, supervisor, claveDe } from './composicion.js';
 import { RedPetri } from './redPetri.js';
 import { validarConRegExp, validarConDFA, EXPRESION_TEXTO } from './lenguaje.js';
-import { TIEMPOS, TURNOS, PUNTOS, DURACION_AYUDA } from '../config.js';
+import { explorar } from './cobertura.js';
+import { TIEMPOS, TURNOS, PUNTOS, DURACION_AYUDA, ENFRIAMIENTO_RADAR } from '../config.js';
 
 export const CNCS = ['CNC1', 'CNC2'];
 export const AGVS = ['AGV1', 'AGV2'];
@@ -72,6 +73,16 @@ export class Celda {
     this.bitacora = []; // todo lo que ocurrió: {t, ...evento}
     this._escuchas = [];
     this._siguientePedido = 0;
+
+    // Radar del árbol de cobertura (GDD, sección 9): se recalcula tras cada disparo con explorar(red, M, 1).
+    this.radar = { nivel: 'verde', muertosAlcanzables: [] };
+    this.historialMarcados = []; // últimos marcados: {M, nivel, transicion, t}
+    this._ultimoPremioRadar = -Infinity;
+    this.ultimoVerde = null; // instantánea del último marcado verde (reintento)
+    this.secuenciaDeadlock = []; // disparos desde el último verde hasta el marcado muerto
+    this.controlador = false; // Controlador de celda (red corregida con Celda_libre)
+    this._nivelAplicar = 0;
+    this._huboDisparo = false;
   }
 
   // ---- Observadores ----
@@ -95,6 +106,8 @@ export class Celda {
   /** Programa los pedidos de AGV en el reloj (t = n × intervalo, t < duración del turno). */
   arrancar() {
     this._programarPedido(1);
+    this._recalcularRadar(null);
+    this.ultimoVerde = this.capturar();
   }
 
   _programarPedido(n) {
@@ -104,16 +117,20 @@ export class Celda {
       const pedido = { id: ++this._siguientePedido, t: this.reloj.ahora, vencido: false };
       this.pedidos.push(pedido);
       this._emitir({ tipo: 'pedido', pedido });
-      this.reloj.programarEn(this.tiempos.pedidoVence, () => {
-        // Cada pedido penaliza una sola vez; sigue pendiente aunque haya vencido.
-        if (this.pedidos.includes(pedido)) {
-          pedido.vencido = true;
-          this.estadisticas.pedidosVencidos++;
-          this.sumarPuntos(PUNTOS.pedidoVencido, 'pedido vencido');
-          this._emitir({ tipo: 'pedidoVencido', pedido });
-        }
-      });
+      this._programarVencimiento(pedido, this.reloj.ahora + this.tiempos.pedidoVence);
       this._programarPedido(n + 1);
+    });
+  }
+
+  /** Cada pedido penaliza una sola vez, al cumplir 30 s sin atender; sigue pendiente aunque haya vencido. */
+  _programarVencimiento(pedido, t) {
+    this.reloj.programar(t, () => {
+      if (this.pedidos.includes(pedido) && !pedido.vencido) {
+        pedido.vencido = true;
+        this.estadisticas.pedidosVencidos++;
+        this.sumarPuntos(PUNTOS.pedidoVencido, 'pedido vencido');
+        this._emitir({ tipo: 'pedidoVencido', pedido });
+      }
     });
   }
 
@@ -307,7 +324,10 @@ export class Celda {
     for (const [maquina, evento] of plan.pasos) {
       if (!this.automatas[maquina].puede(evento)) return 'indefinido';
     }
-    if (plan.transicion && !this.red.habilitada(plan.transicion)) return 'recurso';
+    if (plan.transicion && !this.red.habilitada(plan.transicion)) {
+      // Con el Controlador de celda activo, la ficha que falta puede ser Celda_libre (otro AGV está en la celda).
+      return this.red.faltantes(this.red.M, plan.transicion).includes('Celda_libre') ? 'celda' : 'recurso';
+    }
     if (plan.supervisada && this.atendida === plan.supervisada) {
       const clave = this._claveSupervisor(plan.supervisada);
       for (const [, evento] of plan.pasos) {
@@ -321,6 +341,20 @@ export class Celda {
 
   /** Ejecuta un plan ya comprobado: δ de cada autómata, disparo de la transición y luego lo que sigue. */
   _aplicar(plan) {
+    this._nivelAplicar++;
+    try {
+      this._aplicarPlan(plan);
+    } finally {
+      this._nivelAplicar--;
+    }
+    // Al terminar la cadena de eventos: si el marcado es verde, se guarda para el reintento.
+    if (this._nivelAplicar === 0 && this._huboDisparo) {
+      this._huboDisparo = false;
+      if (this.radar.nivel === 'verde' && !this.deadlock) this.ultimoVerde = this.capturar();
+    }
+  }
+
+  _aplicarPlan(plan) {
     const cambios = [];
     for (const [maquina, evento] of plan.pasos) {
       const a = this.automatas[maquina];
@@ -335,13 +369,141 @@ export class Celda {
       disparo = { tipo: 'disparo', transicion: plan.transicion, antes, despues: this.red.marcado() };
     }
     for (const c of cambios) this._emitir(c);
-    if (disparo) this._emitir(disparo);
+    if (disparo) {
+      this._emitir(disparo);
+      this._huboDisparo = true;
+      this._recalcularRadar(plan.transicion);
+    }
     plan.despues?.();
     this._automaticos();
-    if (!this.deadlock && this.red.esMuerto()) {
-      this.deadlock = true;
-      this._emitir({ tipo: 'deadlock', marcado: this.red.marcado() });
+    if (!this.deadlock && this.red.esMuerto()) this._declararDeadlock();
+  }
+
+  // ---- Radar, deadlock, Controlador de celda y reintento ----
+
+  /** Recalcula el radar con explorar(red, M, 1) y da +25 al volver de amarillo a verde (enfriamiento de 20 s). */
+  _recalcularRadar(transicion) {
+    const anterior = this.radar.nivel;
+    const r = explorar(this.red, this.red.M, 1);
+    this.radar = { nivel: r.nivel, muertosAlcanzables: r.muertosAlcanzables };
+    this.historialMarcados.push({ M: this.red.marcado(), nivel: r.nivel, transicion, t: this.reloj.ahora });
+    if (this.historialMarcados.length > 12) this.historialMarcados.shift();
+    if (anterior === 'amarillo' && r.nivel === 'verde' && this.reloj.ahora - this._ultimoPremioRadar >= ENFRIAMIENTO_RADAR) {
+      this._ultimoPremioRadar = this.reloj.ahora;
+      this.sumarPuntos(PUNTOS.radarVerde, 'radar de amarillo a verde');
     }
+    this._emitir({ tipo: 'radar', nivel: r.nivel, anterior, marcado: this.red.marcado() });
+  }
+
+  /** Marcado muerto: la simulación se detiene y se restan 200 puntos (una sola vez). */
+  _declararDeadlock() {
+    this.deadlock = true;
+    const desde = this.ultimoVerde ? this.ultimoVerde.historial.length : 0;
+    this.secuenciaDeadlock = this.red.historial.slice(desde);
+    this.sumarPuntos(PUNTOS.deadlock, 'deadlock');
+    this.reloj.pausar();
+    this._emitir({ tipo: 'deadlock', marcado: this.red.marcado(), secuencia: [...this.secuenciaDeadlock] });
+  }
+
+  /** Instantánea del sistema (para volver al último marcado verde). */
+  capturar() {
+    return {
+      t: this.reloj.ahora,
+      M: this.red.marcado(),
+      historial: [...this.red.historial],
+      estados: Object.fromEntries(Object.entries(this.automatas).map(([id, a]) => [id, a.estado])),
+      atendida: this.atendida,
+      pedidos: this.pedidos.map((p) => ({ ...p })),
+      siguientePedido: this._siguientePedido,
+      rng: this.aleatorio.obtenerEstado(),
+    };
+  }
+
+  /** Ajusta un marcado a la red actual (con o sin Celda_libre). */
+  _ajustarMarcado(M) {
+    const n = this.red.lugares.length;
+    if (M.length === n) return [...M];
+    if (n === M.length + 1) return [...M, this._celdaLibreFicha(M)];
+    return M.slice(0, n);
+  }
+
+  /** Fichas de Celda_libre que respetan el invariante IP5: 1 − (p5 + p6 + p7 + p8). */
+  _celdaLibreFicha(M) {
+    const idx = ['AGV1_con_mesa', 'AGV2_con_robot', 'AGV1_trabajando', 'AGV2_trabajando'].map((n) => this.red.indiceP(n));
+    return 1 - idx.reduce((s, j) => s + M[j], 0);
+  }
+
+  /**
+   * Reintentar desde el último marcado verde: restaura el marcado, los autómatas, los pedidos y el
+   * generador de ese instante, y reprograma los eventos que estaban en curso (con su duración completa).
+   * El puntaje se conserva (incluido el −200).
+   */
+  reintentarDesdeVerde() {
+    const snap = this.ultimoVerde;
+    if (!snap) return false;
+    this.reloj.reiniciar(); // vacía el calendario y reanuda
+    this.reloj.ahora = snap.t;
+    this._fresado = { CNC1: null, CNC2: null };
+    this.aleatorio.restaurarEstado(snap.rng);
+    for (const [id, estado] of Object.entries(snap.estados)) this.automatas[id].restaurar(estado);
+    this.atendida = snap.atendida;
+    this.pedidos = snap.pedidos.map((p) => ({ ...p }));
+    this._siguientePedido = snap.siguientePedido;
+    this.red.M = this._ajustarMarcado(snap.M);
+    this.red.historial = [...snap.historial];
+    this.deadlock = false;
+    this.secuenciaDeadlock = [];
+    // Eventos no controlables que estaban en curso.
+    if (this.estado('BRAZO') === 'Moviendo') {
+      this.reloj.programarEn(this.tiempos.brazoLlegar, () => this._interno([['BRAZO', 'llegar']]));
+    }
+    for (const agv of AGVS) {
+      const q = this.estado(agv);
+      if (q === 'Viajando') this.reloj.programarEn(this.tiempos.agvViaje, () => this._interno([[agv, 'llegar_estacion']]));
+      if (q === 'Descargando') this.reloj.programarEn(this.tiempos.agvDescarga, () => this._finDescarga(agv));
+    }
+    for (const cnc of CNCS) if (this.estado(cnc) === 'Fresando') this._programarFresado(cnc);
+    this._programarPedido(Math.floor(snap.t / this.turno.intervaloPedidos) + 1);
+    for (const p of this.pedidos) if (!p.vencido) this._programarVencimiento(p, Math.max(snap.t, p.t + this.tiempos.pedidoVence));
+    this._emitir({ tipo: 'restaurado', t: snap.t });
+    this._recalcularRadar(null);
+    this._automaticos();
+    return true;
+  }
+
+  /**
+   * Comprar el Controlador de celda (−150): cambia a la red corregida conservando el marcado y agrega
+   * Celda_libre con 1 − (p5 + p6 + p7 + p8) fichas. No se puede comprar en el marcado muerto.
+   * @returns {{ok:boolean, motivo?:string}}
+   */
+  comprarControlador() {
+    if (this.deadlock || this.red.esMuerto()) return { ok: false, motivo: 'deadlock' };
+    if (this.controlador) return { ok: false, motivo: 'ya_activo' };
+    if (!this.modelos.redCorregida) return { ok: false, motivo: 'sin_modelo' };
+    const M = this.red.marcado();
+    const nueva = new RedPetri(this.modelos.redCorregida);
+    nueva.reiniciar([...M, this._celdaLibreFicha(M)]);
+    nueva.historial = [...this.red.historial];
+    this.red = nueva;
+    this.controlador = true;
+    this.sumarPuntos(PUNTOS.controlador, 'Controlador de celda');
+    this._emitir({ tipo: 'controlador', activo: true });
+    this._recalcularRadar(null);
+    return { ok: true };
+  }
+
+  /** Al terminar el turno el Controlador se desactiva y la red vuelve a la original (conserva el marcado). */
+  desactivarControlador() {
+    if (!this.controlador) return false;
+    const M = this.red.marcado().slice(0, this.modelos.red.lugares.length);
+    const original = new RedPetri(this.modelos.red);
+    original.reiniciar(M);
+    original.historial = [...this.red.historial];
+    this.red = original;
+    this.controlador = false;
+    this._emitir({ tipo: 'controlador', activo: false });
+    this._recalcularRadar(null);
+    return true;
   }
 
   /** Evento no controlable que dispara el reloj: se ejecuta sin consultar al supervisor. */

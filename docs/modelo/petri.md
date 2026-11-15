@@ -143,7 +143,7 @@ Las columnas p1..p9 de Pre, Post y A son idénticas a las de la red original.
 | M4 | [0,0,0,1,0,0,1,0,0] | M1 –t1b→ | No |
 | M5 | [0,0,0,0,1,1,0,0,0] | M1 –t2a→ o M2 –t1a→ | **Sí** |
 | M6 | [0,0,0,1,1,0,0,0,1] | M1 –tr_ir→ o M3 –t1a→ | No |
-| M7 | [1,0,1,0,0,0,0,1,0] | M2 –t2b→ | No |
+| M7 | [0,0,1,0,0,0,0,1,0] | M2 –t2b→ | No |
 
 ### 6.3 Deadlock y ecuación de estado
 
@@ -235,7 +235,7 @@ Así solo un AGV puede estar dentro del ciclo de reserva a la vez. Archivo: `rob
 | M3 | [1,0,1,1,0,0,0,0,1,1] | M0 –tr_ir→ |
 | M4 | [0,0,0,1,0,0,1,0,0,0] | M1 –t1b→ |
 | M5 | [0,0,0,1,1,0,0,0,1,0] | M1 –tr_ir→ o M3 –t1a→ |
-| M6 | [1,0,1,0,0,0,0,1,0,0] | M2 –t2b→ |
+| M6 | [0,0,1,0,0,0,0,1,0,0] | M2 –t2b→ |
 
 El marcado muerto de la red original ya no es alcanzable: con p10 en 0 después de t1a,
 t2a queda deshabilitada. Con t2a primero, t1a queda deshabilitada.

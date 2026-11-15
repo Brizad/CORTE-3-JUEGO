@@ -16,11 +16,12 @@ export function claveMarcado(M) {
  * @param {import('./redPetri.js').RedPetri} red
  * @param {number[]} [M0] Marcado inicial (por defecto el M0 de la red).
  * @param {number} [maxNodos=2000] Límite de nodos; si se alcanza, `truncado` es true.
+ * @param {number} [profundidad=Infinity] Niveles a expandir (los nodos del último nivel no se expanden).
  * @returns {{nodos:object[], aristas:object[], muertos:number[][], marcadosDistintos:number,
  *            acotada:boolean, truncado:boolean}}
  */
-export function arbolCobertura(red, M0 = red.m0, maxNodos = 2000) {
-  const nodos = [{ id: 0, marcado: [...M0], padre: null, transicion: null, tipo: 'nuevo' }];
+export function arbolCobertura(red, M0 = red.m0, maxNodos = 2000, profundidad = Infinity) {
+  const nodos = [{ id: 0, marcado: [...M0], padre: null, transicion: null, tipo: 'nuevo', nivel: 0 }];
   const aristas = [];
   const vistos = new Map([[claveMarcado(M0), 0]]);
   const cola = [0];
@@ -33,6 +34,7 @@ export function arbolCobertura(red, M0 = red.m0, maxNodos = 2000) {
       nodo.tipo = 'muerto';
       continue;
     }
+    if (nodo.nivel >= profundidad) continue; // frontera: se dibuja pero no se expande
     for (const t of habilitadas) {
       if (nodos.length >= maxNodos) {
         truncado = true;
@@ -48,7 +50,7 @@ export function arbolCobertura(red, M0 = red.m0, maxNodos = 2000) {
       }
 
       const clave = claveMarcado(M);
-      const hijo = { id: nodos.length, marcado: M, padre: nodo.id, transicion: t, tipo: 'nuevo' };
+      const hijo = { id: nodos.length, marcado: M, padre: nodo.id, transicion: t, tipo: 'nuevo', nivel: nodo.nivel + 1 };
       nodos.push(hijo);
       aristas.push({ de: nodo.id, transicion: t, a: hijo.id });
       if (vistos.has(clave)) hijo.tipo = 'duplicado';
@@ -108,4 +110,21 @@ export function explorar(red, M, profundidad = 1) {
     frontera = siguiente;
   }
   return { nivel: muertosAlcanzables.length > 0 ? 'amarillo' : 'verde', alcanzables, muertosAlcanzables };
+}
+
+/** Nombres M0…M7 de los marcados de la red original (docs/modelo/petri.md, sección 6.2). */
+export const NOMBRES_MARCADOS = new Map([
+  [[1, 1, 1, 1, 0, 0, 0, 0, 0], 'M0'],
+  [[0, 1, 0, 1, 1, 0, 0, 0, 0], 'M1'],
+  [[1, 0, 1, 0, 0, 1, 0, 0, 0], 'M2'],
+  [[1, 0, 1, 1, 0, 0, 0, 0, 1], 'M3'],
+  [[0, 0, 0, 1, 0, 0, 1, 0, 0], 'M4'],
+  [[0, 0, 0, 0, 1, 1, 0, 0, 0], 'M5'],
+  [[0, 0, 0, 1, 1, 0, 0, 0, 1], 'M6'],
+  [[0, 0, 1, 0, 0, 0, 0, 1, 0], 'M7'],
+].map(([m, n]) => [claveMarcado(m), n]));
+
+/** Nombre del marcado (M0…M7) o null si no es uno de los de la red original. */
+export function nombreMarcado(M) {
+  return NOMBRES_MARCADOS.get(claveMarcado(M)) ?? null;
 }

@@ -33,6 +33,16 @@ export class EntidadAGV extends Entidad {
     }
   }
 
+  alRestaurar() {
+    super.alRestaurar();
+    const t = this.celda.reloj.ahora;
+    const q = this.automata.estado;
+    // Los viajes en curso se reprograman con su duración completa: la animación también empieza de nuevo.
+    if (q === 'Viajando') this.progreso = { desde: 0, hasta: 1, t0: t, dur: TIEMPOS.agvViaje };
+    else if (q === 'Libre') this.progreso = { desde: 0, hasta: 0, t0: t, dur: 0 };
+    else this.progreso = { desde: 1, hasta: 1, t0: t, dur: 0 };
+  }
+
   /** Coloca el AGV en el punto p (0 a 1) del recorrido y actualiza la silueta y la profundidad. */
   _colocar(p) {
     const punto = this.ruta.getPoint(p);

@@ -13,6 +13,7 @@ const modelos = () => ({
   brazo: cargarModelo('brazo.json'),
   agv: cargarModelo('agv.json'),
   red: cargarModelo('red_agv.json'),
+  redCorregida: cargarModelo('red_agv_corregida.json'),
   supervisor: cargarModelo('supervisor.json'),
   reparacion: cargarModelo('reparacion_dfa.json'),
 });
@@ -343,21 +344,127 @@ test('conflictos de la red: Robot_libre en M0 y tras t1a (t2a, t1b y tr_ir)', ()
   assert.deepEqual(celda.red.conflictos(), [{ lugar: 'Robot_libre', transiciones: ['t1b', 't2a', 'tr_ir'] }]);
 });
 
-test('despachar AGV1 y luego AGV2: marcado [0,0,0,0,1,1,0,0,0] y ya no se dispara nada', () => {
+test('despachar AGV1 y luego AGV2: marcado muerto, la simulación se detiene y resta 200 puntos', () => {
   const { reloj, celda } = nueva();
   celda.solicitar('AGV1', 'reservar');
+  assert.equal(celda.radar.nivel, 'amarillo'); // t2a llevaría al marcado muerto
   celda.solicitar('AGV2', 'reservar');
   assert.deepEqual(celda.red.marcado(), [0, 0, 0, 0, 1, 1, 0, 0, 0]);
+  assert.equal(celda.radar.nivel, 'rojo');
+  assert.equal(celda.deadlock, true);
+  assert.equal(reloj.enPausa, true);
+  assert.equal(celda.puntaje, -200);
+  assert.deepEqual(celda.secuenciaDeadlock, ['t1a', 't2a']);
   const disparos = () => celda.bitacora.filter((e) => e.tipo === 'disparo').length;
   const antes = disparos();
-  reloj.avanzar(120); // los AGV llegan a sus estaciones, pero nada más ocurre
+  const t = reloj.ahora;
+  reloj.avanzar(120); // la simulación está detenida: no pasa nada
+  assert.equal(reloj.ahora, t);
   assert.equal(disparos(), antes);
-  assert.deepEqual(celda.red.marcado(), [0, 0, 0, 0, 1, 1, 0, 0, 0]);
-  assert.equal(celda.estado('AGV1'), 'Esperando');
-  assert.equal(celda.estado('AGV2'), 'Esperando');
+  assert.equal(celda.estado('AGV1'), 'Viajando');
   assert.deepEqual(celda.faltantes('t1b'), ['Robot_libre']);
   assert.deepEqual(celda.faltantes('t2b'), ['Mesa_libre']);
   assert.equal(celda.red.habilitadas().length, 0);
+  assert.equal(celda.bitacora.filter((e) => e.tipo === 'deadlock').length, 1);
+  assert.equal(celda.puntaje, -200); // se resta una sola vez
+});
+
+test('radar: verde en M0, amarillo tras t1a, verde al volver (+25 con enfriamiento de 20 s)', () => {
+  const { reloj, celda } = nueva({ ...TURNOS[0], probFalla: 0 });
+  assert.equal(celda.radar.nivel, 'verde');
+  celda.solicitar('AGV1', 'reservar');
+  assert.equal(celda.radar.nivel, 'amarillo'); // M1
+  reloj.avanzar(4); // llega a la estación y t1b se dispara: M4, verde
+  assert.equal(celda.radar.nivel, 'verde');
+  assert.equal(celda.puntaje, 25);
+  reloj.avanzar(5); // t1c: vuelve a M0
+  celda.solicitar('AGV1', 'reservar'); // t = 9: amarillo otra vez
+  reloj.avanzar(4); // t = 13: verde, pero solo pasaron 9 s desde el último premio
+  assert.equal(celda.radar.nivel, 'verde');
+  assert.equal(celda.puntaje, 25);
+  reloj.avanzar(14); // t = 27, ya terminó el ciclo
+  celda.solicitar('AGV1', 'reservar'); // t = 27: amarillo
+  reloj.avanzar(4); // t = 31: pasaron 27 s desde el último premio
+  assert.equal(celda.puntaje, 50);
+  assert.equal(celda.historialMarcados.at(-1).nivel, 'verde');
+});
+
+test('reintentar desde el último marcado verde: restaura M0, conserva los puntos y reanuda', () => {
+  const { reloj, celda } = nueva();
+  celda.solicitar('AGV1', 'reservar');
+  celda.solicitar('AGV2', 'reservar'); // deadlock
+  assert.equal(celda.reintentarDesdeVerde(), true);
+  assert.deepEqual(celda.red.marcado(), [1, 1, 1, 1, 0, 0, 0, 0, 0]);
+  assert.equal(celda.deadlock, false);
+  assert.equal(reloj.enPausa, false);
+  assert.equal(celda.puntaje, -200); // el puntaje se conserva
+  assert.equal(celda.estado('AGV1'), 'Libre');
+  assert.equal(celda.estado('AGV2'), 'Libre');
+  assert.equal(celda.radar.nivel, 'verde');
+  assert.deepEqual(celda.red.historial, []);
+  // Después del reintento todo sigue funcionando: un pedido a los 25 s y un ciclo de AGV.
+  reloj.avanzar(25);
+  assert.equal(celda.pedidos.length, 1);
+  assert.deepEqual(celda.solicitar('AGV1', 'reservar'), { ok: true });
+  reloj.avanzar(9);
+  assert.equal(celda.estadisticas.ciclosAGV, 1);
+});
+
+test('el último verde sigue al sistema: se reintenta desde el marcado verde más reciente', () => {
+  const { reloj, celda } = nueva({ ...TURNOS[0], probFalla: 0 });
+  celda.solicitar('AGV1', 'reservar');
+  reloj.avanzar(9); // ciclo completo: vuelve a M0 (verde) en t = 9
+  assert.equal(celda.ultimoVerde.t, 9);
+  celda.solicitar('AGV1', 'reservar');
+  celda.solicitar('AGV2', 'reservar'); // deadlock
+  assert.deepEqual(celda.secuenciaDeadlock, ['t1a', 't2a']);
+  celda.reintentarDesdeVerde();
+  assert.equal(reloj.ahora, 9);
+  assert.equal(celda.estadisticas.ciclosAGV, 1);
+});
+
+test('Controlador de celda: cuesta 150, conserva el marcado, agrega Celda_libre y evita el deadlock sin restar puntos', () => {
+  const { reloj, celda } = nueva();
+  assert.deepEqual(celda.comprarControlador(), { ok: true });
+  assert.equal(celda.puntaje, -150);
+  assert.equal(celda.red.lugares.length, 10);
+  assert.deepEqual(celda.red.marcado(), [1, 1, 1, 1, 0, 0, 0, 0, 0, 1]);
+  assert.deepEqual(celda.comprarControlador(), { ok: false, motivo: 'ya_activo' });
+  assert.deepEqual(celda.solicitar('AGV1', 'reservar'), { ok: true });
+  assert.equal(celda.red.fichas('Celda_libre'), 0);
+  const antes = celda.puntaje;
+  assert.deepEqual(celda.solicitar('AGV2', 'reservar'), { ok: false, motivo: 'celda' }); // aviso, no es intento bloqueado
+  assert.equal(celda.puntaje, antes);
+  assert.equal(celda.estadisticas.bloqueos, 0);
+  assert.equal(celda.deadlock, false);
+  assert.equal(celda.bitacora.filter((e) => e.tipo === 'rechazo' && e.motivo === 'celda').length, 1);
+  reloj.avanzar(60);
+  assert.equal(celda.deadlock, false);
+  assert.equal(celda.red.fichas('Celda_libre'), 1); // el ciclo de AGV1 la devolvió
+  assert.equal(celda.estadisticas.ciclosAGV, 1);
+});
+
+test('el Controlador se compra en pleno ciclo con 1 − (p5 + p6 + p7 + p8) fichas y no en el marcado muerto', () => {
+  const { celda } = nueva();
+  celda.solicitar('AGV1', 'reservar');
+  assert.equal(celda.comprarControlador().ok, true);
+  assert.equal(celda.red.fichas('Celda_libre'), 0); // AGV1 ya está en la celda
+  assert.equal(celda.radar.nivel, 'verde'); // con Celda_libre no hay deadlock alcanzable
+  const otra = nueva();
+  otra.celda.solicitar('AGV1', 'reservar');
+  otra.celda.solicitar('AGV2', 'reservar');
+  assert.deepEqual(otra.celda.comprarControlador(), { ok: false, motivo: 'deadlock' });
+  assert.equal(otra.celda.puntaje, -200);
+});
+
+test('el Controlador solo dura el turno: desactivarControlador vuelve a la red original con el mismo marcado', () => {
+  const { celda } = nueva();
+  celda.solicitar('AGV1', 'reservar');
+  celda.comprarControlador();
+  assert.equal(celda.desactivarControlador(), true);
+  assert.equal(celda.red.lugares.length, 9);
+  assert.deepEqual(celda.red.marcado(), [0, 1, 0, 1, 1, 0, 0, 0, 0]);
+  assert.equal(celda.controlador, false);
 });
 
 test('un pedido que pasa 30 s sin atender vence una sola vez y resta 20 puntos', () => {

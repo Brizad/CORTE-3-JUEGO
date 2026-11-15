@@ -38,6 +38,18 @@ export class EntidadBrazo extends Entidad {
     }
   }
 
+  alRestaurar() {
+    super.alRestaurar();
+    const t = this.celda.reloj.ahora;
+    const q = this.automata.estado;
+    if (this.celda.atendida) this.objetivo = this.celda.atendida;
+    if (q === 'Reposo') this.alcance = { desde: 0, hasta: 0, t0: t, dur: 0 };
+    else if (q === 'Moviendo') this.alcance = { desde: 0, hasta: 1, t0: t, dur: TIEMPOS.brazoLlegar };
+    else this.alcance = { desde: 1, hasta: 1, t0: t, dur: 0 };
+    const abierta = q === 'Mandril_Abierto' ? 1 : 0;
+    this.pinza = { desde: abierta, hasta: abierta, t0: t, dur: 0 };
+  }
+
   /** Geometría del brazo en pantalla para el instante t: hombro, codo y muñeca. */
   _geometria(t) {
     if (this.celda.atendida) this.objetivo = this.celda.atendida;

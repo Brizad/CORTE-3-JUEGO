@@ -102,3 +102,6 @@ export const PUNTOS = {
 
 // Segundos de simulación que se muestra la expresión regular tras "Pedir ayuda" (GDD, sección 8).
 export const DURACION_AYUDA = 5;
+
+// Enfriamiento del premio del radar de amarillo a verde (GDD, sección 8), en s de simulación.
+export const ENFRIAMIENTO_RADAR = 20;

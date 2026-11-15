@@ -77,10 +77,27 @@ export class FichasPlanta {
     this.gConflicto = escena.add.graphics().setDepth(PROFUNDIDAD - 1);
     this.volando = new Set(); // fichas en el aire (objetos Graphics)
     this.transitosActivos = 0; // transiciones con fichas todavía viajando
+    this.tweensActivos = new Set();
     this.ultimaCNC = null;
     this._baja = celda.alCambiar((e) => {
       if (e.tipo === 'disparo') this._alDisparar(e);
+      if (e.tipo === 'restaurado') this._alRestaurar();
     });
+  }
+
+  /** Reintento: se cancelan las fichas en el aire y los contadores vuelven al marcado real. */
+  _alRestaurar() {
+    for (const tw of this.tweensActivos) tw.remove();
+    this.tweensActivos.clear();
+    for (const g of this.volando) g.destroy();
+    this.volando.clear();
+    this.transitosActivos = 0;
+    for (const l of this.lugares) {
+      l.mostrado = this.red.M[l.j];
+      l.vuelos = 0;
+      l.credito = 0;
+      l.sucio = true;
+    }
   }
 
   /** Posición en pantalla de un lugar. */
@@ -154,7 +171,7 @@ export class FichasPlanta {
     const g = this.escena.add.graphics().setDepth(PROFUNDIDAD + 2);
     this.volando.add(g);
     const avance = { k: 0 };
-    this.escena.tweens.add({
+    const tween = this.escena.tweens.add({
       targets: avance,
       k: 1,
       duration: duracion,
@@ -167,11 +184,13 @@ export class FichasPlanta {
         dibujarFicha(g, nombreLugar, a.x + (b.x - a.x) * avance.k, a.y + (b.y - a.y) * avance.k - 6 * Math.sin(Math.PI * avance.k));
       },
       onComplete: () => {
+        this.tweensActivos.delete(tween);
         g.destroy();
         this.volando.delete(g);
         alLlegar();
       },
     });
+    this.tweensActivos.add(tween);
   }
 
   /** Por cuadro: dibuja cada lugar con su ficha (o un contorno tenue si está vacío), su contador m/k y los conflictos. */

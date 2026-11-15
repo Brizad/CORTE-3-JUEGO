@@ -79,6 +79,15 @@ export class Automata {
     return this._porCodigo.get(codigo);
   }
 
+  /**
+   * Restaura un estado guardado (reintento desde el último marcado verde). No es una transición:
+   * no pasa por δ ni deja rastro en el historial.
+   */
+  restaurar(estado) {
+    if (!this._delta.has(estado)) throw new Error(`${this.nombre}: estado desconocido ${estado}`);
+    this.estado = estado;
+  }
+
   /** Vuelve al estado inicial y borra el historial. */
   reiniciar() {
     this.estado = this.inicial;
