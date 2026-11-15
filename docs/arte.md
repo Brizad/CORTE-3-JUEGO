@@ -1,0 +1,220 @@
+# Guía de arte: RoboCell Tycoon 2.5D
+
+Define cómo se ve el simulador. Se define una vez y se respeta.
+Reglas de juego: `docs/GDD.md`. Modelo formal: `docs/modelo/`.
+
+## 1. Lienzo y rejilla
+
+| Parámetro | Valor |
+|---|---|
+| Tamaño del juego | 960 × 540 px |
+| Escala | FIT (se ajusta a la ventana y conserva la proporción) |
+| Rejilla | Isométrica 2:1, celdas de 64 × 32 px |
+| Planta | 12 × 10 celdas (gx = 0..11, gy = 0..9) |
+| Orden de profundidad | Por (x + y) de la celda: más grande se dibuja encima |
+| Luz | Desde arriba a la izquierda, en todos los objetos |
+
+**Conversión de celda a pantalla** (vértice superior de la celda):
+
+- x = 448 + (gx − gy) × 32
+- y = 90 + (gx + gy) × 16
+
+La planta ocupa 704 × 352 px, centrada en x = 480, entre y = 90 y y = 442.
+Las zonas de HUD quedan fuera: arriba 0 a 56 px, abajo desde 450 px.
+
+## 2. Paleta (14 colores)
+
+| N.º | Uso | Color |
+|---|---|---|
+| 1 | Estado: operación | `#2e9e5b` |
+| 2 | Estado: espera | `#e0b21b` |
+| 3 | Estado: fallo | `#d64545` |
+| 4 | Estado: mantenimiento | `#3b7dd8` |
+| 5 | Token Mesa_libre (tablero café) | `#b07a3c` |
+| 6 | Token Robot (engranaje naranja) | `#f08a24` |
+| 7 | Token AGV (rombo azul) | `#3fa7d6` |
+| 8 | Token Celda_libre (llave dorada) | `#d4af37` |
+| 9 | Suelo | `#2b323c` |
+| 10 | Muros | `#4a5360` |
+| 11 | Cuerpo de máquinas | `#8794a3` |
+| 12 | Bandas y rutas de AGV | `#566170` |
+| 13 | Panel del HUD | `#161b22` |
+| 14 | Texto del HUD | `#e8edf2` |
+
+Reglas:
+
+- Para sombras y caras laterales se oscurece el color base (cara izquierda −20 %, cara derecha −35 %).
+  Las caras superiores usan el color base. Esto da la luz desde arriba a la izquierda.
+- El azul de mantenimiento (`#3b7dd8`) y el azul del AGV (`#3fa7d6`) se parecen. Se distinguen por la forma:
+  el AGV es un rombo; el mantenimiento es un halo circular.
+- No se añaden colores fuera de esta tabla sin actualizarla.
+
+## 3. Planta: distribución en la rejilla
+
+Celdas (gx, gy). Mapa de arriba hacia abajo por gy; de izquierda a derecha por gx.
+
+```
+gy\gx  0  1  2  3  4  5  6  7  8  9  10 11
+ 0     .  .  .  .  .  .  .  .  .  .  .  .
+ 1     .  .  .  .  .  .  .  .  .  .  D1 .
+ 2     .  .  .  C1 .  .  .  .  .  .  .  .
+ 3     .  .  .  .  .  .  .  .  S1 .  .  .
+ 4     .  .  .  .  .  B  .  M  .  .  .  .
+ 5     .  .  .  .  .  .  .  .  S2 .  .  .
+ 6     .  .  .  C2 .  .  .  .  .  .  .  .
+ 7     .  .  .  .  .  .  .  .  .  .  .  .
+ 8     .  .  .  .  .  .  .  .  .  .  D2 .
+ 9     .  .  .  .  .  .  .  .  .  .  .  .
+```
+
+| Símbolo | Objeto | Celda |
+|---|---|---|
+| C1 | CNC 1 | (3, 2) |
+| C2 | CNC 2 | (3, 6) |
+| B | Brazo (base) | (5, 4) |
+| M | Mesa de descarga | (7, 4) |
+| S1 | Estación del AGV1 | (8, 3) |
+| S2 | Estación del AGV2 | (8, 5) |
+| D1 | Depósito del AGV1 (estado Libre) | (10, 1) |
+| D2 | Depósito del AGV2 (estado Libre) | (10, 8) |
+
+Muros: borde de la planta, 24 px de alto, color de muros. Las bandas son líneas de 8 px de ancho en el suelo.
+
+## 4. Máquinas
+
+Todas se dibujan en código (formas isométricas). Misma escala y misma luz.
+
+| Máquina | Forma | Tamaño | Detalle |
+|---|---|---|---|
+| CNC | Prisma con cara frontal de ventana | 1 × 1 celda, 40 px de alto | Husillo visible sobre la ventana |
+| Brazo | Base cilíndrica y dos segmentos articulados | 1 × 1 celda, 56 px de alto | Pinza al final; el mandril se ve abierto o cerrado |
+| Mesa | Plataforma plana | 1 × 1 celda, 12 px de alto | Tablero café `#b07a3c` |
+| AGV | Plataforma baja con luz superior | 0,8 × 0,8 celda, 14 px de alto | Rombo azul `#3fa7d6` en el techo |
+
+## 5. Estados: color e ícono
+
+Cada estado de cada autómata tiene un **color** (los 4 colores fijos) y un **ícono** sobre la máquina.
+Ícono de 16 × 16 px, centrado 8 px sobre la máquina.
+
+### CNC (5 estados)
+
+| Estado | Color | Ícono |
+|---|---|---|
+| Libre | Espera `#e0b21b` | Círculo vacío |
+| Cargado | Espera `#e0b21b` | Pieza (caja) |
+| Fresando | Operación `#2e9e5b` | **Chispas** (3 puntos que saltan) |
+| Terminado | Espera `#e0b21b` | Marca de verificación |
+| Falla | Fallo `#d64545` | **Rayo y humo** (humo gris que sube) |
+
+Mientras la consola de reparación está abierta, la CNC lleva un halo de mantenimiento `#3b7dd8`.
+
+### Brazo (4 estados)
+
+| Estado | Color | Ícono |
+|---|---|---|
+| Reposo | Espera `#e0b21b` | Casa |
+| Moviendo | Operación `#2e9e5b` | Flechas dobles |
+| Mandril_Cerrado | Operación `#2e9e5b` | Pinza cerrada |
+| Mandril_Abierto | Espera `#e0b21b` | Pinza abierta |
+
+### AGV (4 estados)
+
+| Estado | Color | Ícono |
+|---|---|---|
+| Libre | Espera `#e0b21b` | Círculo vacío |
+| Viajando | Operación `#2e9e5b` | Flecha |
+| Esperando | Espera `#e0b21b` | Reloj de arena |
+| Descargando | Operación `#2e9e5b` | Caja bajando |
+
+## 6. Tokens (fichas de la red de Petri)
+
+Cada tipo de token tiene forma y color propios. Se dibujan 14 px de alto en el panel de fichas
+y 20 px sobre la planta.
+
+| Token | Lugar(es) | Forma | Color |
+|---|---|---|---|
+| Mesa | p1 Mesa_libre | Tablero (rectángulo con patas) | `#b07a3c` |
+| Robot | p2 Robot_libre | Engranaje | `#f08a24` |
+| AGV | p3 AGV1_listo, p4 AGV2_listo | Rombo | `#3fa7d6` |
+| Celda | p10 Celda_libre | Llave | `#d4af37` |
+
+Lugares combinados (se componen con los tokens base, sin colores nuevos):
+
+| Lugar | Composición |
+|---|---|
+| p5 AGV1_con_mesa | Rombo azul con un tablero café pequeño en la esquina; etiqueta "1" |
+| p6 AGV2_con_robot | Rombo azul con un engranaje naranja pequeño; etiqueta "2" |
+| p7 AGV1_trabajando | Rombo azul con tablero y engranaje; etiqueta "1" |
+| p8 AGV2_trabajando | Rombo azul con tablero y engranaje; etiqueta "2" |
+| p9 Robot_en_CNC | Engranaje naranja con una CNC pequeña |
+
+Los flujos entre lugares se animan con partículas del color del token. Un token que cambia de lugar
+viaja en una línea corta entre los dos lugares del panel (0,3 s).
+
+## 7. HUD de máquina (escena superpuesta)
+
+- Panel `#161b22` al 90 % de opacidad, 300 × 220 px, anclado a la derecha de la máquina seleccionada.
+- **Nodos circulares** de 36 px por estado, con el nombre debajo (fuente de 10 px).
+- **Flechas** entre nodos con el **código del evento** (c, i, f, d, x, r, m, l, a, e, v, g, u, z).
+- **Estado actual iluminado:** nodo relleno con su color de estado y borde blanco.
+- **Eventos controlables habilitados:** botón con el color de operación.
+- **Eventos deshabilitados por el supervisor:** botón **rojo `#d64545`**, con **glow** de Phaser 4 que pulsa.
+- **Eventos no definidos en el estado:** botón gris sin glow.
+- Eventos no controlables: no tienen botón; se muestran como flecha punteada.
+- Botones táctiles de 44 × 44 px como mínimo.
+
+## 8. HUD general (zonas)
+
+| Zona | Posición | Contenido |
+|---|---|---|
+| Arriba izquierda | x 8–200, y 8–48 | Reloj, turno, velocidad |
+| Arriba centro | x 330–630, y 8–48 | Puntaje y piezas / meta |
+| Arriba derecha | x 760–952, y 8–48 | Radar del Árbol de Cobertura |
+| Abajo izquierda | x 8–420, y 450–532 | Fichas por lugar |
+| Abajo derecha | x 540–952, y 450–532 | Alertas |
+
+El radar es un círculo de 32 px con su etiqueta:
+
+| Estado | Color | Comportamiento |
+|---|---|---|
+| Verde | `#2e9e5b` | Fijo |
+| Amarillo | `#e0b21b` | Parpadea a 2 Hz |
+| Rojo | `#d64545` | Fijo, con temblor de cámara al entrar |
+
+## 9. Efectos (Phaser 4)
+
+Cada efecto tiene un propósito. Ninguno es solo decoración.
+
+| Efecto | Dónde | Propósito |
+|---|---|---|
+| **Glow** | Botón bloqueado por el supervisor | Llamar la atención al evento inhibido |
+| Glow | Máquina seleccionada | Mostrar cuál está abierta |
+| **Bloom** | Eventos críticos: falla del husillo, deadlock, pieza descargada | Subrayar el cambio importante |
+| **Partículas** | Chispas en la CNC Fresando. Humo en la CNC en Falla. Flujo de tokens entre lugares | Mostrar el estado y el flujo |
+| **Temblor de cámara** | Al fallar el husillo y al caer en deadlock (0,3 s) | Marcar el evento negativo |
+| **Path** | Rutas de los AGV | Mover cada AGV por una trayectoria |
+
+### 9.1 Trayectorias de los AGV (Path)
+
+Cada AGV sigue un `Path` de Phaser. Viaja de su depósito a su estación en 4 s (evento `v` a `g`).
+Después de la descarga vuelve al depósito.
+
+| AGV | Waypoints (celdas) |
+|---|---|
+| AGV1 | D1 (10, 1) → (10, 3) → S1 (8, 3) |
+| AGV2 | D2 (10, 8) → (10, 5) → S2 (8, 5) |
+
+La velocidad del recorrido se ajusta para que dure exactamente 4 s de simulación, también a x2 y x4.
+
+## 10. Reglas de producción
+
+- Máquinas y tokens se dibujan en código. Si se usan imágenes, deben tener **fondo magenta `#FF00FF`**
+  (se elimina al cargar), la misma escala y la misma luz.
+- No se copian personajes, logotipos, mapas ni música de juegos comerciales.
+- Todo color usado debe estar en la tabla de la sección 2.
+
+## 11. Cómo se revisa una captura
+
+1. Comparar con esta guía: rejilla, posiciones, colores, tamaños y zonas de HUD.
+2. Listar diferencias concretas con posición, color y tamaño. Ejemplo: "La CNC 2 está en (4, 6); debe estar en (3, 6)".
+3. Comprobar que cada estado del autómata muestra su color e ícono, y que el radar coincide con el marcado.
