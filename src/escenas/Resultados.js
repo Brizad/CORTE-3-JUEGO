@@ -14,6 +14,7 @@ export class Resultados extends Phaser.Scene {
   }
 
   create() {
+    this.cameras.main.fadeIn(300, 22, 27, 34);
     const planta = this.scene.get('Planta');
     this.planta = planta;
     this.abierto = true;
@@ -101,7 +102,11 @@ export class Resultados extends Phaser.Scene {
   _reiniciar(partidaNueva) {
     if (partidaNueva) this.registry.set('partida', new Partida());
     this.abierto = false;
-    this.scene.stop('Resultados');
-    this.planta.scene.restart();
+    // Fundido de salida y luego se vuelve a crear la planta (que entra con un fundido).
+    this.cameras.main.fadeOut(250, 22, 27, 34);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.stop('Resultados');
+      this.planta.scene.restart();
+    });
   }
 }

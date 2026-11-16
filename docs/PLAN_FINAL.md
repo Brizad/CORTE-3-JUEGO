@@ -9,7 +9,7 @@ en `docs/decisiones_por_confirmar.md`.
 
 - [x] **Fase C2 · Sensación de juego:** piezas visibles (Entrada, bloque en la CNC, pieza brillante, Piezas terminadas), pedidos como
   tarjetas con barra de tiempo, pantalla de título con integrantes y botones Jugar, Tutorial y Controles.
-- [ ] **Fase D · Pulido con Phaser 4:** glow en la máquina seleccionada, bloom en falla y deadlock, partículas de chispas y humo,
+- [x] **Fase D · Pulido con Phaser 4:** glow en la máquina seleccionada, bloom en falla y deadlock, partículas de chispas y humo,
   temblor de cámara al bloquear o fallar, destello en los logros, transiciones entre escenas, tweens en fichas y radar, cámara con
   arrastre, rueda y pellizco; medición de fps.
 - [ ] **Fase E · Pruebas y conformidad (guía 5.9):** `docs/pruebas.md` con las tablas llenas y capturas; 3 turnos completos a x4.

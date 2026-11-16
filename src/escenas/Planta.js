@@ -17,6 +17,7 @@ import { Estaciones } from '../entidades/Estaciones.js';
 import { Etiquetas } from '../entidades/Etiquetas.js';
 import { VistaRed } from '../entidades/VistaRed.js';
 import { Piezas } from '../entidades/Piezas.js';
+import { Efectos } from '../entidades/Efectos.js';
 import { Logros } from '../sed/logros.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
@@ -45,6 +46,7 @@ export class Planta extends Phaser.Scene {
     }
 
     this.cameras.main.setBackgroundColor(COLORES.panel);
+    this.cameras.main.fadeIn(350, 22, 27, 34); // transición desde el título o los resultados
     this._dibujarSuelo();
     this._dibujarMuros();
     this._crearCelda();
@@ -69,6 +71,7 @@ export class Planta extends Phaser.Scene {
       this.etiquetas.destruir();
       this.vistaRed.destruir();
       this.piezas.destruir();
+      this.efectos.destruir();
       this._bajaTemblor();
       this.logros.detener();
       this.scene.stop('Resultados');
@@ -85,6 +88,7 @@ export class Planta extends Phaser.Scene {
   update(_tiempo, delta) {
     // delta llega en ms; se limita para no dar un salto enorme al volver a la pestaña.
     const dt = Math.min(delta, 100) / 1000;
+    this._vigilarFps(dt);
     this.reloj.avanzar(dt * this.reloj.velocidad);
     this._dibujar();
   }
@@ -149,6 +153,7 @@ export class Planta extends Phaser.Scene {
       this.logrosDelTurno.push(logro.id);
       this.events.emit('logro', logro);
       this.sonidos.logro();
+      this.cameras.main.flash(320, 212, 175, 55); // destello dorado al ganar un logro
     });
     this.logros.vigilar(this.celda);
     this.celda.arrancar(); // programa los pedidos de AGV y el fin del turno en el reloj
@@ -166,12 +171,21 @@ export class Planta extends Phaser.Scene {
     this.etiquetas = new Etiquetas(this, this.celda, () => this.fichas);
     this.vistaRed = new VistaRed(this, this.celda, () => this.fichas);
     this.piezas = new Piezas(this, this.celda, () => this.entidades);
+    this.efectos = new Efectos(this, this.celda, () => this.entidades);
+    this.piezas.efectos = this.efectos;
+    this._lento = 0; // segundos seguidos por debajo de 50 fps
     // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
     this._bajaTemblor = this.celda.alCambiar((e) => {
       if (e.tipo === 'rechazo' && e.motivo === 'supervisor') this.cameras.main.shake(300, 0.004);
+      // Falla del husillo: la cámara tiembla y la pantalla brilla un instante (bloom).
+      if (e.tipo === 'automata' && e.evento === 'falla_husillo') {
+        this.cameras.main.shake(300, 0.006);
+        this.efectos.pulsoBloom();
+      }
       // Interbloqueo: el radar se pone rojo, la cámara tiembla y sale el game over (la simulación ya está detenida).
       if (e.tipo === 'deadlock') {
         this.cameras.main.shake(300, 0.006);
+        this.efectos.pulsoBloom(900);
         // En el tutorial no hay game over: el Tutorial explica el interbloqueo y se abre la vista de la red.
         if (this.partida.tutorial) {
           this.scene.get('HUDMaquina').cerrar?.(); // el panel taparía la vista de la red
@@ -219,6 +233,13 @@ export class Planta extends Phaser.Scene {
       .setScrollFactor(0);
   }
 
+  /** Si el juego baja de 50 fps durante 4 s seguidos, se reducen los efectos (partículas, bloom y glow de piezas). */
+  _vigilarFps(dt) {
+    if (this.efectos.reducido || new URLSearchParams(globalThis.location?.search ?? '').get('auto') === '0') return;
+    this._lento = this.game.loop.actualFps < 50 ? this._lento + dt : 0;
+    if (this._lento > 4) this.efectos.reducir();
+  }
+
   /** Redibuja las entidades y las fichas, y actualiza los textos. */
   _dibujar() {
     const r = this.reloj;
@@ -226,6 +247,8 @@ export class Planta extends Phaser.Scene {
     this.fichas.actualizar();
     this.estaciones.actualizar();
     this.vistaRed.actualizar();
+    const hud = this.scene.get('HUDMaquina');
+    this.efectos.actualizar(hud.abierto ? hud.maquinaId : null); // glow en la máquina seleccionada
     this.piezas.actualizar();
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');

@@ -417,10 +417,19 @@ export class HUDGeneral extends Phaser.Scene {
     const cy = z.y + z.alto / 2;
     const g = this.radarG;
     g.clear();
+    // Al cambiar de color, el círculo "late" con un tween.
+    if (nivel !== this._nivelRadar) {
+      if (this._nivelRadar !== undefined) {
+        this.radarEscala = { k: 1 };
+        this.tweens.add({ targets: this.radarEscala, k: 1.4, duration: 170, yoyo: true, ease: 'Sine.easeOut' });
+      }
+      this._nivelRadar = nivel;
+    }
+    const escala = this.radarEscala?.k ?? 1;
     g.fillStyle(NIVELES[nivel], parpadeo ? 1 : 0.25);
-    g.fillCircle(cx, cy, 16);
+    g.fillCircle(cx, cy, 16 * escala);
     g.lineStyle(2, COLORES.texto, 0.9);
-    g.strokeCircle(cx, cy, 16);
+    g.strokeCircle(cx, cy, 16 * escala);
     this.radarTitulo.setText(`Radar: ${nivel}`);
 
     const ultimos = c.historialMarcados.slice(-5);

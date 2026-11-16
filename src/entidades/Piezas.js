@@ -40,9 +40,8 @@ export class Piezas {
     this.entidades = entidades;
     this.fijo = escena.add.graphics().setDepth(4); // baldosas de las zonas
     this.g = escena.add.graphics().setDepth(PROFUNDIDAD); // bloques y pila
-    this.brillo = escena.add.graphics().setDepth(PROFUNDIDAD + 1); // piezas brillantes (con glow)
-    this.brillo.enableFilters();
-    this.glow = this.brillo.filters.internal.addGlow(COLORES.celda, 4, 0).setPaddingOverride(null);
+    this.brillo = escena.add.graphics().setDepth(PROFUNDIDAD + 1); // piezas brillantes (con glow solo si hay alguna a la vista)
+    this.glow = null;
     this.vuelos = escena.add.graphics().setDepth(PROFUNDIDAD + 2);
     this.llegando = { CNC1: 0, CNC2: 0 }; // bloques que todavía viajan hacia esa CNC
     this.entradaVacia = 0; // bloques de la Entrada que faltan por rellenar
@@ -213,7 +212,16 @@ export class Piezas {
         v.strokeCircle(p.x, p.y - 6, 10);
       }
     }
-    this.glow.outerStrength = 3 + 2 * Math.sin(this.escena.time.now / 300);
+    // El glow existe solo mientras hay piezas brillantes en pantalla (un filtro siempre encendido cuesta fps).
+    const hayBrillo = !this.efectos?.reducido && (n > 0 || ['CNC1', 'CNC2'].some((q) => this.llegando[q] === 0 && this.celda.estado(q) === 'Terminado'));
+    if (hayBrillo && !this.glow) {
+      this.brillo.enableFilters();
+      this.glow = this.brillo.filters.internal.addGlow(COLORES.celda, 4, 0).setPaddingOverride(null);
+    } else if (!hayBrillo && this.glow) {
+      this.brillo.filters.internal.clear();
+      this.glow = null;
+    }
+    if (this.glow) this.glow.outerStrength = 3 + 2 * Math.sin(this.escena.time.now / 300);
   }
 
   destruir() {
