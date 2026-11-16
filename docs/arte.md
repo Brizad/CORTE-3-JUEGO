@@ -233,8 +233,8 @@ Distribución del panel de una CNC, de arriba hacia abajo:
 
 | Zona | Posición | Contenido |
 |---|---|---|
-| Arriba izquierda | x 8–190, y 8–48 | Reloj (s restantes), turno y velocidad. A su derecha, los botones x1, x2 y x4 (x 192–324) |
-| Arriba centro | x 330–630, y 8–48 | Puntaje y piezas / meta (20 px, en blanco; el puntaje negativo en rojo). Junto al radar: botones de pausa e inspector (x 636–728) |
+| Arriba izquierda | x 8–124, y 8–48 | Reloj (s restantes), turno y velocidad. A su derecha, los botones de pantalla completa y ayuda (x 126–214) y x1, x2 y x4 (x 216–348) |
+| Arriba centro | x 354–630, y 8–48 | Puntaje y piezas / meta (20 px, en blanco; el puntaje negativo en rojo). Junto al radar: botones de pausa e inspector (x 636–728) |
 | Arriba derecha | x 770–952, y 8–48 | Radar del Árbol de Cobertura |
 | Abajo izquierda | x 8–420, y 450–532 | Fichas por lugar: p1..p9 (y p10), cada una con su forma y color a 14 px, el contador m/k y el nombre del lugar |
 | Abajo derecha | x 540–952, y 450–532 | Alertas. En el hueco central (x 424–536) van "Despachar AGV1", "Despachar AGV2" y "Controlador de celda" |

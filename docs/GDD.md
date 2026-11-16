@@ -542,7 +542,7 @@ El juego conserva su resolución interna de 960x540 y no cambia el modelo. Cambi
 
 - `#game-container` ocupa `100vw x 100vh`; Phaser usa `Scale.FIT` con `autoCenter: CENTER_BOTH`, así que el juego crece manteniendo 16:9 y
   deja franjas negras si la ventana no es 16:9. Phaser convierte las coordenadas del puntero al espacio interno, por lo que clics y toques caen bien.
-- Pantalla completa: botón ⛶ (arriba a la izquierda, dentro del panel del turno) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
+- Pantalla completa: botón ⛶ (arriba a la izquierda, junto al reloj) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
 - Los textos se crean con `resolution` = max(2, devicePixelRatio) para verse nítidos al agrandar.
 
 ### 18.11 Alta resolución
@@ -570,3 +570,54 @@ Sin cambios al modelo ni a las reglas:
 - **Radar:** muestra en grande el nombre del marcado actual (M0, M3…), el nivel debajo y el mini-grafo de los 3 últimos marcados con nodos más grandes.
 - **Botón ⛶:** pasa al panel del turno (arriba a la izquierda) para no tapar la X del HUD de máquina; el texto de velocidad se acorta a "Vel. x1".
 - Las capturas de comprobación se guardan en `tmp-capturas/` (ignorada por git).
+
+### 18.13 Claridad para quien juega por primera vez
+
+Sin cambios al modelo ni a las reglas. Todo el texto está en español y usa los mismos nombres de estados y eventos del modelo.
+
+- **Una frase por botón y por máquina.** Al pasar el mouse (o al tocar) sale en una línea qué hace: los botones de velocidad, pausa, Insp., Red,
+  pantalla completa y ayuda, la zona de despacho y los botones de cada HUD de máquina ya la tenían o la ganaron. Las 5 máquinas muestran
+  su frase (`DESCRIPCION_MAQUINA` en `src/textos.js`); en táctil la frase dura 2,5 s al tocar la máquina. En el título, cada botón explica
+  qué hace debajo de la fila.
+- **Ayuda (tecla ? y botón "?", arriba a la izquierda junto al ⛶).** Panel con la tabla de controles y la leyenda de colores: verde (en marcha o botón que se puede pulsar),
+  gris (botón que todavía no se puede pulsar), rojo (falla o botón que bloquea el supervisor), naranja (ficha del robot o conflicto entre
+  transiciones), amarillo (espera) y azul (consola o botón activo), más el radar verde, amarillo y rojo. Pausa la simulación mientras está abierta.
+- **Aviso al empezar cada turno** (3 s, sin pausar): "Turno 2: 5 piezas, fallas 20 %, pedidos cada 18 s". Los valores salen de `TURNOS`.
+  El tutorial dice que no tiene límite de tiempo ni fallas.
+- **Alerta del radar amarillo.** Al pasar de verde a amarillo, la zona de alertas dice por qué, a partir del marcado muerto alcanzable en
+  un paso (`explorar`): "Radar amarillo: si despachas AGV2 ahora, la celda se bloquea."
+
+### 18.14 Menú de pausa y guardado local
+
+- **Menú de pausa** (P o el botón de pausa; Esc lo cierra): Continuar, Reiniciar turno (mismo turno y misma semilla; el puntaje de antes del
+  turno se conserva), Ayuda, Silenciar o Activar sonido y Volver al título. Detiene el reloj de simulación mientras está abierto y no hace
+  nada si la partida ya terminó o el Inspector está abierto. El texto "PAUSA" suelto de la planta ya no se dibuja.
+- **Guardado en `localStorage`** (clave `robocell-tycoon-2.5d`, `src/guardado.js`): el mejor puntaje y los logros ganados se guardan al
+  terminar cada turno (no en el tutorial) y se muestran en el título ("Mejor puntaje: 1315 · Logros: 2 de 6"). Todo va dentro de `try/catch`:
+  si el almacenamiento falla o está bloqueado, el juego funciona igual y el título muestra 0.
+
+### 18.15 Celular
+
+- Sin desplazamiento de la página (`overflow: hidden`, `position: fixed`, `overscroll-behavior: none`) y sin zoom del navegador.
+- Horizontal: el juego se ajusta con `Scale.FIT`. Los botones miden 44 px lógicos, que en pantalla son 44 px solo si la ventana mide 960 x 540 o más;
+  en 640 x 360 miden unos 29 px (ver `docs/decisiones_por_confirmar.md`). El pellizco acerca y aleja la planta (GDD 13).
+- Vertical (360 x 640): el juego sería diminuto, así que se muestra el aviso "Gira el teléfono a horizontal para jugar".
+
+### 18.16 Revisión de errores con clics y teclas al azar
+
+Se juega en Edge sin ventana (`scripts/azar-navegador.mjs`) con clics, ruedas y teclas al azar (incluidos abrir y cerrar el HUD, el Inspector,
+la vista de red, la pausa, la ayuda, el game over y los botones de resultados), a x1, x2 y x4, y con un recorrido guiado del tutorial completo
+(los pasos de `src/sed/tutorial.js` hasta el deadlock). Qué se buscó y qué se encontró:
+
+| Hallazgo | Causa | Arreglo y prueba |
+|---|---|---|
+| Excepción "HierarchyRequestError: The new child element contains the parent" al pulsar G varias veces | `scale.toggleFullscreen()` de Phaser crea un contenedor extra cada vez | Pantalla completa con la API del navegador sobre `#game-container` (`src/pantalla.js`); `test/pantalla.test.js` |
+| Excepción sin capturar "TypeError: not granted" | El navegador negó el permiso de pantalla completa y la promesa se rechazó | Igual: la promesa se atiende; misma prueba |
+| El botón "?" (puesto en 144, 52) tapaba el título del Inspector y el cuadro del tutorial | Disposición del HUD sin comprobar | Los botones pasaron a la barra superior y las zonas a `src/disposicion.js`; `test/disposicion.test.js` comprueba que nada se encima, que todo cabe y que los botones miden 44 px |
+| El botón del Controlador medía 40 px de alto | Disposición anterior | 44 px (llega al borde inferior); misma prueba |
+
+Resultado final: sin excepciones ni errores de consola, sin interfaz bloqueada (la simulación avanza salvo en pausa, deadlock o fin de turno),
+los 3 turnos se recorren hasta la pantalla de resultados y el tutorial llega a su último paso. Las pruebas de flujo con clics y teclas reales
+(game over y las dos formas de reintentar, menú de pausa, ayuda, sonido, reiniciar turno, F1 y volver al título) pasan todas.
+Nota sobre el entorno: en Edge sin GPU el dibujado va a 1 a 40 fps y a veces la pestaña queda "oculta" (se detiene `requestAnimationFrame`); el
+script lo evita con banderas de Edge y adelanta el reloj de simulación a mano. Eso no es un error del juego.

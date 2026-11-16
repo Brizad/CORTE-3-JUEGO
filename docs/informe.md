@@ -346,6 +346,26 @@ Medido con `juego.loop.actualFps` (promedio de 8 muestras). Equipo de prueba: Wi
 
 ---
 
+## 2.i) Mejoras tras el playtest (revisión final)
+
+Resultados reales de la última ronda (GDD 18.10 a 18.16). Los scripts están en `scripts/` y los datos en `docs/datos/`.
+
+| Prueba | Cómo se hizo | Resultado |
+|---|---|---|
+| Clics y teclas al azar, 3 turnos a x4 y a x2 | `scripts/azar-navegador.mjs juego` (Edge sin ventana, 120 a 360 s, con el piloto y el reloj adelantado) | Sin excepciones, sin interfaz bloqueada, los 3 turnos llegan a resultados |
+| Tutorial completo | `scripts/azar-navegador.mjs tutorial`: los 11 eventos de los pasos y luego clics al azar | Llega al paso "fin" con la red abierta |
+| Flujos con clics y teclas reales | `scripts/azar-navegador.mjs flujos` | 16 de 16: game over y reintento (con y sin Controlador), menú de pausa, ayuda, sonido, reiniciar turno, F1 y volver al título |
+| Celular | `scripts/movil-navegador.mjs` (emulación móvil con toques) en 360 x 640, 640 x 360, 800 x 360 y 844 x 390 | Sin scroll de la página; aviso de girar en vertical; toque, arrastre y pellizco funcionan; botones de 44 px lógicos = 29 a 32 px en pantalla (decisión n.º 21) |
+| Balance de los 3 turnos | `scripts/balance.mjs` (30 semillas, 5 ritmos de decisión) | Turno 1 ganable sin el Controlador; turno 3 posible (21 de 30 a 1 s por decisión) pero muy difícil (ver `docs/decisiones_por_confirmar.md`) |
+| Textos en español | `scripts/revisar-tildes.mjs` y lectura de las pantallas | Sin palabras sin tilde (queda 1 falso positivo del buscador en una cadena anidada) |
+| Pruebas del núcleo y del juego | `npm test` | 137 pruebas, todas pasan (17 nuevas: guardado, textos, pantalla completa y disposición del HUD) |
+
+Errores reales encontrados y corregidos (cada uno con su prueba): la pantalla completa lanzaba excepciones al pulsar G varias veces o si
+el navegador negaba el permiso (`test/pantalla.test.js`); el botón "?" y el del Controlador no cumplían la disposición del HUD
+(`test/disposicion.test.js`).
+
+---
+
 # Parte 3. Postmortem (sección 5.13 b)
 
 ## 1. ¿Qué funcionó bien en el modelo formal, el diseño, el arte y el código?
@@ -392,3 +412,18 @@ Esto hay que confirmarlo con el playtest de otro equipo (literal h, todavía pen
 - Confirmar los resultados con capturas de JFLAP, Supremica y PIPE2.
 - De la Fase 2 ya anticipamos la **síntesis del supervisor** (controlabilidad y no bloqueo), el **análisis de acotación y de invariantes**
   de la red de Petri y el **árbol de cobertura** como herramienta de verificación de deadlock.
+
+## 6. Mejoras tras el playtest (última ronda antes de entregar)
+
+- **Qué hicimos:** revisamos el juego con clics y teclas al azar, agregamos ayuda (tecla ? y botón), frases al pasar el mouse, aviso de turno de
+  3 s, alerta del radar amarillo con la razón, menú de pausa y guardado del mejor puntaje y los logros, y probamos en tamaños de celular.
+- **Qué aprendimos del modelo:** medir el balance con el piloto automático nos mostró que el turno 3 es casi imposible para una persona
+  (el piloto gana el 70 % con una decisión por segundo y ninguna partida con una cada 2 s). No cambiamos los valores del GDD: lo dejamos
+  anotado con los números para que el equipo decida (meta de 6 piezas o 20 % de fallas).
+- **Qué falló en las pruebas, y por qué no era el juego:** el navegador sin ventana a veces dejaba la pestaña "oculta" y detenía el dibujado, y
+  los eventos de teclado sin código virtual no llegaban a Phaser; eso parecía un bloqueo del juego y no lo era. Aprendimos a revisar
+  `document.visibilityState` antes de culpar al código.
+- **Qué errores sí eran del juego:** la pantalla completa de Phaser lanzaba excepciones (ahora usamos la API del navegador) y un botón nuevo
+  tapaba el título del Inspector (ahora la disposición del HUD tiene una prueba que impide encimes).
+- **Pendiente:** en un teléfono horizontal pequeño los botones miden unos 30 px en pantalla; cumplir 44 px reales exige rediseñar la barra.
+

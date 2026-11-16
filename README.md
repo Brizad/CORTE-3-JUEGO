@@ -28,13 +28,19 @@ npm run preview        # sirve dist/: http://localhost:4173
 npm run pruebas        # conformidad modelo–juego y criterios del GDD
 npm run modelos        # regenera src/sed/modelos/*.json desde modelos/
 npm run empaquetar     # build + entrega/GrupoN_RoboCell.zip (index.html en la raíz)
+node scripts/balance.mjs                 # mide el balance de los 3 turnos con el piloto (docs/datos/balance.json)
+node scripts/azar-navegador.mjs juego 120 4   # clics y teclas al azar en Edge sin ventana (modos: juego, tutorial, flujos, galeria)
+node scripts/movil-navegador.mjs         # tamaños de celular: sin scroll, aviso de girar, toques y pellizco
+node scripts/revisar-tildes.mjs          # busca palabras sin tilde en los textos del juego
 ```
+
+Los scripts del navegador necesitan `npm run dev` abierto en el puerto 5199 (`npx vite --port 5199`) y Microsoft Edge instalado.
 
 La tecla **F** (fuerza una falla del husillo para probar la consola de reparación) solo existe con `npm run dev`.
 
 ## Cómo se juega
 
-1. En el título: **Jugar**, **Tutorial** (Turno 0, paso a paso) o **Controles**.
+1. En el título: **Jugar**, **Tutorial** (Turno 0, paso a paso) o **Controles**. El título muestra tu mejor puntaje y tus logros (se guardan en el navegador).
 2. Haz clic en una máquina para abrir su HUD: grafo del autómata, botones de los eventos y la lista de los últimos eventos.
    Verde = se puede, gris = no se puede ahora (al pasar el mouse dice por qué), rojo = lo inhibe el supervisor (−15 puntos si insistes).
 3. Carga una CNC: manda el brazo (`m`), abre la pinza (`a`), carga (`c`), cierra (`e`; el brazo vuelve solo) y inicia el fresado (`i`).
@@ -42,7 +48,9 @@ La tecla **F** (fuerza una falla del husillo para probar la consola de reparaci�
 4. Despacha los AGV con los botones de la barra. **Nunca despaches los dos a la vez**: cada uno toma un recurso y espera el otro
    (deadlock). El radar pasa a amarillo cuando hay peligro. El **Controlador de celda** (−150) lo evita.
 5. Si una CNC falla, escribe en su consola una palabra del lenguaje `^H(CT?)+R$` (por ejemplo `HCTCR`) y pulsa Enter.
-6. Son 3 turnos de 180 s con metas de 3, 5 y 7 piezas. Hay 6 logros.
+6. Son 3 turnos de 180 s con metas de 3, 5 y 7 piezas. Hay 6 logros. Al empezar cada turno un aviso de 3 s dice la meta y la dificultad,
+   y si el radar se pone amarillo la zona de alertas dice qué despacho evitar. Con **?** se abre la ayuda en cualquier momento.
+7. En el celular, usa el teléfono en horizontal (en vertical aparece un aviso para girarlo). El pellizco acerca y aleja la planta.
 
 ## Controles
 
@@ -50,13 +58,15 @@ La tecla **F** (fuerza una falla del husillo para probar la consola de reparaci�
 |---|---|---|
 | Abrir el HUD de una máquina | Clic en la máquina | Toque en la máquina |
 | Disparar un evento o una transición | Clic en su botón | Toque en su botón |
-| Pausa | **P** | Botón de pausa |
+| Pausa y menú (Continuar, Reiniciar turno, Ayuda, Sonido, Título) | **P** | Botón de pausa |
+| Ayuda: controles y leyenda de colores | **?** | Botón "?" |
 | Inspector (ecuación de estado y árbol de cobertura) | **I** | Botón "Insp." |
 | Vista de la red de Petri | **R** | Botón "Red" |
 | Velocidad x1, x2 y x4 | **1**, **2**, **4** | Botones x1, x2, x4 |
 | Consola de reparación | **H**, **C**, **T**, **R**, Retroceso, Enter | Botones de comandos |
 | Cerrar un panel | **Esc** | Botón X |
 | Mover y acercar la cámara | Arrastrar y rueda | Arrastrar y pellizco |
+| Pantalla completa | **G** | Botón ⛶ |
 | Sonidos, fps y demostración | **M**, **F1**, **D** | — |
 
 ## Estructura
@@ -75,11 +85,14 @@ docs/
 src/sed/                          Núcleo formal SIN Phaser ni DOM: Automata, composición y supervisor, RedPetri,
                                   árbol de cobertura, Celda (sincroniza todo), consola de reparación, logros, tutorial
 src/sed/modelos/                  JSON que salen de modelos/ (los importa el navegador)
-src/entidades/, src/escenas/      Parte visible con Phaser: máquinas, fichas, vista de red, HUD, inspector, resultados
+src/entidades/, src/escenas/      Parte visible con Phaser: máquinas, fichas, vista de red, HUD, inspector, resultados, menú de pausa y ayuda
+src/textos.js, src/guardado.js    Textos de ayuda (controles, leyenda, aviso de turno) y guardado local (sin Phaser)
+src/disposicion.js, src/pantalla.js   Zonas y botones del HUD (con prueba de que no se encimen) y pantalla completa
 src/arte/, src/iso/               Íconos, fichas y proyección isométrica 2:1
 src/audio/                        Sonidos con Web Audio
 test/                             Pruebas del núcleo (`npm test`)
-scripts/                          Exportar modelos, pruebas de conformidad, empaquetado
+scripts/                          Exportar modelos, pruebas de conformidad, balance, pruebas en el navegador y empaquetado
+tmp-capturas/                     Capturas temporales de las pruebas (ignorada por git)
 PROMPTS.md                        Prompts usados, en orden, y cuáles hubo que corregir
 ```
 

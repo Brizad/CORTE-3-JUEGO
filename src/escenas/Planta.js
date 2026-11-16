@@ -20,6 +20,9 @@ import { Piezas } from '../entidades/Piezas.js';
 import { Efectos } from '../entidades/Efectos.js';
 import { Logros } from '../sed/logros.js';
 import { camaraLogica } from './camara.js';
+import { alternarPantallaCompleta } from '../pantalla.js';
+import { guardarResultado } from '../guardado.js';
+import { DESCRIPCION_MAQUINA } from '../textos.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
 const ZOOM_MIN = 0.8;
@@ -80,6 +83,9 @@ export class Planta extends Phaser.Scene {
       this.logros.detener();
       this.scene.stop('Resultados');
       this.scene.stop('GameOver');
+      this.scene.stop('MenuPausa');
+      this.scene.stop('Ayuda');
+      this.events.off('ayuda');
       this.entrada.destruir();
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
@@ -209,6 +215,7 @@ export class Planta extends Phaser.Scene {
         this.scene.get('Inspector').cerrar?.();
         this.scene.stop('GameOver');
         this.partida.terminarTurno(e.resumen);
+        if (!this.partida.tutorial) guardarResultado({ puntaje: e.resumen.puntaje, logros: [...this.partida.logros.ganados] }); // mejor puntaje y logros
         this.scene.launch('Resultados');
       }
       this._sonar(e);
@@ -251,7 +258,7 @@ export class Planta extends Phaser.Scene {
     this.piezas.actualizar();
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
-    this.textoPausa.setVisible(r.enPausa);
+    this.textoPausa.setVisible(false); // la pausa la anuncian el menú de pausa y el HUD ("· pausa")
     const fps = this.scene.get('HUDGeneral')?.txtFps;
     if (fps?.visible) fps.setText(`FPS: ${Math.round(this.game.loop.actualFps)}   t simulación: ${r.ahora.toFixed(1)} s`);
   }
@@ -273,11 +280,23 @@ export class Planta extends Phaser.Scene {
     const hud = () => this.scene.get('HUDMaquina');
     const inspector = () => this.scene.get('Inspector');
 
+    // P y el botón de pausa abren o cierran el menú de pausa (que detiene el reloj mientras está abierto).
     e.on(ACCIONES.PAUSA, () => {
-      // El Inspector pausa por su cuenta y tras un deadlock la simulación queda detenida.
+      // El Inspector pausa por su cuenta y tras un deadlock o el fin del turno la simulación queda detenida.
       if (this.celda.deadlock || this.celda.terminado || this.scene.get('Inspector').abierto) return;
-      this.reloj.alternarPausa();
+      const menu = this.scene.get('MenuPausa');
+      if (menu.scene.isActive()) menu.cerrar();
+      else if (!this.scene.get('Ayuda').scene.isActive()) this.scene.launch('MenuPausa');
     });
+    // ? abre o cierra la ayuda (con la simulación en pausa mientras está abierta).
+    const alternarAyuda = () => {
+      const ayuda = this.scene.get('Ayuda');
+      if (ayuda.scene.isActive()) ayuda.cerrar();
+      else if (!this.scene.get('Inspector').abierto && !this.celda.deadlock && !this.celda.terminado) this.scene.launch('Ayuda');
+      else if (this.celda.deadlock || this.celda.terminado) this.scene.launch('Ayuda'); // la simulación ya está detenida
+    };
+    e.on(ACCIONES.AYUDA, alternarAyuda);
+    this.events.on('ayuda', alternarAyuda);
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
     e.on(ACCIONES.FPS, () => {
       const fps = this.scene.get('HUDGeneral')?.txtFps;
@@ -294,7 +313,7 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.INSPECTOR, () => {
       if (!this.celda.terminado) inspector().alternar?.();
     });
-    e.on(ACCIONES.PANTALLA_COMPLETA, () => this.scale.toggleFullscreen());
+    e.on(ACCIONES.PANTALLA_COMPLETA, () => alternarPantallaCompleta());
     e.on(ACCIONES.SILENCIO, () => this.sonidos.alternarSilencio());
     e.on(ACCIONES.RED_PETRI, () => {
       // Con la consola de reparación abierta, R es el comando de reset: no abre la vista.
@@ -303,6 +322,11 @@ export class Planta extends Phaser.Scene {
       this.vistaRed.alternar();
     });
     e.on(ACCIONES.CERRAR, () => {
+      // Esc cierra primero la ayuda, luego el menú de pausa y por último los paneles.
+      const ayuda = this.scene.get('Ayuda');
+      const menu = this.scene.get('MenuPausa');
+      if (ayuda.scene.isActive()) return ayuda.cerrar();
+      if (menu.scene.isActive()) return menu.cerrar();
       hud().cerrar?.();
       inspector().cerrar?.();
     });
@@ -316,6 +340,8 @@ export class Planta extends Phaser.Scene {
       const mundo = this.cameras.main.getWorldPoint(x * RES, y * RES);
       let sobreAlguna = false;
       const bajo = this._entidadEn(mundo.x, mundo.y);
+      const hud0 = this.scene.get('HUDGeneral');
+      if (hud0) hud0.sobreMaquina = bajo && !this._bajoPanel(x, y) ? DESCRIPCION_MAQUINA[bajo.id] ?? null : null;
       this.etiquetas.mover(mundo.x, mundo.y, this._bajoPanel(x, y) || !!bajo);
       for (const m of this.entidades) {
         const dentro = !this._bajoPanel(x, y) && m === bajo;
@@ -334,6 +360,7 @@ export class Planta extends Phaser.Scene {
       const mundo = this.cameras.main.getWorldPoint(x * RES, y * RES);
       const m = this._entidadEn(mundo.x, mundo.y);
       if (!m) this.etiquetas.tocar(mundo.x, mundo.y); // toque sobre un lugar: muestra su etiqueta unos segundos
+      else this.scene.get('HUDGeneral')?.explicar?.(DESCRIPCION_MAQUINA[m.id]); // toque sobre una máquina: su frase unos segundos
       if (m) hud().abrir?.(m.id, m.nombre);
       else hud().cerrar?.();
     });
@@ -374,6 +401,6 @@ export class Planta extends Phaser.Scene {
 
   /** Verdadero si el punto cae sobre un panel superpuesto abierto (el clic no llega a la planta). */
   _bajoPanel(x, y) {
-    return ['HUDMaquina', 'Inspector', 'HUDGeneral', 'Tutorial', 'GameOver', 'Resultados'].some((c) => this.scene.get(c)?.contiene?.(x, y));
+    return ['Ayuda', 'MenuPausa', 'HUDMaquina', 'Inspector', 'HUDGeneral', 'Tutorial', 'GameOver', 'Resultados'].some((c) => this.scene.get(c)?.contiene?.(x, y));
   }
 }

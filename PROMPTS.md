@@ -491,7 +491,7 @@ Fecha: 2026-11-16 01:26
 Continúa con el prompt de mejoras de jugabilidad desde donde quedaste (GDD, textos, grafo, alertas, vista de red con R y tutorial). Trabaja sin detenerte a preguntar y al final haz el commit "Mejoras de jugabilidad" y git push.
 ```
 
-## Prompt 22 · En curso al escribir esto
+## Prompt 22 · Funcionó
 
 *Cierre del proyecto (fases C2, D, E y F: sensación de juego, pulido, pruebas y entrega).*
 
@@ -532,3 +532,63 @@ FASE F · Entrega (secciones 5.10 y 5.12)
 AL FINAL
 Resumen corto: fases completadas, número de pruebas, tamaño del ZIP, lista de capturas y el contenido de docs/decisiones_por_confirmar.md.
 ```
+
+## Prompt 23 · Funcionó
+
+*Pantalla completa y escalado (el juego se veía pequeño).*
+
+Fecha: 2026-11-16
+
+```text
+El juego se ve muy pequeño en pantalla. Haz que ocupe toda la ventana del navegador manteniendo la proporción 16:9, sin cambiar la resolución interna del juego (960x540) ni el modelo:
+1. En index.html cambia solo el CSS de #game-container para que use width: 100vw y height: 100vh (sin max de 960x540), y conserva todo lo demás de la sección 5.5.1 de la guía.
+2. En la configuración de Phaser usa Scale.FIT con autoCenter CENTER_BOTH.
+3. Agrega un botón de pantalla completa (ícono ⛶) en la barra superior y la tecla F11 o F para entrar y salir de pantalla completa. Si la tecla F ya se usa para forzar fallas en modo desarrollo, usa la tecla G.
+4. Revisa que los textos se vean nítidos al agrandar y que los clics y toques sigan cayendo en el lugar correcto después de escalar.
+5. Pruébalo en 1366x768, 1920x1080 y en celular horizontal. Anota el cambio en la sección 18 del GDD.
+npm test y npm run build deben pasar. Commit "Pantalla completa y escalado" y git push.
+```
+
+## Prompt 24 · Funcionó
+
+*Alta resolución: el canvas se dibujaba a 960x540 y el navegador lo estiraba.*
+
+Fecha: 2026-11-16
+
+```text
+La calidad se ve borrosa al agrandar la pantalla porque el canvas se dibuja a 960x540 y el navegador lo estira. Arréglalo sin cambiar el modelo, las reglas ni las coordenadas lógicas del juego: canvas de 1920x1080 con zoom 2 en las cámaras de todas las escenas, antialias, líneas de Graphics con el mismo grosor visual, fps y tiempo de simulación solo con F1, capturas a 1920x1080 y nota en la sección 18 del GDD y en arte.md. Si baja de 50 fps, reducir a 1600x900. Commit "Alta resolucion" y git push.
+```
+
+Resultado: se hizo con `RES = 2` y `camaraLogica(this)` en cada escena. El usuario midió 53 fps con efectos en su equipo, así que la resolución se quedó como está.
+
+## Prompt 25 · Funcionó (con un ajuste)
+
+*Detalles visuales encontrados jugando a 1920x1080.*
+
+Fecha: 2026-11-16
+
+```text
+Revisé el juego en mi pantalla (1920x1080) y quedan estos detalles visuales; arréglalos sin cambiar el modelo ni las reglas: 1. el texto de F1 queda debajo del panel del turno; 2. "Piezas terminadas" y su contador tapan la Mesa; 3. el indicador de pedidos choca con D1 y D2; 4. las fichas vacías (0/1) se ven como figuras oscuras encimadas: círculo punteado tenue con "0/1" pequeño; 5. la zona de alertas vacía es un recuadro grande: "Sin alertas"; 6. el mini-grafo del radar es muy pequeño. Capturas en tmp-capturas/ (en .gitignore). Commit "Ajustes visuales" y git push.
+```
+
+Se corrigió después: el contador "0" de Piezas terminadas seguía flotando lejos de su zona y se pegó a ella.
+
+## Prompt 26 · Funcionó
+
+*Última ronda de mejoras antes de entregar (revisión de errores, claridad, balance, pausa y guardado, celular, textos).*
+
+Fecha: 2026-11-16
+
+```text
+Última ronda de mejoras de RoboCell Tycoon 2.5D antes de entregar. Trabaja de forma autónoma sin preguntar. Las mismas reglas de siempre: no cambies modelos/, docs/modelo/ ni los valores del GDD; todo cambio de estado pasa por δ o por el disparo de una transición; src/sed/ sin Phaser; Phaser por CDN. Cada mejora se anota primero en la sección 18 del GDD. Si algo no está definido, elige lo más simple, anótalo en docs/decisiones_por_confirmar.md y sigue. Guarda las capturas temporales dentro del proyecto en tmp-capturas/.
+1. Revisión de errores: juega en el navegador sin ventana el tutorial completo y los 3 turnos a x1 y a x4, con clics y teclas al azar (incluido abrir y cerrar HUD, inspector, vista de red, pausa y reintento después del deadlock). Busca bloqueos de la interfaz, errores en consola, botones que no hacen nada y textos cortados o encimados. Corrige todo y agrega una prueba por cada error real.
+2. Claridad: frase corta al pasar el mouse en cada botón y máquina; tecla ? y botón "?" con ayuda de controles y leyenda de colores; aviso de 3 s al inicio de cada turno con la meta y la dificultad; alerta corta cuando el radar pasa a amarillo diciendo por qué.
+3. Balance: el turno 1 se debe poder ganar sin el Controlador y el turno 3 debe ser difícil pero posible. NO cambies los valores del GDD: anota los números medidos en decisiones_por_confirmar.md.
+4. Menú de pausa (Continuar, Reiniciar turno, Ayuda, Silenciar sonido, Volver al título) y guardado del mejor puntaje y los logros en localStorage con try/catch, visibles en el título.
+5. Celular: todo cabe y se puede tocar en 360x640 y en horizontal, botones de al menos 44 px, pellizco con zoom y sin scroll de la página.
+6. Textos en español, sin faltas ni tildes perdidas, con los mismos nombres de estados y eventos del modelo.
+7. Al final: npm test y npm run build pasan, npm run preview sin errores ni 404, regenerar el ZIP en entrega/, actualizar docs/pruebas.md, docs/informe.md, README.md y PROMPTS.md. Commit "Mejoras finales" y git push.
+```
+
+Resultado: ver `docs/informe.md` (postmortem, "mejoras tras el playtest") y `docs/decisiones_por_confirmar.md`.
+

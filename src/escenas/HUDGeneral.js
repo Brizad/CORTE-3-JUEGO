@@ -1,6 +1,6 @@
 // HUD de partida (escena superpuesta, no la afecta el zoom de la planta). Zonas de docs/GDD.md, sección 14, y docs/arte.md, sección 8:
 //   Arriba izquierda  x 8–200,  y 8–48     Reloj del turno (s restantes), número de turno y velocidad actual
-//   Arriba centro     x 330–630, y 8–48    Puntaje y piezas / meta
+//   Arriba centro     x 354–630, y 8–48    Puntaje y piezas / meta
 //   Arriba derecha    x 760–952, y 8–48    Radar del Árbol de Cobertura (calculado por la Celda con explorar(red, M, 1))
 //   Abajo izquierda   x 8–420,  y 450–532  Fichas por lugar (p1..p9, y p10 con el Controlador)
 //   Abajo derecha     x 540–952, y 450–532 Alertas (las dibuja Alertas.js en la planta)
@@ -14,14 +14,9 @@ import { dibujarFicha } from '../arte/tokens.js';
 import { ACCIONES } from '../entrada/gestorEntrada.js';
 import { Alertas } from '../entidades/Alertas.js';
 import { camaraLogica } from './camara.js';
+import { avisoTurno } from '../textos.js';
+import { ZONAS, BOTONES, BOTON_TACTIL } from '../disposicion.js';
 
-const ZONAS = {
-  reloj: { x: 8, y: 8, ancho: 182, alto: 40 },
-  puntaje: { x: 330, y: 8, ancho: 300, alto: 40 },
-  radar: { x: 770, y: 8, ancho: 182, alto: 40 },
-  fichas: { x: 8, y: 450, ancho: 412, alto: 82 },
-};
-const BOTON_TACTIL = 44; // mínimo táctil
 const NIVELES = { verde: COLORES.operacion, amarillo: COLORES.espera, rojo: COLORES.fallo };
 const ESTILO = (extra = {}) => ({ fontFamily: 'Arial', fontSize: '11px', color: TEXTO_HEX.texto, ...extra });
 
@@ -43,7 +38,7 @@ export class HUDGeneral extends Phaser.Scene {
     this._relojTurno();
     // Las alertas viven en esta escena (la de más arriba): ningún panel las tapa (docs/GDD.md, sección 18.3).
     this.alertas = new Alertas(this, this.celda);
-    this._zona({ x: 540, y: 450, ancho: 412, alto: 82 });
+    this._zona(ZONAS.alertas);
     this._puntaje();
     this._tarjetasPedidos();
     this._radar();
@@ -52,6 +47,7 @@ export class HUDGeneral extends Phaser.Scene {
     this._columnaDespacho();
     this._tooltip();
     this._avisoLogro();
+    this._avisoTurno();
     this._logros = [];
     this._bajaLogro = (logro) => this._logros.push(logro);
     this.planta.events.on('logro', this._bajaLogro);
@@ -72,7 +68,7 @@ export class HUDGeneral extends Phaser.Scene {
 
   _fondo() {
     const g = this.add.graphics();
-    for (const z of Object.values(ZONAS)) {
+    for (const z of [ZONAS.reloj, ZONAS.puntaje, ZONAS.radar, ZONAS.fichas]) {
       g.fillStyle(COLORES.panel, 0.85);
       g.fillRect(z.x, z.y, z.ancho, z.alto);
       g.lineStyle(1, COLORES.banda, 1);
@@ -90,7 +86,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.txtVelocidad = this.add.text(z.x + 8, z.y + 28, '', ESTILO({ fontSize: '9px', color: '#8794a3' }));
     // F1: fps y tiempo de simulación, debajo del panel del turno y solo mientras está activo.
     this.txtFps = this.add
-      .text(8, 54, '', ESTILO({ fontSize: '11px', color: TEXTO_HEX.espera, backgroundColor: 'rgba(22,27,34,0.8)', padding: { x: 5, y: 3 } }))
+      .text(8, 104, '', ESTILO({ fontSize: '11px', color: TEXTO_HEX.espera, backgroundColor: 'rgba(22,27,34,0.8)', padding: { x: 5, y: 3 } }))
       .setDepth(50)
       .setVisible(false);
   }
@@ -99,10 +95,10 @@ export class HUDGeneral extends Phaser.Scene {
 
   _puntaje() {
     const z = ZONAS.puntaje;
-    this.add.text(z.x + 75, z.y + 3, 'Puntaje', ESTILO({ fontSize: '9px', color: '#8794a3' })).setOrigin(0.5, 0);
-    this.add.text(z.x + 225, z.y + 3, 'Piezas / meta', ESTILO({ fontSize: '9px', color: '#8794a3' })).setOrigin(0.5, 0);
-    this.txtPuntaje = this.add.text(z.x + 75, z.y + 14, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' })).setOrigin(0.5, 0);
-    this.txtPiezas = this.add.text(z.x + 225, z.y + 14, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' })).setOrigin(0.5, 0);
+    this.add.text(z.x + 63, z.y + 3, 'Puntaje', ESTILO({ fontSize: '9px', color: '#8794a3' })).setOrigin(0.5, 0);
+    this.add.text(z.x + 205, z.y + 3, 'Piezas / meta', ESTILO({ fontSize: '9px', color: '#8794a3' })).setOrigin(0.5, 0);
+    this.txtPuntaje = this.add.text(z.x + 63, z.y + 14, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' })).setOrigin(0.5, 0);
+    this.txtPiezas = this.add.text(z.x + 205, z.y + 14, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' })).setOrigin(0.5, 0);
   }
 
   // ---- Arriba al centro, debajo del puntaje: pedidos como tarjetas con barra de tiempo (docs/GDD.md, sección 18.7) ----
@@ -118,7 +114,7 @@ export class HUDGeneral extends Phaser.Scene {
       };
     });
     this.masPedidos = this.add.text(636, 62, '', ESTILO({ fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.espera }));
-    this._zona({ x: 330, y: 52, ancho: 300, alto: 34 });
+    this._zona(ZONAS.tarjetas);
   }
 
   _dibujarTarjetas() {
@@ -237,13 +233,14 @@ export class HUDGeneral extends Phaser.Scene {
     const emitir = (accion, datos) => () => this.planta.entrada.emisor.emit(accion, datos);
     this.botonesVelocidad = {};
     VELOCIDADES.forEach((v, i) => {
-      this.botonesVelocidad[v] = this._boton(192 + i * BOTON_TACTIL, 4, BOTON_TACTIL, BOTON_TACTIL, `x${v}`, emitir(ACCIONES.VELOCIDAD, { valor: v }), `Velocidad x${v}`);
+      this.botonesVelocidad[v] = this._boton(BOTONES[`vel${v}`].x, BOTONES[`vel${v}`].y, BOTON_TACTIL, BOTON_TACTIL, `x${v}`, emitir(ACCIONES.VELOCIDAD, { valor: v }), `Velocidad de la simulación x${v} (tecla ${v})`);
     });
-    this.botonPausa = this._boton(634, 4, BOTON_TACTIL, BOTON_TACTIL, '', emitir(ACCIONES.PAUSA), () => (this.celda.reloj.enPausa ? 'Reanudar' : 'Pausa'));
+    this.botonPausa = this._boton(BOTONES.pausa.x, BOTONES.pausa.y, BOTON_TACTIL, BOTON_TACTIL, '', emitir(ACCIONES.PAUSA), 'Pausa y menú (P): continuar, reiniciar el turno, ayuda, sonido y título');
     this.iconoPausa = this.add.graphics();
-    this.botonInspector = this._boton(678, 4, BOTON_TACTIL, BOTON_TACTIL, 'Insp.', emitir(ACCIONES.INSPECTOR), 'Inspector (pausa la simulación)', { fuente: '10px' });
-    this.botonRed = this._boton(722, 4, BOTON_TACTIL, BOTON_TACTIL, 'Red', emitir(ACCIONES.RED_PETRI), 'Vista de la red de Petri (R)', { fuente: '11px' });
-    this.botonPantalla = this._boton(144, 4, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (G)', { fuente: '22px' });
+    this.botonInspector = this._boton(BOTONES.inspector.x, BOTONES.inspector.y, BOTON_TACTIL, BOTON_TACTIL, 'Insp.', emitir(ACCIONES.INSPECTOR), 'Inspector (I): ecuación de estado y árbol de cobertura; pausa la simulación', { fuente: '10px' });
+    this.botonRed = this._boton(BOTONES.red.x, BOTONES.red.y, BOTON_TACTIL, BOTON_TACTIL, 'Red', emitir(ACCIONES.RED_PETRI), 'Red de Petri (R): muestra las fichas y las transiciones sobre la planta', { fuente: '11px' });
+    this.botonAyuda = this._boton(BOTONES.ayuda.x, BOTONES.ayuda.y, BOTON_TACTIL, BOTON_TACTIL, '?', emitir(ACCIONES.AYUDA), 'Ayuda: controles y colores (?)', { fuente: '22px' });
+    this.botonPantalla = this._boton(BOTONES.pantalla.x, BOTONES.pantalla.y, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (G)', { fuente: '22px' });
   }
 
   _dibujarTactiles() {
@@ -273,13 +270,13 @@ export class HUDGeneral extends Phaser.Scene {
 
   _columnaDespacho() {
     this.despacho = {};
-    const crear = (clave, x, y, ancho, alto, etiqueta, accion) => {
+    const crear = (clave, { x, y, ancho, alto }, etiqueta, accion) => {
       const b = this._boton(x, y, ancho, alto, etiqueta, accion, () => this._explicar(clave), { fuente: '9px' });
       this.despacho[clave] = { ...b, clave: '' };
     };
-    crear('AGV1', 424, 450, 54, 44, 'Despachar\nAGV1', () => this._despachar('AGV1'));
-    crear('AGV2', 482, 450, 54, 44, 'Despachar\nAGV2', () => this._despachar('AGV2'));
-    crear('CONTROLADOR', 424, 498, 112, 40, 'Controlador\nde celda (−150)', () => this._comprarControlador());
+    crear('AGV1', BOTONES.despachoAGV1, 'Despachar\nAGV1', () => this._despachar('AGV1'));
+    crear('AGV2', BOTONES.despachoAGV2, 'Despachar\nAGV2', () => this._despachar('AGV2'));
+    crear('CONTROLADOR', BOTONES.controlador, 'Controlador\nde celda (−150)', () => this._comprarControlador());
   }
 
   _explicar(clave) {
@@ -324,6 +321,11 @@ export class HUDGeneral extends Phaser.Scene {
 
   // ---- Explicación al pasar el mouse (no hay textos fijos) ----
 
+  /** Muestra una frase corta unos segundos (toque sobre una máquina). */
+  explicar(texto) {
+    if (texto) this._sobre = { texto, hasta: this.time.now + 2500 };
+  }
+
   _tooltip() {
     this.tip = this.add
       .text(8, 440, '', {
@@ -332,6 +334,17 @@ export class HUDGeneral extends Phaser.Scene {
       .setOrigin(0, 1)
       .setDepth(50)
       .setVisible(false);
+  }
+
+  // ---- Aviso de 3 s al empezar el turno: meta y dificultad ----
+
+  _avisoTurno() {
+    const texto = avisoTurno(this.celda.turno, this.partida.turno, this.partida.tutorial);
+    const t = this.add
+      .text(480, 128, texto, { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: TEXTO_HEX.texto, backgroundColor: 'rgba(22,27,34,0.92)', padding: { x: 14, y: 8 }, align: 'center', wordWrap: { width: 700 } })
+      .setOrigin(0.5)
+      .setDepth(70);
+    this.tweens.add({ targets: t, alpha: 0, delay: 2600, duration: 400, onComplete: () => t.destroy() }); // 3 s en total
   }
 
   // ---- Aviso animado de logro (tween) ----
@@ -411,7 +424,8 @@ export class HUDGeneral extends Phaser.Scene {
     this._dibujarRadar();
 
     // Explicación solo mientras el puntero está sobre algo (o unos segundos tras un rechazo).
-    const sobre = this._sobre && (!this._sobre.hasta || this._sobre.hasta > this.time.now) ? this._sobre.texto : '';
+    let sobre = this._sobre && (!this._sobre.hasta || this._sobre.hasta > this.time.now) ? this._sobre.texto : '';
+    if (!sobre && this.sobreMaquina) sobre = this.sobreMaquina; // frase de la máquina bajo el puntero
     this.tip.setText(sobre).setVisible(sobre !== '');
     if (!this._mostrando && this._logros.length > 0) this._siguienteLogro();
   }

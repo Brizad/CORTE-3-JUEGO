@@ -2,6 +2,7 @@
 // Muestra los últimos avisos del núcleo (falla del husillo, puntos de la reparación, ayuda...).
 
 import { COLORES, TEXTO_HEX } from '../config.js';
+import { razonRadarAmarillo } from '../textos.js';
 
 const ZONA = { x: 540, y: 450, ancho: 412, alto: 82 };
 const LINEAS = 4;
@@ -50,6 +51,8 @@ export class Alertas {
       this.avisar('Controlador de celda activo', 'espera'); // no resta puntos
     } else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') {
       this.avisar(`Bloqueado: ${this.celda.razonSupervisor}`, 'fallo');
+    } else if (e.tipo === 'radar' && e.nivel === 'amarillo' && e.anterior !== 'amarillo') {
+      this.avisar(razonRadarAmarillo(this.celda.radar), 'espera'); // por qué el radar pasó a amarillo
     } else if (e.tipo === 'deadlock') {
       this.avisar('DEADLOCK: ninguna transición está habilitada.', 'fallo');
     }

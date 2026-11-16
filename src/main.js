@@ -10,6 +10,8 @@ import { HUDGeneral } from './escenas/HUDGeneral.js';
 import { GameOver } from './escenas/GameOver.js';
 import { Tutorial } from './escenas/Tutorial.js';
 import { Resultados } from './escenas/Resultados.js';
+import { MenuPausa } from './escenas/MenuPausa.js';
+import { Ayuda } from './escenas/Ayuda.js';
 
 // Textos nítidos al agrandar: resolución del texto = densidad de pantalla (mínimo 2).
 const RESOLUCION_TEXTO = RES;
@@ -30,7 +32,7 @@ const configuracion = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   // El orden importa: las escenas de la derecha se dibujan encima (HUD e Inspector sobre la planta).
-  scene: [Arranque, Titulo, Planta, HUDMaquina, Inspector, HUDGeneral, Tutorial, GameOver, Resultados],
+  scene: [Arranque, Titulo, Planta, HUDMaquina, Inspector, HUDGeneral, Tutorial, GameOver, Resultados, MenuPausa, Ayuda],
 };
 
 // Se deja accesible para las pruebas en el navegador (consola y scripts de verificación).

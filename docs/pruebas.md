@@ -201,10 +201,10 @@ El proyecto no tiene eventos no observables (Σuo = ∅), por eso no hay autóma
 | Escribir en la consola de reparación | Teclado (H, C, T, R, Retroceso, Enter) | sí | Botones de comandos (se tocó H, C, R y Enviar: palabra "HCR", CNC Libre) | sí |
 | Pausa e inspector | P, I | sí | Botones en pantalla | sí |
 | Velocidad de simulación | 1, 2, 4 (se leyó 2 y 4) | sí | Botón de velocidad (x4: 4) | sí |
-| Mover la cámara | Arrastre | sí | Arrastre con un dedo | **sin verificar** (ver nota) |
-| Acercar la cámara | Rueda | sí | Pellizco con dos dedos | **sin verificar** (ver nota) |
+| Mover la cámara | Arrastre | sí | Arrastre con un dedo | sí (emulación móvil, `scripts/movil-navegador.mjs`) |
+| Acercar la cámara | Rueda | sí | Pellizco con dos dedos | sí (emulación móvil: zoom 1,00 → 2,00) |
 
-Nota: en el navegador sin ventana, los eventos de toque de *movimiento* (arrastre y pellizco) no llegan a Phaser con la emulación disponible (los toques sueltos sí). El arrastre y el pellizco están implementados (dos punteros, ver `src/entrada/gestorEntrada.js`), pero hay que probarlos en un teléfono o una tableta antes de entregar.
+Nota (actualizada): con la emulación móvil de Edge (`Emulation.setTouchEmulationEnabled` y `Input.dispatchTouchEvent`) el arrastre y el pellizco sí llegan a Phaser y se verificaron en la última ronda; la versión anterior de esta nota decía que no (se usaba otra emulación). Sigue pendiente probar en un teléfono real. Texto anterior: El arrastre y el pellizco están implementados (dos punteros, ver `src/entrada/gestorEntrada.js`), pero hay que probarlos en un teléfono o una tableta antes de entregar.
 
 ---
 
@@ -229,4 +229,21 @@ Medido con `juego.loop.actualFps` (promedio de 8 muestras). Equipo de prueba: Wi
 | Observación del otro equipo | Cambio realizado | Sección a la que se regresó |
 |---|---|---|
 | (sin datos todavía) | | |
+
+---
+
+## i) Mejoras tras el playtest (revisión final)
+
+Ver `docs/informe.md`, sección 2.i, y `docs/GDD.md`, secciones 18.10 a 18.16. Resumen de lo medido:
+
+| Prueba | Script | Resultado |
+|---|---|---|
+| Clics, ruedas y teclas al azar, 3 turnos a x4 y a x2 | `scripts/azar-navegador.mjs juego` | 0 excepciones, 0 bloqueos de la interfaz, los 3 turnos llegan a resultados |
+| Tutorial completo | `scripts/azar-navegador.mjs tutorial` | Llega al paso "fin" con la vista de red abierta |
+| Flujos de pausa, ayuda, game over y título | `scripts/azar-navegador.mjs flujos` | 16 de 16 |
+| Celular (360 x 640, 640 x 360, 800 x 360, 844 x 390) | `scripts/movil-navegador.mjs` | Sin scroll, aviso de girar en vertical, toque, arrastre y pellizco bien; botones de 29 a 32 px en pantalla |
+| Balance | `scripts/balance.mjs` | Tabla en `docs/decisiones_por_confirmar.md` |
+| Pruebas unitarias | `npm test` | 137 de 137 |
+
+Las capturas de esta ronda están en `docs/capturas/` con el prefijo `final_`.
 
