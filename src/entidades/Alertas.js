@@ -17,10 +17,6 @@ export class Alertas {
     this.celda = celda;
     this.avisos = []; // {texto, color, hasta}
     this.fondo = escena.add.graphics().setDepth(90).setScrollFactor(0);
-    this.fondo.fillStyle(COLORES.panel, 0.75);
-    this.fondo.fillRect(ZONA.x, ZONA.y, ZONA.ancho, ZONA.alto);
-    this.fondo.lineStyle(1, COLORES.banda, 1);
-    this.fondo.strokeRect(ZONA.x, ZONA.y, ZONA.ancho, ZONA.alto);
     this.textos = [];
     for (let i = 0; i < LINEAS; i++) {
       this.textos.push(
@@ -30,6 +26,11 @@ export class Alertas {
           .setScrollFactor(0),
       );
     }
+    this.vacio = escena.add
+      .text(ZONA.x + 8, ZONA.y + ZONA.alto - 20, 'Sin alertas', { fontFamily: 'Arial', fontSize: '11px', color: '#566170' })
+      .setDepth(91)
+      .setScrollFactor(0);
+    this._lineas = -1;
     this._baja = celda.alCambiar((e) => this._alEvento(e));
   }
 
@@ -58,6 +59,7 @@ export class Alertas {
   actualizar() {
     const ahora = this.escena.time.now;
     this.avisos = this.avisos.filter((a) => a.hasta > ahora);
+    this._ajustarFondo(this.avisos.length);
     this.textos.forEach((t, i) => {
       const a = this.avisos[i];
       t.setText(a ? a.texto : '');
@@ -65,9 +67,26 @@ export class Alertas {
     });
   }
 
+  /** Sin avisos la zona es un recuadro pequeño con "Sin alertas"; con avisos crece lo justo hacia arriba. */
+  _ajustarFondo(n) {
+    if (n === this._lineas) return;
+    this._lineas = n;
+    const alto = n === 0 ? 24 : 10 + n * 19;
+    const ancho = n === 0 ? 90 : ZONA.ancho;
+    const y0 = ZONA.y + ZONA.alto - alto;
+    this.fondo.clear();
+    this.fondo.fillStyle(COLORES.panel, n === 0 ? 0.5 : 0.75);
+    this.fondo.fillRect(ZONA.x, y0, ancho, alto);
+    this.fondo.lineStyle(1, COLORES.banda, n === 0 ? 0.5 : 1);
+    this.fondo.strokeRect(ZONA.x, y0, ancho, alto);
+    this.vacio.setVisible(n === 0).setPosition(ZONA.x + 8, y0 + 5);
+    this.textos.forEach((t, i) => t.setPosition(ZONA.x + 8, y0 + 5 + i * 19));
+  }
+
   destruir() {
     this._baja();
     this.fondo.destroy();
+    this.vacio.destroy();
     this.textos.forEach((t) => t.destroy());
   }
 }

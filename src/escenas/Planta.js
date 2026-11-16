@@ -219,11 +219,6 @@ export class Planta extends Phaser.Scene {
 
   _crearTextos() {
     const estilo = { fontFamily: 'Arial', fontSize: '12px', color: TEXTO_HEX.texto };
-    this.textoFps = this.add
-      .text(8, 24, '', { ...estilo, color: TEXTO_HEX.espera })
-      .setDepth(100)
-      .setScrollFactor(0)
-      .setVisible(false);
     this.textoPausa = this.add
       .text(ANCHO / 2, 70, 'PAUSA', { fontFamily: 'Arial', fontSize: '28px', fontStyle: 'bold', color: TEXTO_HEX.espera })
       .setOrigin(0.5)
@@ -257,9 +252,8 @@ export class Planta extends Phaser.Scene {
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
     this.textoPausa.setVisible(r.enPausa);
-    if (this.textoFps.visible) {
-      this.textoFps.setText(`FPS: ${Math.round(this.game.loop.actualFps)}   t simulación: ${r.ahora.toFixed(1)} s`);
-    }
+    const fps = this.scene.get('HUDGeneral')?.txtFps;
+    if (fps?.visible) fps.setText(`FPS: ${Math.round(this.game.loop.actualFps)}   t simulación: ${r.ahora.toFixed(1)} s`);
   }
 
   /** Sonidos cortos: disparo de transición, falla, reparación, botón bloqueado y deadlock (el del logro suena al ganarlo). */
@@ -285,7 +279,10 @@ export class Planta extends Phaser.Scene {
       this.reloj.alternarPausa();
     });
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
-    e.on(ACCIONES.FPS, () => this.textoFps.setVisible(!this.textoFps.visible));
+    e.on(ACCIONES.FPS, () => {
+      const fps = this.scene.get('HUDGeneral')?.txtFps;
+      fps?.setVisible(!fps.visible);
+    });
     e.on(ACCIONES.DEMO, () => {
       if (!this.partida.tutorial) this.piloto.alternar();
     });

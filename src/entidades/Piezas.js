@@ -10,7 +10,7 @@ import { aPantalla } from '../iso/proyeccion.js';
 import { oscurecer, aclarar } from '../iso/formas.js';
 
 const ENTRADA = { x: 6, y: 5 }; // celda de la zona "Entrada"
-const TERMINADAS = { x: 6, y: 3 }; // celda de la zona "Piezas terminadas"
+const TERMINADAS = { x: 6, y: 0 }; // celda de la zona "Piezas terminadas"
 const DURACION_VUELO = 650; // ms de reloj de pared a x1 (se divide por la velocidad)
 const MAX_PILA = 10;
 const LADO = 11; // semi-ancho de un bloque en px
@@ -74,8 +74,8 @@ export class Piezas {
       g.fillPoints(rombo, true);
       g.lineStyle(1.5, oscurecer(COLORES.banda, 0.2), 1);
       g.strokePoints(rombo, true);
-      // El rótulo de las terminadas va sobre la baldosa (la mesa taparía el de abajo).
-      const r = nombre === 'Entrada' ? aPantalla(x + 0.5, y + 1.0) : aPantalla(x + 0.5, y - 0.15);
+      // El rótulo va debajo de la baldosa, con fondo semitransparente.
+      const r = aPantalla(x + 0.5, y + 1.0);
       const t = this.escena.add
         .text(r.x, r.y + 2, nombre, { fontFamily: 'Arial', fontSize: '9px', fontStyle: 'bold', color: TEXTO_HEX.texto })
         .setOrigin(0.5, 0)

@@ -542,7 +542,7 @@ El juego conserva su resolución interna de 960x540 y no cambia el modelo. Cambi
 
 - `#game-container` ocupa `100vw x 100vh`; Phaser usa `Scale.FIT` con `autoCenter: CENTER_BOTH`, así que el juego crece manteniendo 16:9 y
   deja franjas negras si la ventana no es 16:9. Phaser convierte las coordenadas del puntero al espacio interno, por lo que clics y toques caen bien.
-- Pantalla completa: botón ⛶ (arriba a la derecha, junto al radar) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
+- Pantalla completa: botón ⛶ (arriba a la izquierda, dentro del panel del turno) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
 - Los textos se crean con `resolution` = max(2, devicePixelRatio) para verse nítidos al agrandar.
 
 ### 18.11 Alta resolución
@@ -557,4 +557,16 @@ ve nítido en 1366x768, 1920x1080 y celulares). La resolución lógica sigue sie
 - `render: { antialias: true, roundPixels: false }`; los textos usan `resolution: RES`. Los trazos de Graphics se escalan con la cámara y conservan su grosor visual.
 - El contador de FPS solo aparece con F1. Si el juego baja de 50 fps se reducen los efectos (ya existía); si aun así no alcanza, bajar `RES` a 1.67 (1600x900).
 - Capturas a 1920x1080: `docs/capturas/hd_planta.png`, `hd_hud_maquina.png` y `hd_vista_red.png`. Medición de fps: en el navegador sin GPU (WebGL por software) dio 28 fps y bajó con el bloom, por lo que no es representativa; debe confirmarse en un equipo real y, si baja de 50, usar `RES` = 1.67.
-- Para ahorrar espacio, el panel del radar mide 134 px y el botón ⛶ ocupa su antiguo borde derecho.
+
+### 18.12 Ajustes visuales (revisión en 1920x1080)
+
+Sin cambios al modelo ni a las reglas:
+
+- **F1:** el contador de FPS y el tiempo de simulación se dibujan en el HUD general, debajo del panel del turno, y solo con F1 activo.
+- **Piezas terminadas:** la zona pasa a la celda (6, 0), lejos de la mesa y de S1/S2, con su rótulo debajo y fondo semitransparente.
+- **Pedidos:** el círculo con el número y la palabra "pedidos" quedan al costado de cada base (AGV1 al este, AGV2 al oeste) y ya no tocan D1, D2 ni el aviso del AGV.
+- **Lugares vacíos:** con 0 fichas se muestra solo un círculo punteado tenue con "0/1" pequeño debajo; los lugares de espera y trabajo de los AGV flotan 26 px sobre el suelo (y el de espera del AGV2 pasa a la fila 7) para no montarse con los rótulos S1, S2 y Mesa.
+- **Alertas:** sin avisos la zona es un recuadro pequeño con "Sin alertas" tenue; con avisos crece hacia arriba lo justo.
+- **Radar:** muestra en grande el nombre del marcado actual (M0, M3…), el nivel debajo y el mini-grafo de los 3 últimos marcados con nodos más grandes.
+- **Botón ⛶:** pasa al panel del turno (arriba a la izquierda) para no tapar la X del HUD de máquina; el texto de velocidad se acorta a "Vel. x1".
+- Las capturas de comprobación se guardan en `tmp-capturas/` (ignorada por git).

@@ -18,10 +18,10 @@ export const ANCLAS = {
   Robot_libre: [5.5, 5.5, 10], // zona del robot, junto a la base del brazo (5, 4)
   AGV1_listo: [11.5, 1.5, 10], // base del AGV1, junto al depósito D1 (10, 1)
   AGV2_listo: [11.5, 8.5, 10], // base del AGV2, junto al depósito D2 (10, 8)
-  AGV1_con_mesa: [8.5, 2.5, 10], // zona de espera del AGV1, junto a la estación S1 (8, 3)
-  AGV1_trabajando: [9.5, 2.5, 10], // zona de trabajo del AGV1
-  AGV2_con_robot: [8.5, 6.5, 10], // zona de espera del AGV2, junto a la estación S2 (8, 5)
-  AGV2_trabajando: [9.5, 6.5, 10], // zona de trabajo del AGV2
+  AGV1_con_mesa: [8.5, 2.5, 26], // zona de espera del AGV1, junto a la estación S1 (8, 3)
+  AGV1_trabajando: [9.5, 2.5, 26], // zona de trabajo del AGV1
+  AGV2_con_robot: [8.5, 7.5, 26], // zona de espera del AGV2, junto a la estación S2 (8, 5)
+  AGV2_trabajando: [9.5, 6.5, 26], // zona de trabajo del AGV2
   Celda_libre: [6.5, 2.5, 10], // solo existe en la red corregida
 };
 // Rótulo de la zona del mapa que corresponde a cada lugar (lo dibuja el Escenario).
@@ -44,6 +44,18 @@ const ESTACION = {
   t2a: [POSICIONES.S2, 14], t2b: [POSICIONES.S2, 14], t2c: [POSICIONES.S2, 14],
   tr_ir: [POSICIONES.BRAZO, 34], tr_volver: [POSICIONES.BRAZO, 34],
 };
+
+/** Círculo punteado tenue para un lugar sin fichas. */
+function circuloPunteado(g, x, y) {
+  const n = 12;
+  g.lineStyle(1.5, COLORES.texto, 0.3);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    g.beginPath();
+    g.arc(x, y, 9, a, a + (Math.PI * 2) / n * 0.55);
+    g.strokePath();
+  }
+}
 
 export class FichasPlanta {
   /**
@@ -214,10 +226,12 @@ export class FichasPlanta {
       if (l.nombre === 'Robot_en_CNC') l.sucio = true; // su ancla depende de la CNC atendida
       if (!l.sucio) continue;
       l.g.clear();
-      dibujarFicha(l.g, l.nombre, p.x, p.y, l.mostrado > 0 ? 1 : 0.22);
-      l.contador.setPosition(p.x, p.y + 12).setText(`${l.mostrado}/${l.k}`);
-      l.contador.setColor(l.mostrado > 0 ? TEXTO_HEX.texto : '#566170');
-      l.rotulo?.setPosition(p.x, p.y).setVisible(l.mostrado > 0);
+      const vacio = l.mostrado === 0;
+      if (vacio) circuloPunteado(l.g, p.x, p.y); // lugar sin fichas: solo un círculo tenue, sin la figura
+      else dibujarFicha(l.g, l.nombre, p.x, p.y, 1);
+      l.contador.setPosition(p.x, p.y + (vacio ? 12 : 12)).setText(`${l.mostrado}/${l.k}`);
+      l.contador.setFontSize(vacio ? '8px' : '10px').setColor(vacio ? '#566170' : TEXTO_HEX.texto).setAlpha(vacio ? 0.8 : 1);
+      l.rotulo?.setPosition(p.x, p.y).setVisible(!vacio);
       l.sucio = false;
     }
     this._dibujarConflictos();

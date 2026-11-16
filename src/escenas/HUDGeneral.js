@@ -18,7 +18,7 @@ import { camaraLogica } from './camara.js';
 const ZONAS = {
   reloj: { x: 8, y: 8, ancho: 182, alto: 40 },
   puntaje: { x: 330, y: 8, ancho: 300, alto: 40 },
-  radar: { x: 770, y: 8, ancho: 134, alto: 40 },
+  radar: { x: 770, y: 8, ancho: 182, alto: 40 },
   fichas: { x: 8, y: 450, ancho: 412, alto: 82 },
 };
 const BOTON_TACTIL = 44; // mínimo táctil
@@ -88,6 +88,11 @@ export class HUDGeneral extends Phaser.Scene {
     this.txtTurno = this.add.text(z.x + 8, z.y + 3, '', ESTILO({ fontStyle: 'bold' }));
     this.txtTiempo = this.add.text(z.x + 8, z.y + 15, '', ESTILO({ fontSize: '12px', fontStyle: 'bold' }));
     this.txtVelocidad = this.add.text(z.x + 8, z.y + 28, '', ESTILO({ fontSize: '9px', color: '#8794a3' }));
+    // F1: fps y tiempo de simulación, debajo del panel del turno y solo mientras está activo.
+    this.txtFps = this.add
+      .text(8, 54, '', ESTILO({ fontSize: '11px', color: TEXTO_HEX.espera, backgroundColor: 'rgba(22,27,34,0.8)', padding: { x: 5, y: 3 } }))
+      .setDepth(50)
+      .setVisible(false);
   }
 
   // ---- Arriba centro: puntaje y piezas / meta ----
@@ -157,7 +162,8 @@ export class HUDGeneral extends Phaser.Scene {
   _radar() {
     const z = ZONAS.radar;
     this.radarG = this.add.graphics();
-    this.radarTitulo = this.add.text(z.x + 38, z.y + 3, 'Radar', ESTILO({ fontSize: '10px', fontStyle: 'bold' }));
+    this.radarNombre = this.add.text(z.x + 42, z.y + 2, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' }));
+    this.radarTitulo = this.add.text(z.x + 42, z.y + 26, 'Radar', ESTILO({ fontSize: '9px', color: '#8794a3' }));
     this.radarMini = this.add.graphics();
     this.radarNombres = [];
     this._claveRadar = '';
@@ -237,7 +243,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.iconoPausa = this.add.graphics();
     this.botonInspector = this._boton(678, 4, BOTON_TACTIL, BOTON_TACTIL, 'Insp.', emitir(ACCIONES.INSPECTOR), 'Inspector (pausa la simulación)', { fuente: '10px' });
     this.botonRed = this._boton(722, 4, BOTON_TACTIL, BOTON_TACTIL, 'Red', emitir(ACCIONES.RED_PETRI), 'Vista de la red de Petri (R)', { fuente: '11px' });
-    this.botonPantalla = this._boton(908, 4, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (G)', { fuente: '22px' });
+    this.botonPantalla = this._boton(144, 4, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (G)', { fuente: '22px' });
   }
 
   _dibujarTactiles() {
@@ -393,7 +399,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.txtTurno.setText(tutorial ? 'Turno 0 · tutorial' : `Turno ${this.partida.turno + 1} de 3`);
     // El tutorial no tiene límite de tiempo: se muestra el tiempo transcurrido.
     this.txtTiempo.setText(tutorial ? `t = ${Math.floor(r.ahora)} s` : `${restante} s`).setColor(!tutorial && restante <= 20 ? TEXTO_HEX.espera : TEXTO_HEX.texto);
-    this.txtVelocidad.setText(`Velocidad x${r.velocidad}${r.enPausa ? ' · pausa' : ''}`);
+    this.txtVelocidad.setText(`Vel. x${r.velocidad}${r.enPausa ? ' · pausa' : ''}`);
     this.txtPuntaje.setText(String(c.puntaje)).setColor(c.puntaje < 0 ? TEXTO_HEX.fallo : TEXTO_HEX.texto);
     this.txtPiezas.setText(tutorial ? String(c.estadisticas.piezas) : `${c.estadisticas.piezas} / ${c.turno.meta}`);
 
@@ -416,7 +422,7 @@ export class HUDGeneral extends Phaser.Scene {
     const c = this.celda;
     const nivel = c.radar.nivel;
     const parpadeo = nivel === 'amarillo' ? Math.floor(this.time.now / 250) % 2 === 0 : true; // 2 Hz
-    const cx = z.x + 22;
+    const cx = z.x + 20;
     const cy = z.y + z.alto / 2;
     const g = this.radarG;
     g.clear();
@@ -430,12 +436,14 @@ export class HUDGeneral extends Phaser.Scene {
     }
     const escala = this.radarEscala?.k ?? 1;
     g.fillStyle(NIVELES[nivel], parpadeo ? 1 : 0.25);
-    g.fillCircle(cx, cy, 16 * escala);
+    g.fillCircle(cx, cy, 14 * escala);
     g.lineStyle(2, COLORES.texto, 0.9);
-    g.strokeCircle(cx, cy, 16 * escala);
+    g.strokeCircle(cx, cy, 14 * escala);
     this.radarTitulo.setText(`Radar: ${nivel}`);
+    const ahoraM = c.historialMarcados[c.historialMarcados.length - 1];
+    this.radarNombre.setText(ahoraM ? (nombreMarcado(ahoraM.M) ?? '·') : '');
 
-    const ultimos = c.historialMarcados.slice(-5);
+    const ultimos = c.historialMarcados.slice(-3);
     const clave = ultimos.map((h) => `${h.M.join('')}${h.nivel}`).join('|');
     if (clave === this._claveRadar) return;
     this._claveRadar = clave;
@@ -443,24 +451,24 @@ export class HUDGeneral extends Phaser.Scene {
     this.radarNombres = [];
     const m = this.radarMini;
     m.clear();
-    const x0 = z.x + 44;
-    const paso = 27;
+    const x0 = z.x + 110;
+    const paso = 29;
     ultimos.forEach((h, i) => {
       const x = x0 + i * paso;
-      const y = z.y + 28;
+      const y = z.y + 20;
       if (i > 0) {
         m.lineStyle(1.5, COLORES.maquina, 1);
-        m.lineBetween(x - paso + 11, y, x - 3, y);
+        m.lineBetween(x - paso + 13, y, x - 5, y);
         m.fillStyle(COLORES.maquina, 1);
-        m.fillTriangle(x - 3, y, x - 8, y - 3, x - 8, y + 3);
+        m.fillTriangle(x - 5, y, x - 10, y - 3, x - 10, y + 3);
       }
       m.fillStyle(NIVELES[h.nivel], 1);
-      m.fillRoundedRect(x - 11, y - 7, 22, 14, 3);
+      m.fillRoundedRect(x - 13, y - 9, 26, 18, 3);
       if (i === ultimos.length - 1) {
         m.lineStyle(2, COLORES.texto, 1);
-        m.strokeRoundedRect(x - 11, y - 7, 22, 14, 3);
+        m.strokeRoundedRect(x - 13, y - 9, 26, 18, 3);
       }
-      this.radarNombres.push(this.add.text(x, y, nombreMarcado(h.M) ?? '·', { fontFamily: 'Arial', fontSize: '8px', fontStyle: 'bold', color: '#161b22' }).setOrigin(0.5));
+      this.radarNombres.push(this.add.text(x, y, nombreMarcado(h.M) ?? '·', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#161b22' }).setOrigin(0.5));
     });
   }
 }

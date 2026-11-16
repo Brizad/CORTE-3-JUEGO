@@ -7,8 +7,8 @@ import { aPantalla } from '../iso/proyeccion.js';
 const PROFUNDIDAD = 410;
 const AGVS = {
   // estación (celda), transición b que espera (iniciar descarga) y base donde se muestra el pedido
-  AGV1: { estacion: [8.5, 3.5], transicion: 't1b', base: [10.5, 0.5] },
-  AGV2: { estacion: [8.5, 5.5], transicion: 't2b', base: [10.5, 9.5] },
+  AGV1: { estacion: [8.5, 3.5], transicion: 't1b', base: [11.5, 0.5] },
+  AGV2: { estacion: [8.5, 5.5], transicion: 't2b', base: [9.5, 9.5] },
 };
 
 export class Estaciones {
@@ -35,7 +35,7 @@ export class Estaciones {
           .setOrigin(0.5)
           .setDepth(PROFUNDIDAD + 1),
         rotulo: escena.add
-          .text(b.x, b.y + 12, 'pedidos', { fontFamily: 'Arial', fontSize: '8px', color: TEXTO_HEX.texto, stroke: '#161b22', strokeThickness: 2 })
+          .text(b.x, b.y + 11, 'pedidos', { fontFamily: 'Arial', fontSize: '8px', color: TEXTO_HEX.texto, stroke: '#161b22', strokeThickness: 2 })
           .setOrigin(0.5, 0)
           .setDepth(PROFUNDIDAD),
         b,
