@@ -199,10 +199,13 @@ cada ficha consumida viaja al lugar donde se produce otra, con un tween de 0,3 s
 - **Eventos no controlables:** botón gris solo informativo (por ejemplo `f` y `x` con la CNC fresando).
 - Botones táctiles de 44 × 44 px como mínimo.
 
-**Tamaño real (confirmado por el equipo):** el panel mide 340 × 392 px y se coloca junto a la máquina
+**Tamaño real (confirmado por el equipo):** el panel mide 460 × 392 px (ancho ampliado en docs/GDD.md, sección 18.2; la altura no pasa de y = 448 para no tapar las alertas) y se coloca junto a la máquina
 (a la derecha, o a la izquierda si la máquina está en la mitad derecha de la pantalla). Con 300 × 220 px no cabían
 el grafo, los botones de 44 px y los últimos 10 eventos. El grafo usa las coordenadas x, y del .jff escaladas al panel
-(150 px de alto en las CNC, 198 px en las demás).
+(170 px de alto en las CNC, 228 px en las demás). Nodos de 44 px; flechas curvas con la etiqueta "código · nombre"; los eventos no
+controlables van con línea punteada. Entre el mismo par de estados cada transición usa su propia curva (a ambos lados del eje) y las
+flechas simples eligen la curvatura que las deja lejos de los demás nodos. El historial va en dos columnas de 5 filas alineadas
+(tiempo, código, origen → destino).
 
 Distribución del panel de una CNC, de arriba hacia abajo:
 
@@ -232,7 +235,7 @@ Distribución del panel de una CNC, de arriba hacia abajo:
 |---|---|---|
 | Arriba izquierda | x 8–190, y 8–48 | Reloj (s restantes), turno y velocidad. A su derecha, los botones x1, x2 y x4 (x 192–324) |
 | Arriba centro | x 330–630, y 8–48 | Puntaje y piezas / meta (20 px, en blanco; el puntaje negativo en rojo). Junto al radar: botones de pausa e inspector (x 636–728) |
-| Arriba derecha | x 760–952, y 8–48 | Radar del Árbol de Cobertura |
+| Arriba derecha | x 770–952, y 8–48 | Radar del Árbol de Cobertura |
 | Abajo izquierda | x 8–420, y 450–532 | Fichas por lugar: p1..p9 (y p10), cada una con su forma y color a 14 px, el contador m/k y el nombre del lugar |
 | Abajo derecha | x 540–952, y 450–532 | Alertas. En el hueco central (x 424–536) van "Despachar AGV1", "Despachar AGV2" y "Controlador de celda" |
 
@@ -287,3 +290,17 @@ La velocidad del recorrido se ajusta para que dure exactamente 4 s de simulació
 1. Comparar con esta guía: rejilla, posiciones, colores, tamaños y zonas de HUD.
 2. Listar diferencias concretas con posición, color y tamaño. Ejemplo: "La CNC 2 está en (4, 6); debe estar en (3, 6)".
 3. Comprobar que cada estado del autómata muestra su color e ícono, y que el radar coincide con el marcado.
+
+## 12. Mejoras de lectura (docs/GDD.md, sección 18)
+
+- **Rótulos de la planta:** los de las zonas de los lugares salen solo al pasar el mouse o tocar, en una etiqueta con fondo oscuro
+  semitransparente (`#161b22` al 85 %) con el nombre, las fichas m/k y las transiciones en conflicto. Los rótulos cortos Mesa, S1, S2,
+  D1 y D2 quedan siempre visibles sobre un fondo oscuro semitransparente (70 %).
+- **Alertas:** se dibujan en la escena de más arriba (x 540–952, y 450–532); ningún panel las tapa.
+- **Vista "Red de Petri"** (tecla R o botón "Red", azul de mantenimiento cuando está activa): la planta se oscurece un 55 %.
+  Lugares: círculo de 30 px con borde blanco (con fichas) o gris (vacío) y su identificador (p1…p10) encima. Transiciones: barra de
+  34 × 9 px con borde claro y su nombre a la derecha. Arcos con flecha de 1,5 px. Colores de las barras (y de sus arcos): negra
+  (no habilitada), verde `#2e9e5b` (habilitada), naranja `#f08a24` (conflicto) y roja `#d64545` (bloqueada en deadlock).
+  Posiciones: t1a, t1b y t1c apiladas junto a S1; t2a, t2b y t2c, junto a S2; tr_ir y tr_volver, encima del brazo.
+- **Tutorial Turno 0:** caja de mensaje arriba a la izquierda (410 × 70 px) con "TURNO 0 · PASO n DE 17", una flecha amarilla que rebota
+  (tween) sobre el objetivo y, en el último paso, los botones "Reintentar el final" y "Empezar el turno 1".

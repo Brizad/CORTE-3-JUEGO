@@ -133,6 +133,7 @@ export class Celda {
 
   /** Cada pedido penaliza una sola vez, al cumplir 30 s sin atender; sigue pendiente aunque haya vencido. */
   _programarVencimiento(pedido, t) {
+    if (this.turno.pedidosVencen === false) return; // en el tutorial los pedidos no vencen
     this.reloj.programar(t, () => {
       if (this.pedidos.includes(pedido) && !pedido.vencido) {
         pedido.vencido = true;

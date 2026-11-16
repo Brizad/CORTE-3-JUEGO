@@ -438,3 +438,58 @@ Estas decisiones cierran huecos de la lista original. El equipo las confirmó, c
 13. **Turnos y resultados:** "deadlocks evitados" cuenta las veces que el radar vuelve de amarillo a verde en el turno (el premio de +25
     sigue con su enfriamiento de 20 s). Al perder por tiempo no hay penalización de puntos extra. Tras un deadlock, el game over
     (reintentar desde el último verde) sigue siendo la pantalla de ese momento; el turno continúa si se reintenta.
+## 18. Mejoras de jugabilidad (agregadas por el equipo después del playtest interno)
+
+Estas mejoras no cambian `docs/modelo/` ni las reglas del juego. Todo cambio de estado sigue pasando por δ de un autómata o por el
+disparo de una transición de la red de Petri. Son mejoras de lectura, de ayuda y de enseñanza.
+
+### 18.1 Textos que no se encimen
+
+- **Planta:** los rótulos de las zonas de los lugares ("Robot", "Base AGV1", "Espera AGV2", "Trabajo AGV2"…) ya no están siempre a la
+  vista. Salen al pasar el mouse (o tocar) sobre el lugar, en una etiqueta con fondo oscuro semitransparente junto al puntero, con el
+  nombre del lugar, su marcado m/k y, si está en conflicto, las transiciones que compiten (por ejemplo "t2a ↔ tr_ir").
+  Los rótulos cortos de los objetos (Mesa, S1, S2, D1, D2) quedan siempre visibles, con fondo oscuro semitransparente.
+  El anillo naranja del conflicto sigue visible sin texto.
+- **Historial del HUD de máquina:** los últimos 10 eventos se muestran en columnas alineadas: tiempo (alineado a la derecha),
+  código del evento y "origen → destino". Dos columnas de 5 filas que no se montan.
+
+### 18.2 Grafo del HUD más claro
+
+- Nodos de 44 px (antes 36), más separados; el panel crece a 460 px de ancho (la altura sigue en 392 px para no tapar las alertas).
+- Las flechas son curvas. Cuando hay varias transiciones entre el mismo par de estados (en el brazo: abrir_mandril, cerrar_mandril y
+  descargar entre Mandril_Cerrado y Mandril_Abierto) cada una usa su propia curva, repartidas a los dos lados, y el bucle de `cargar`
+  se dibuja hacia afuera del grafo.
+- Cada flecha lleva la etiqueta "código · nombre" (por ejemplo "c · cargar"). Los eventos no controlables van con línea punteada.
+  El estado actual lleva glow (como antes).
+
+### 18.3 Alertas siempre visibles
+
+La zona de alertas (abajo a la derecha) se dibuja por encima de todos los paneles y ya no la tapa el HUD de máquina ni el Inspector.
+
+### 18.4 Vista "Red de Petri" (tecla R y botón "Red")
+
+Dibuja la red sobre la planta (la planta se oscurece un poco):
+
+- Cada **lugar** es un círculo sobre su objeto, con su identificador (p1…p10), sus fichas y su contador m/k.
+- Cada **transición** es una barra negra en su estación con su nombre: t1a, t1b y t1c en S1; t2a, t2b y t2c en S2; tr_ir y tr_volver
+  junto al brazo.
+- Los **arcos** son flechas lugar → transición (Pre) y transición → lugar (Post).
+- Colores: la barra de una transición **habilitada** va en verde; las que **compiten por una ficha** (conflicto) y su lugar, en naranja;
+  en **deadlock**, las barras bloqueadas van en rojo.
+- Las **fichas viajan siguiendo las flechas**: del lugar de entrada a la barra y de la barra al lugar de salida.
+- La tecla R no se usa para la vista cuando la consola de reparación está abierta (ahí R es el comando de reset).
+
+### 18.5 Tutorial "Turno 0" (opcional, desde el título)
+
+Turno sin límite de tiempo, sin fallas y sin meta, en el que los **pedidos no vencen**. Mensajes cortos y una flecha señalan cada paso.
+El paso avanza cuando el estado del modelo cumple la condición (no cuando se hace clic). Pasos:
+
+1. Mandar el brazo a la CNC 1 (`m`, tr_ir) y esperar a que llegue (`l`).
+2. Abrir la pinza (`a`), cargar (`c`), cerrar (`e`) y ver cómo el brazo vuelve solo (tr_volver).
+3. Iniciar el fresado (`i`), esperar a que termine (`f`).
+4. Mandar el brazo otra vez, abrir y descargar (`d`).
+5. Despachar el AGV1 (t1a) y esperar su ciclo completo (t1b, t1c).
+6. Provocar el deadlock a propósito: Despachar AGV1 y luego AGV2. Se ve el radar pasar a amarillo y a rojo y se abre la vista de red con
+   las barras bloqueadas en rojo. En el tutorial no hay game over ni penalización: el jugador puede reintentar el final o empezar el turno 1.
+
+El tutorial no guarda puntaje ni logros.

@@ -13,8 +13,9 @@ import { EntidadCNC } from '../entidades/EntidadCNC.js';
 import { EntidadBrazo } from '../entidades/EntidadBrazo.js';
 import { EntidadAGV } from '../entidades/EntidadAGV.js';
 import { FichasPlanta } from '../entidades/FichasPlanta.js';
-import { Alertas } from '../entidades/Alertas.js';
 import { Estaciones } from '../entidades/Estaciones.js';
+import { Etiquetas } from '../entidades/Etiquetas.js';
+import { VistaRed } from '../entidades/VistaRed.js';
 import { Logros } from '../sed/logros.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
@@ -54,7 +55,7 @@ export class Planta extends Phaser.Scene {
 
     // Escenas superpuestas. Al reiniciar la planta (otro turno) todavía hay una parada en cola de la partida anterior:
     // se vuelve a pedir la parada y luego el lanzamiento, así quedan siempre recién creadas.
-    for (const clave of ['HUDMaquina', 'Inspector', 'HUDGeneral']) {
+    for (const clave of ['HUDMaquina', 'Inspector', 'HUDGeneral', ...(this.partida.tutorial ? ['Tutorial'] : [])]) {
       this.scene.stop(clave);
       this.scene.launch(clave);
     }
@@ -63,8 +64,9 @@ export class Planta extends Phaser.Scene {
       this.piloto.desactivar();
       this.entidades.forEach((e) => e.destruir());
       this.fichas.destruir();
-      this.alertas.destruir();
       this.estaciones.destruir();
+      this.etiquetas.destruir();
+      this.vistaRed.destruir();
       this._bajaTemblor();
       this.logros.detener();
       this.scene.stop('Resultados');
@@ -73,6 +75,7 @@ export class Planta extends Phaser.Scene {
       this.scene.stop('HUDMaquina');
       this.scene.stop('Inspector');
       this.scene.stop('HUDGeneral');
+      this.scene.stop('Tutorial');
     });
   }
 
@@ -140,6 +143,7 @@ export class Planta extends Phaser.Scene {
     // Logros del GDD: se vigilan con los eventos de la Celda y avisan con un tween en el HUD.
     this.logrosDelTurno = [];
     this.logros = new Logros(this.partida.logros, this.partida.turno, (logro) => {
+      if (this.partida.tutorial) return; // el tutorial no guarda logros
       this.logrosDelTurno.push(logro.id);
       this.events.emit('logro', logro);
       this.sonidos.logro();
@@ -156,15 +160,21 @@ export class Planta extends Phaser.Scene {
       new EntidadAGV(this, this.celda, 'AGV2'),
     ];
     this.fichas = new FichasPlanta(this, this.celda);
-    this.alertas = new Alertas(this, this.celda);
     this.estaciones = new Estaciones(this, this.celda);
+    this.etiquetas = new Etiquetas(this, this.celda, () => this.fichas);
+    this.vistaRed = new VistaRed(this, this.celda, () => this.fichas);
     // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
     this._bajaTemblor = this.celda.alCambiar((e) => {
       if (e.tipo === 'rechazo' && e.motivo === 'supervisor') this.cameras.main.shake(300, 0.004);
       // Interbloqueo: el radar se pone rojo, la cámara tiembla y sale el game over (la simulación ya está detenida).
       if (e.tipo === 'deadlock') {
         this.cameras.main.shake(300, 0.006);
-        this.scene.launch('GameOver');
+        // En el tutorial no hay game over: el Tutorial explica el interbloqueo y se abre la vista de la red.
+        if (this.partida.tutorial) {
+          this.scene.get('HUDMaquina').cerrar?.(); // el panel taparía la vista de la red
+          this.vistaRed.activar();
+        }
+        else this.scene.launch('GameOver');
       }
       // Controlador de celda: la red tiene un lugar más, se rehacen las fichas.
       if (e.tipo === 'controlador') {
@@ -211,8 +221,8 @@ export class Planta extends Phaser.Scene {
     const r = this.reloj;
     for (const e of this.entidades) e.actualizar(r.ahora);
     this.fichas.actualizar();
-    this.alertas.actualizar();
     this.estaciones.actualizar();
+    this.vistaRed.actualizar();
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
     this.textoPausa.setVisible(r.enPausa);
@@ -245,16 +255,24 @@ export class Planta extends Phaser.Scene {
     });
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
     e.on(ACCIONES.FPS, () => this.textoFps.setVisible(!this.textoFps.visible));
-    e.on(ACCIONES.DEMO, () => this.piloto.alternar());
+    e.on(ACCIONES.DEMO, () => {
+      if (!this.partida.tutorial) this.piloto.alternar();
+    });
     // Solo en desarrollo (npm run dev): fuerza una falla_husillo para probar la consola de reparación.
     e.on(ACCIONES.FORZAR_FALLA, () => {
       if (!import.meta.env?.DEV) return;
-      if (!this.celda.forzarFalla()) this.alertas.avisar('Tecla F: no hay ninguna CNC fresando.', 'espera');
+      if (!this.celda.forzarFalla()) this.scene.get('HUDGeneral').alertas?.avisar('Tecla F: no hay ninguna CNC fresando.', 'espera');
     });
     e.on(ACCIONES.INSPECTOR, () => {
       if (!this.celda.terminado) inspector().alternar?.();
     });
     e.on(ACCIONES.SILENCIO, () => this.sonidos.alternarSilencio());
+    e.on(ACCIONES.RED_PETRI, () => {
+      // Con la consola de reparación abierta, R es el comando de reset: no abre la vista.
+      const h = hud();
+      if (h.abierto && h._modoConsola && h._pestana === 'automata') return;
+      this.vistaRed.alternar();
+    });
     e.on(ACCIONES.CERRAR, () => {
       hud().cerrar?.();
       inspector().cerrar?.();
@@ -269,6 +287,7 @@ export class Planta extends Phaser.Scene {
       const mundo = this.cameras.main.getWorldPoint(x, y);
       let sobreAlguna = false;
       const bajo = this._entidadEn(mundo.x, mundo.y);
+      this.etiquetas.mover(mundo.x, mundo.y, this._bajoPanel(x, y) || !!bajo);
       for (const m of this.entidades) {
         const dentro = !this._bajoPanel(x, y) && m === bajo;
         if (dentro !== m.hover) {
@@ -285,6 +304,7 @@ export class Planta extends Phaser.Scene {
       if (this._bajoPanel(x, y)) return;
       const mundo = this.cameras.main.getWorldPoint(x, y);
       const m = this._entidadEn(mundo.x, mundo.y);
+      if (!m) this.etiquetas.tocar(mundo.x, mundo.y); // toque sobre un lugar: muestra su etiqueta unos segundos
       if (m) hud().abrir?.(m.id, m.nombre);
       else hud().cerrar?.();
     });
@@ -310,6 +330,6 @@ export class Planta extends Phaser.Scene {
 
   /** Verdadero si el punto cae sobre un panel superpuesto abierto (el clic no llega a la planta). */
   _bajoPanel(x, y) {
-    return ['HUDMaquina', 'Inspector', 'HUDGeneral', 'GameOver', 'Resultados'].some((c) => this.scene.get(c)?.contiene?.(x, y));
+    return ['HUDMaquina', 'Inspector', 'HUDGeneral', 'Tutorial', 'GameOver', 'Resultados'].some((c) => this.scene.get(c)?.contiene?.(x, y));
   }
 }

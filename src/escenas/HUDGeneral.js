@@ -12,11 +12,12 @@ import { COLORES, TEXTO_HEX, PUNTOS, VELOCIDADES } from '../config.js';
 import { nombreMarcado } from '../sed/cobertura.js';
 import { dibujarFicha } from '../arte/tokens.js';
 import { ACCIONES } from '../entrada/gestorEntrada.js';
+import { Alertas } from '../entidades/Alertas.js';
 
 const ZONAS = {
   reloj: { x: 8, y: 8, ancho: 182, alto: 40 },
   puntaje: { x: 330, y: 8, ancho: 300, alto: 40 },
-  radar: { x: 760, y: 8, ancho: 192, alto: 40 },
+  radar: { x: 770, y: 8, ancho: 182, alto: 40 },
   fichas: { x: 8, y: 450, ancho: 412, alto: 82 },
 };
 const BOTON_TACTIL = 44; // mínimo táctil
@@ -38,6 +39,9 @@ export class HUDGeneral extends Phaser.Scene {
 
     this._fondo();
     this._relojTurno();
+    // Las alertas viven en esta escena (la de más arriba): ningún panel las tapa (docs/GDD.md, sección 18.3).
+    this.alertas = new Alertas(this, this.celda);
+    this._zona({ x: 540, y: 450, ancho: 412, alto: 82 });
     this._puntaje();
     this._radar();
     this._panelFichas();
@@ -48,7 +52,10 @@ export class HUDGeneral extends Phaser.Scene {
     this._logros = [];
     this._bajaLogro = (logro) => this._logros.push(logro);
     this.planta.events.on('logro', this._bajaLogro);
-    this.events.on('shutdown', () => this.planta.events.off('logro', this._bajaLogro));
+    this.events.on('shutdown', () => {
+      this.planta.events.off('logro', this._bajaLogro);
+      this.alertas.destruir();
+    });
   }
 
   /** Verdadero si el punto cae sobre el HUD (el clic no llega a la planta). */
@@ -171,9 +178,10 @@ export class HUDGeneral extends Phaser.Scene {
     VELOCIDADES.forEach((v, i) => {
       this.botonesVelocidad[v] = this._boton(192 + i * BOTON_TACTIL, 4, BOTON_TACTIL, BOTON_TACTIL, `x${v}`, emitir(ACCIONES.VELOCIDAD, { valor: v }), `Velocidad x${v}`);
     });
-    this.botonPausa = this._boton(636, 4, BOTON_TACTIL, BOTON_TACTIL, '', emitir(ACCIONES.PAUSA), () => (this.celda.reloj.enPausa ? 'Reanudar' : 'Pausa'));
+    this.botonPausa = this._boton(634, 4, BOTON_TACTIL, BOTON_TACTIL, '', emitir(ACCIONES.PAUSA), () => (this.celda.reloj.enPausa ? 'Reanudar' : 'Pausa'));
     this.iconoPausa = this.add.graphics();
-    this.botonInspector = this._boton(684, 4, BOTON_TACTIL, BOTON_TACTIL, 'Insp.', emitir(ACCIONES.INSPECTOR), 'Inspector (pausa la simulación)', { fuente: '10px' });
+    this.botonInspector = this._boton(678, 4, BOTON_TACTIL, BOTON_TACTIL, 'Insp.', emitir(ACCIONES.INSPECTOR), 'Inspector (pausa la simulación)', { fuente: '10px' });
+    this.botonRed = this._boton(722, 4, BOTON_TACTIL, BOTON_TACTIL, 'Red', emitir(ACCIONES.RED_PETRI), 'Vista de la red de Petri (R)', { fuente: '11px' });
   }
 
   _dibujarTactiles() {
@@ -186,7 +194,7 @@ export class HUDGeneral extends Phaser.Scene {
     const g = this.iconoPausa;
     g.clear();
     g.fillStyle(COLORES.texto, 1);
-    const cx = 636 + BOTON_TACTIL / 2;
+    const cx = 634 + BOTON_TACTIL / 2;
     const cy = 4 + BOTON_TACTIL / 2;
     if (r.enPausa) g.fillTriangle(cx - 6, cy - 9, cx - 6, cy + 9, cx + 9, cy);
     else {
@@ -196,6 +204,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.botonPausa.rect.setFillStyle(r.enPausa ? COLORES.espera : COLORES.banda);
     const insp = this.scene.get('Inspector')?.abierto;
     this.botonInspector.rect.setFillStyle(insp ? COLORES.mantenimiento : COLORES.banda);
+    this.botonRed.rect.setFillStyle(this.planta.vistaRed?.activa ? COLORES.mantenimiento : COLORES.banda);
   }
 
   // ---- Abajo, entre las fichas y las alertas: despacho de AGV y Controlador ----
@@ -324,12 +333,15 @@ export class HUDGeneral extends Phaser.Scene {
     const c = this.celda;
     const r = c.reloj;
     const restante = Math.max(0, Math.ceil(c.turno.duracion - r.ahora));
-    this.txtTurno.setText(`Turno ${this.partida.turno + 1} de 3`);
-    this.txtTiempo.setText(`${restante} s`).setColor(restante <= 20 ? TEXTO_HEX.espera : TEXTO_HEX.texto);
+    const tutorial = this.partida.tutorial;
+    this.txtTurno.setText(tutorial ? 'Turno 0 · tutorial' : `Turno ${this.partida.turno + 1} de 3`);
+    // El tutorial no tiene límite de tiempo: se muestra el tiempo transcurrido.
+    this.txtTiempo.setText(tutorial ? `t = ${Math.floor(r.ahora)} s` : `${restante} s`).setColor(!tutorial && restante <= 20 ? TEXTO_HEX.espera : TEXTO_HEX.texto);
     this.txtVelocidad.setText(`Velocidad x${r.velocidad}${r.enPausa ? ' · pausa' : ''}`);
     this.txtPuntaje.setText(String(c.puntaje)).setColor(c.puntaje < 0 ? TEXTO_HEX.fallo : TEXTO_HEX.texto);
-    this.txtPiezas.setText(`${c.estadisticas.piezas} / ${c.turno.meta}`);
+    this.txtPiezas.setText(tutorial ? String(c.estadisticas.piezas) : `${c.estadisticas.piezas} / ${c.turno.meta}`);
 
+    this.alertas.actualizar();
     this._dibujarFichas();
     this._dibujarTactiles();
     this._dibujarDespacho();
@@ -366,7 +378,7 @@ export class HUDGeneral extends Phaser.Scene {
     const m = this.radarMini;
     m.clear();
     const x0 = z.x + 44;
-    const paso = 29;
+    const paso = 27;
     ultimos.forEach((h, i) => {
       const x = x0 + i * paso;
       const y = z.y + 28;

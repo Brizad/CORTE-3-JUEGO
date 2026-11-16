@@ -36,14 +36,22 @@ export class Escenario {
       g.fillPoints(rombo, true);
       g.lineStyle(2, oscurecer(COLORES.banda, 0.35), 1);
       g.strokePoints(rombo, true);
-      // El rótulo va bajo la baldosa, en el suelo.
+      // El rótulo va bajo la baldosa, en el suelo, sobre un fondo oscuro semitransparente.
       const r = aPantalla(x + 0.5, y + 1.05);
-      this.escena.add
-        .text(r.x, r.y, nombre, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.texto })
-        .setOrigin(0.5, 0)
-        .setDepth(4)
-        .setAlpha(0.85);
+      this._rotulo(r.x, r.y, nombre);
     }
+  }
+
+  /** Rótulo corto con fondo oscuro semitransparente (así no se pierde sobre el suelo ni sobre otros dibujos). */
+  _rotulo(x, y, contenido) {
+    const t = this.escena.add
+      .text(x, y + 2, contenido, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.texto })
+      .setOrigin(0.5, 0)
+      .setDepth(5);
+    const fondo = this.escena.add.graphics().setDepth(4);
+    fondo.fillStyle(COLORES.panel, 0.7);
+    fondo.fillRoundedRect(x - t.width / 2 - 4, y, t.width + 8, t.height + 4, 3);
+    return t;
   }
 
   /** Zonas de los lugares de la red: base, espera y trabajo de cada AGV, y la zona del robot. */
@@ -57,12 +65,8 @@ export class Escenario {
       g.fillPoints(rombo, true);
       g.lineStyle(1.5, oscurecer(COLORES.banda, 0.2), 1);
       g.strokePoints(rombo, true);
-      const r = aPantalla(x + 0.5, y + 1.0);
-      this.escena.add
-        .text(r.x, r.y, rotulo, { fontFamily: 'Arial', fontSize: '8px', fontStyle: 'bold', color: TEXTO_HEX.texto })
-        .setOrigin(0.5, 0)
-        .setDepth(4)
-        .setAlpha(0.8);
+      // Sin rótulo fijo: el nombre de la zona sale al pasar el mouse (Etiquetas.js).
+      void rotulo;
     }
   }
 
@@ -72,10 +76,6 @@ export class Escenario {
     const g = this.escena.add.graphics().setDepth(10 + x + y);
     dibujarPrisma(g, puntosPrisma(x, y, 1, 1, ALTOS.MESA), COLORES.mesa);
     const c = aPantalla(x + 0.5, y + 1.05);
-    this.escena.add
-      .text(c.x, c.y, 'Mesa', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.texto })
-      .setOrigin(0.5, 0)
-      .setDepth(4)
-      .setAlpha(0.85);
+    this._rotulo(c.x, c.y, 'Mesa');
   }
 }

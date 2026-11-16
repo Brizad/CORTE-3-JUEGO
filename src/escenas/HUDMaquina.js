@@ -10,9 +10,15 @@ import { ConsolaReparacion, COMANDOS } from '../sed/consola.js';
 import { EXPRESION_TEXTO } from '../sed/lenguaje.js';
 import { claveDe } from '../sed/composicion.js';
 
-const PANEL = { ancho: 340, alto: 392, y: 56, xDerecha: 612, xIzquierda: 8 }; // docs/arte.md, sección 7
-const GRAFO = { x: 12, y: 26, ancho: 316, alto: 198, margen: 30 };
-const RADIO = 18; // nodos de 36 px
+const PANEL = { ancho: 460, alto: 392, y: 56, xDerecha: 492, xIzquierda: 8 }; // docs/arte.md, sección 7 y docs/GDD.md, sección 18.2
+const ANCHO_UTIL = PANEL.ancho - 24; // ancho del contenido del panel
+const GRAFO = { x: 12, y: 26, ancho: ANCHO_UTIL };
+// Márgenes del grafo: sitio para la flecha de entrada, las etiquetas "código · nombre" y los nombres de los estados.
+const MARGEN_IZQ = 56;
+const MARGEN_DER = 120;
+const MARGEN_SUP = 32;
+const MARGEN_INF = 40;
+const RADIO = 22; // nodos de 44 px
 const BOTON = { ancho: 100, alto: 44, hueco: 8, y: 228 }; // táctil: 44 px como mínimo
 const PARPADEO = 0.5; // s de simulación que parpadea la última transición
 const HEX = (c) => `#${c.toString(16).padStart(6, '0')}`;
@@ -56,7 +62,7 @@ export class HUDMaquina extends Phaser.Scene {
       this.pestanas[clave] = { rect, t };
     }
     this.capaComposicion = this.add.container(0, 0).setVisible(false);
-    const fuente = { fontFamily: 'Arial', fontSize: '11px', color: TEXTO_HEX.texto, lineSpacing: 5, wordWrap: { width: 316 } };
+    const fuente = { fontFamily: 'Arial', fontSize: '11px', color: TEXTO_HEX.texto, lineSpacing: 5, wordWrap: { width: ANCHO_UTIL } };
     this.capaComposicion.add([
       this.add.text(12, 36, '', fuente), // cifras: se rellenan en abrir()
       this.add.text(12, 112, 'Estado compuesto actual (esta CNC, Brazo):', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera }),
@@ -75,8 +81,9 @@ export class HUDMaquina extends Phaser.Scene {
     this.capaTextos = this.add.container(0, 0);
     this.capaBotones = this.add.container(0, 0);
     this.capaConsola = this.add.container(0, 0).setVisible(false);
-    this.listaIzq = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
-    this.listaDer = this.add.text(12 + 160, 0, '', { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 2 });
+    // Historial en columnas alineadas: tiempo (a la derecha), código del evento y "origen → destino".
+    const colTexto = (extra = {}) => this.add.text(0, 0, '', { fontFamily: 'Arial', fontSize: '9px', color: TEXTO_HEX.texto, lineSpacing: 2, ...extra });
+    this.columnas = [0, 1].map(() => ({ t: colTexto({ color: '#8794a3' }).setOrigin(1, 0), c: colTexto({ fontStyle: 'bold' }), f: colTexto() }));
     this.cabeceraLista = this.add.text(12, 0, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
     this.cabeceraBrazo = this.add.text(12, 0, 'Brazo en esta CNC', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera }).setVisible(false);
     this.aviso = this.add.text(PANEL.ancho - 34, 8, '', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.operacion }).setOrigin(1, 0).setVisible(false);
@@ -90,7 +97,7 @@ export class HUDMaquina extends Phaser.Scene {
 
     this.contenedor.add([
       marco, this.titulo, this.cerrarBoton, this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos,
-      this.capaBotones, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, this.listaIzq, this.listaDer, this.tip,
+      this.capaBotones, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, ...this.columnas.flatMap((c) => [c.t, c.c, c.f]), this.tip,
     ]);
     this.botones = [];
     this._firmaBotones = '';
@@ -154,6 +161,14 @@ Regla: ${this.celda.razonSupervisor}`,
     this._sucia = true;
   }
 
+  /** Posición en pantalla (centro de arriba) de un botón del panel por su etiqueta, o null. Lo usa la flecha del tutorial. */
+  posicionBoton(etiqueta) {
+    if (!this.abierto || this._pestana !== 'automata') return null;
+    const b = this.botones.find((x) => x.d.etiqueta === etiqueta);
+    if (!b) return null;
+    return { x: this.panelX + b.rect.x + b.rect.width / 2, y: PANEL.y + b.rect.y };
+  }
+
   /** Cierra el panel. */
   cerrar() {
     this._soltarCelda();
@@ -174,17 +189,17 @@ Regla: ${this.celda.razonSupervisor}`,
 
   // ---- Grafo ----
 
-  /** Posición de cada estado en el panel: las coordenadas del .jff escaladas al área del grafo. */
+  /** Posición de cada estado en el panel: las coordenadas del .jff escaladas al área del grafo (dejando sitio a las etiquetas). */
   _posiciones() {
     const pos = this.modelo.posiciones;
     const xs = Object.values(pos).map((p) => p[0]);
     const ys = Object.values(pos).map((p) => p[1]);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-    const sx = (GRAFO.ancho - 2 * GRAFO.margen) / Math.max(1, x1 - x0);
-    const sy = (this._altoGrafo - 2 * this._margenY) / Math.max(1, y1 - y0);
+    const sx = (GRAFO.ancho - MARGEN_IZQ - MARGEN_DER) / Math.max(1, x1 - x0);
+    const sy = (this._altoGrafo - MARGEN_SUP - MARGEN_INF) / Math.max(1, y1 - y0);
     const salida = {};
     for (const [nombre, [x, y]] of Object.entries(pos)) {
-      salida[nombre] = { x: GRAFO.x + GRAFO.margen + (x - x0) * sx, y: GRAFO.y + this._margenY + (y - y0) * sy };
+      salida[nombre] = { x: GRAFO.x + MARGEN_IZQ + (x - x0) * sx, y: GRAFO.y + MARGEN_SUP + (y - y0) * sy };
     }
     return salida;
   }
@@ -194,25 +209,25 @@ Regla: ${this.celda.razonSupervisor}`,
     g.clear();
     this.capaTextos.removeAll(true);
     // Las CNC llevan además la sección del brazo, así que su grafo es más bajo.
-    this._altoGrafo = this.tipo === 'CNC' ? 150 : GRAFO.alto;
-    this._margenY = this.tipo === 'CNC' ? 22 : GRAFO.margen;
+    this._altoGrafo = this.tipo === 'CNC' ? 170 : 228;
     this._yBotones = GRAFO.y + this._altoGrafo + 4;
     this.pos = this._posiciones();
     this.aristas = this._calcularAristas();
 
-    // Aristas con flecha y el código del evento.
+    // Aristas: curvas con flecha y la etiqueta "código · nombre". Los eventos no controlables van punteados.
     for (const a of this.aristas) {
-      g.lineStyle(1.5, COLORES.maquina, 1);
-      g.strokePoints(a.puntos, false);
+      g.lineStyle(1.8, COLORES.maquina, 1);
+      this._trazar(g, a.puntos, !a.controlable);
       g.fillStyle(COLORES.maquina, 1);
       g.fillPoints(a.flecha, true);
-      this._texto(a.rotulo.x, a.rotulo.y, a.codigo, { fontSize: '11px', fontStyle: 'bold' }).setOrigin(0.5);
+      const l = this._texto(a.rotulo.x, a.rotulo.y, a.etiqueta, { fontSize: '9px', fontStyle: 'bold', strokeThickness: 4 });
+      l.setOrigin(a.origen.x, a.origen.y);
     }
     // Estado inicial: flecha de entrada desde la izquierda.
     const ini = this.pos[this.modelo.inicial];
-    const entrada = this._flecha({ x: ini.x - RADIO - 22, y: ini.y }, { x: ini.x - RADIO, y: ini.y });
-    g.lineStyle(1.5, COLORES.maquina, 1);
-    g.lineBetween(ini.x - RADIO - 22, ini.y, ini.x - RADIO - 4, ini.y);
+    const entrada = this._flecha({ x: ini.x - RADIO - 24, y: ini.y }, { x: ini.x - RADIO, y: ini.y });
+    g.lineStyle(1.8, COLORES.maquina, 1);
+    g.lineBetween(ini.x - RADIO - 24, ini.y, ini.x - RADIO - 4, ini.y);
     g.fillStyle(COLORES.maquina, 1);
     g.fillPoints(entrada, true);
 
@@ -223,8 +238,19 @@ Regla: ${this.celda.razonSupervisor}`,
       g.fillCircle(p.x, p.y, RADIO);
       g.lineStyle(2, COLORES.maquina, 1);
       g.strokeCircle(p.x, p.y, RADIO);
-      if (this.modelo.marcados.includes(estado)) g.strokeCircle(p.x, p.y, RADIO - 4);
-      this._texto(p.x, p.y + RADIO + 2, estado, { fontSize: '9px' }).setOrigin(0.5, 0);
+      if (this.modelo.marcados.includes(estado)) g.strokeCircle(p.x, p.y, RADIO - 5);
+      this._texto(p.x, p.y + RADIO + 2, estado, { fontSize: '10px' }).setOrigin(0.5, 0);
+    }
+  }
+
+  /** Traza una polilínea; si es punteada, alterna 2 segmentos dibujados y 2 saltados. */
+  _trazar(g, puntos, punteada) {
+    if (!punteada) {
+      g.strokePoints(puntos, false);
+      return;
+    }
+    for (let i = 0; i + 1 < puntos.length; i++) {
+      if (Math.floor(i / 2) % 2 === 0) g.lineBetween(puntos[i].x, puntos[i].y, puntos[i + 1].x, puntos[i + 1].y);
     }
   }
 
@@ -240,61 +266,153 @@ Regla: ${this.celda.razonSupervisor}`,
   _flecha(desde, fin) {
     const ang = Math.atan2(fin.y - desde.y, fin.x - desde.x);
     const punta = (a, r) => ({ x: fin.x + Math.cos(a) * r, y: fin.y + Math.sin(a) * r });
-    return [fin, punta(ang + Math.PI - 0.4, 8), punta(ang + Math.PI + 0.4, 8)];
+    return [fin, punta(ang + Math.PI - 0.4, 9), punta(ang + Math.PI + 0.4, 9)];
   }
 
-  /** Cada transición como una curva entre los bordes de sus nodos (con bucles para las autotransiciones). */
+  /**
+   * Cada transición como una curva entre los bordes de sus nodos.
+   * Entre el mismo par de estados, cada transición usa su propia curva, repartidas a ambos lados del eje (así las de
+   * abrir_mandril, cerrar_mandril y descargar del brazo no se montan). Las autotransiciones se dibujan hacia afuera del grafo.
+   */
   _calcularAristas() {
     const evento = new Map(this.modelo.eventos.map((e) => [e.id, e]));
-    const grupos = new Map();
+    const estados = this.modelo.estados;
+    const pares = new Map(); // "u|v" (u antes que v en la lista de estados) -> transiciones
+    const bucles = [];
     for (const [de, ev, a] of this.modelo.transiciones) {
-      const k = `${de}>${a}`;
-      if (!grupos.has(k)) grupos.set(k, []);
-      grupos.get(k).push({ de, ev, a });
+      if (de === a) {
+        bucles.push({ de, ev, a });
+        continue;
+      }
+      const [u, v] = estados.indexOf(de) < estados.indexOf(a) ? [de, a] : [a, de];
+      const k = `${u}|${v}`;
+      if (!pares.has(k)) pares.set(k, []);
+      pares.get(k).push({ de, ev, a });
     }
+    const info = (t) => {
+      const e = evento.get(t.ev);
+      return { de: t.de, ev: t.ev, a: t.a, codigo: e.codigo, controlable: e.controlable, etiqueta: `${e.codigo} · ${t.ev}` };
+    };
     const salida = [];
-    for (const [k, lista] of grupos) {
-      const [de, a] = k.split('>');
-      const hayInversa = grupos.has(`${a}>${de}`);
-      lista.forEach((t, i) => {
-        const codigo = evento.get(t.ev).codigo;
-        const base = { de: t.de, ev: t.ev, a: t.a, codigo };
-        const p = this.pos[de];
-        const q = this.pos[a];
-        if (de === a) {
-          // Bucle: arco sobre el nodo.
-          const cy = p.y - RADIO - 8;
-          const puntos = [];
-          for (let j = 0; j <= 16; j++) {
-            const ang = Math.PI * 0.15 + (Math.PI * 1.7 * j) / 16 + Math.PI * 0.5 + Math.PI;
-            puntos.push({ x: p.x + Math.cos(ang) * 9, y: cy + Math.sin(ang) * 9 });
+    const borde = (c, h) => {
+      const d = Math.hypot(h.x - c.x, h.y - c.y) || 1;
+      return { x: c.x + ((h.x - c.x) / d) * RADIO, y: c.y + ((h.y - c.y) / d) * RADIO };
+    };
+
+    for (const [k, lista] of pares) {
+      const [u, v] = k.split('|');
+      const pu = this.pos[u];
+      const pv = this.pos[v];
+      const dx = pv.x - pu.x;
+      const dy = pv.y - pu.y;
+      const largo = Math.hypot(dx, dy) || 1;
+      const normal = { x: -dy / largo, y: dx / largo }; // perpendicular al eje u → v
+      // Las que van de u a v primero y las de v a u después: reparto simétrico alrededor del eje.
+      const orden = [...lista].sort((p, q) => (p.de === u ? 0 : 1) - (q.de === u ? 0 : 1));
+      const paso = Math.min(30, Math.max(18, largo * 0.26)); // px entre una curva y la siguiente
+      orden.forEach((t, i) => {
+        let desp = (i - (orden.length - 1) / 2) * paso;
+        if (orden.length === 1) {
+          // Una flecha sola: se prueba recta y con varias curvaturas a cada lado, y se elige la que deja su punto medio más
+          // lejos de los demás nodos y de sus nombres (y dentro del área del grafo).
+          const otros = estados.filter((e) => e !== u && e !== v);
+          const medioEje = { x: (pu.x + pv.x) / 2, y: (pu.y + pv.y) / 2 };
+          const holgura = (d) => {
+            const c = { x: medioEje.x + normal.x * d, y: medioEje.y + normal.y * d }; // punto medio de la curva (Bézier cuadrática)
+            let m = Infinity;
+            for (const e of otros) {
+              const q = this.pos[e];
+              m = Math.min(m, Math.hypot(q.x - c.x, q.y - c.y), Math.hypot(q.x - c.x, q.y + RADIO + 8 - c.y) + 6);
+              // y el tramo recto entre los extremos
+            }
+            const fuera = c.y > GRAFO.y + this._altoGrafo - 14 || c.y < GRAFO.y + 8 ? 40 : 0;
+            return m - fuera;
+          };
+          const tramo = (e) => {
+            const q = this.pos[e];
+            const t = Math.max(0, Math.min(1, ((q.x - pu.x) * dx + (q.y - pu.y) * dy) / (largo * largo)));
+            return Math.hypot(q.x - (pu.x + dx * t), q.y - (pu.y + dy * t));
+          };
+          const recta = Math.min(Infinity, ...otros.map(tramo));
+          if (recta < RADIO + 16) {
+            let mejor = 0;
+            let mejorPuntaje = -Infinity;
+            for (const d of [-60, -42, -26, 26, 42, 60]) {
+              const puntaje = holgura(d);
+              if (puntaje > mejorPuntaje) {
+                mejorPuntaje = puntaje;
+                mejor = d;
+              }
+            }
+            desp = mejor / 1; // el punto medio de la curva queda a |mejor| px del eje
           }
-          salida.push({ ...base, puntos, flecha: this._flecha(puntos[puntos.length - 2], puntos[puntos.length - 1]), rotulo: { x: p.x, y: cy - 16 } });
-          return;
         }
-        const dx = q.x - p.x;
-        const dy = q.y - p.y;
-        const largo = Math.hypot(dx, dy);
-        const normal = { x: -dy / largo, y: dx / largo };
-        const desplazamiento = ((hayInversa ? 0.2 : 0) + (i - (lista.length - 1) / 2) * 0.3) * largo;
-        const control = { x: (p.x + q.x) / 2 + normal.x * desplazamiento * 2, y: (p.y + q.y) / 2 + normal.y * desplazamiento * 2 };
-        const borde = (c, h) => {
-          const d = Math.hypot(h.x - c.x, h.y - c.y);
-          return { x: c.x + ((h.x - c.x) / d) * RADIO, y: c.y + ((h.y - c.y) / d) * RADIO };
-        };
+        const medio = { x: (pu.x + pv.x) / 2, y: (pu.y + pv.y) / 2 };
+        const control = { x: medio.x + normal.x * desp * 2, y: medio.y + normal.y * desp * 2 };
+        const p = this.pos[t.de];
+        const q = this.pos[t.a];
         const inicio = borde(p, control);
         const fin = borde(q, control);
         const puntos = [];
-        for (let j = 0; j <= 16; j++) {
-          const t2 = j / 16;
+        for (let j = 0; j <= 20; j++) {
+          const s = j / 20;
           puntos.push({
-            x: (1 - t2) ** 2 * inicio.x + 2 * (1 - t2) * t2 * control.x + t2 ** 2 * fin.x,
-            y: (1 - t2) ** 2 * inicio.y + 2 * (1 - t2) * t2 * control.y + t2 ** 2 * fin.y,
+            x: (1 - s) ** 2 * inicio.x + 2 * (1 - s) * s * control.x + s ** 2 * fin.x,
+            y: (1 - s) ** 2 * inicio.y + 2 * (1 - s) * s * control.y + s ** 2 * fin.y,
           });
         }
-        const medio = puntos[8];
-        const empuje = { x: normal.x * 7 * Math.sign(desplazamiento || 1), y: normal.y * 7 * Math.sign(desplazamiento || 1) };
-        salida.push({ ...base, puntos, flecha: this._flecha(puntos[14], fin), rotulo: { x: medio.x + empuje.x, y: medio.y + empuje.y } });
+        const cima = puntos[10];
+        // Hacia afuera: el lado de la curva (o hacia arriba si es recta).
+        let lado = desp === 0 ? { x: normal.x, y: normal.y } : { x: Math.sign(desp) * normal.x, y: Math.sign(desp) * normal.y };
+        if (desp === 0) {
+          // Curva recta: la etiqueta va del lado con más espacio libre (lejos de los nombres y de los nodos de otros estados).
+          const libre = (l) => {
+            const q = { x: cima.x + l.x * 12, y: cima.y + l.y * 12 };
+            return Math.min(...estados.flatMap((e) => [
+              Math.hypot(this.pos[e].x - q.x, this.pos[e].y - q.y),
+              Math.hypot(this.pos[e].x - q.x, this.pos[e].y + RADIO + 8 - q.y),
+            ]));
+          };
+          const otro = { x: -lado.x, y: -lado.y };
+          if (libre(otro) > libre(lado) + 2) lado = otro;
+        }
+        // Una curva recta entre varias: su etiqueta va centrada sobre la línea, para no chocar con las de los lados.
+        // Si la etiqueta quedaría debajo del área del grafo (tapada por los botones), va por el lado de adentro de la curva.
+        if (cima.y + lado.y * 8 > GRAFO.y + this._altoGrafo - 8) lado = { x: -lado.x, y: -lado.y };
+        const centrada = desp === 0 && orden.length > 1;
+        salida.push({
+          ...info(t),
+          puntos,
+          flecha: this._flecha(puntos[17], fin),
+          rotulo: centrada ? { x: cima.x, y: cima.y } : { x: cima.x + lado.x * 8, y: cima.y + lado.y * 8 },
+          origen: centrada ? { x: 0.5, y: 0.5 } : { x: 0.5 - 0.5 * lado.x, y: 0.5 - 0.5 * lado.y },
+        });
+      });
+    }
+
+    // Bucles: hacia el lado opuesto al resto de los estados.
+    for (const t of bucles) {
+      const p = this.pos[t.de];
+      const otros = estados.filter((e) => e !== t.de).map((e) => this.pos[e]);
+      const cx = otros.reduce((s, o) => s + o.x, 0) / Math.max(1, otros.length);
+      const cy = otros.reduce((s, o) => s + o.y, 0) / Math.max(1, otros.length);
+      // Horizontal, hacia el lado donde no hay otros estados (el nombre del estado queda debajo, libre).
+      const dir = { x: p.x >= cx ? 1 : -1, y: 0 };
+      void cy;
+      const radioBucle = 11;
+      const centro = { x: p.x + dir.x * (RADIO + radioBucle - 2), y: p.y + dir.y * (RADIO + radioBucle - 2) };
+      const base = Math.atan2(dir.y, dir.x) + Math.PI; // hacia el nodo
+      const puntos = [];
+      for (let j = 0; j <= 20; j++) {
+        const ang = base + 0.7 + ((2 * Math.PI - 1.4) * j) / 20;
+        puntos.push({ x: centro.x + Math.cos(ang) * radioBucle, y: centro.y + Math.sin(ang) * radioBucle });
+      }
+      salida.push({
+        ...info(t),
+        puntos,
+        flecha: this._flecha(puntos[18], puntos[20]),
+        rotulo: { x: centro.x + dir.x * (radioBucle + 6), y: centro.y + dir.y * (radioBucle + 6) },
+        origen: { x: 0.5 - 0.5 * dir.x, y: 0.5 - 0.5 * dir.y },
       });
     }
     return salida;
@@ -342,7 +460,8 @@ Regla: ${this.celda.razonSupervisor}`,
     }
     if (this._pestana === 'composicion') {
       // Pestaña Composición: nada de lo del autómata se ve ni recibe clics.
-      for (const o of [this.capaConsola, this.cabeceraBrazo, this.cabeceraLista, this.listaIzq, this.listaDer]) o.setVisible(false);
+      for (const o of [this.capaConsola, this.cabeceraBrazo, this.cabeceraLista]) o.setVisible(false);
+      this._listaVisible(false);
       this._refrescarComposicion();
     }
     if (this._modoConsola && this._consolaLista && this._pestana === 'automata') this._refrescarConsola();
@@ -549,14 +668,14 @@ Regla: ${this.celda.razonSupervisor}`,
       return o;
     };
     texto(12, y0, 'Consola de reparación: la CNC está en Falla', { fontStyle: 'bold', color: TEXTO_HEX.espera });
-    const campo = this.add.rectangle(12, y0 + 14, 316, 28, COLORES.panel).setOrigin(0).setStrokeStyle(2, COLORES.maquina);
+    const campo = this.add.rectangle(12, y0 + 14, ANCHO_UTIL, 28, COLORES.panel).setOrigin(0).setStrokeStyle(2, COLORES.maquina);
     this.capaConsola.add(campo);
     const mono = { fontFamily: 'Courier New, monospace', fontSize: '18px', fontStyle: 'bold' };
     this.txtPalabra = texto(20, y0 + 17, '', mono);
     this.txtMala = texto(20, y0 + 17, '', { ...mono, color: TEXTO_HEX.fallo });
     this.txtVacio = texto(20, y0 + 21, 'w = escribe H, C, T, R y Enter', { color: '#8794a3' });
     this.txtEstado = texto(12, y0 + 46, '', { fontStyle: 'bold' });
-    this.txtAviso = texto(12, y0 + 59, '', { wordWrap: { width: 316 } });
+    this.txtAviso = texto(12, y0 + 59, '', { wordWrap: { width: ANCHO_UTIL } });
     this._claveConsola = '';
 
     const boton = (x, y, ancho, etiqueta, color, accion, tip, colorTexto = TEXTO_HEX.texto) => {
@@ -571,12 +690,12 @@ Regla: ${this.celda.razonSupervisor}`,
       this.capaConsola.add([rect, t]);
     };
     const fila1 = y0 + 88;
-    const w4 = (316 - 3 * BOTON.hueco) / 4;
+    const w4 = (ANCHO_UTIL - 3 * BOTON.hueco) / 4;
     [['H', 'home'], ['C', 'chequeo'], ['T', 'cambio'], ['R', 'reset']].forEach(([s, nombre], i) => {
       boton(12 + i * (w4 + BOTON.hueco), fila1, w4, `${s}\n${nombre}`, COLORES.mantenimiento, () => this.consola.escribir(s), `${s}: ${COMANDOS[s]}`);
     });
     const fila2 = fila1 + BOTON.alto + 4;
-    const w3 = (316 - 2 * BOTON.hueco) / 3;
+    const w3 = (ANCHO_UTIL - 2 * BOTON.hueco) / 3;
     boton(12, fila2, w3, '⌫ Borrar', COLORES.banda, () => this.consola.borrar(), 'Retroceso: quita el último comando');
     boton(12 + w3 + BOTON.hueco, fila2, w3, '↵ Enviar', COLORES.operacion, () => this._enviar(), 'Enter: valida la palabra con la RegExp y el DFA');
     boton(12 + 2 * (w3 + BOTON.hueco), fila2, w3, '? Ayuda (−20)', COLORES.espera, () => this.celda.pedirAyuda(this.maquinaId), 'Muestra la expresión regular 5 s y resta 20 puntos', '#161b22');
@@ -706,15 +825,25 @@ Regla: ${this.celda.razonSupervisor}`,
   /** Últimos 10 eventos de la máquina: su palabra observada. */
   _actualizarLista() {
     // La consola de reparación ocupa el lugar de la lista mientras la CNC está en Falla.
-    for (const t of [this.cabeceraLista, this.listaIzq, this.listaDer]) t.setVisible(!this._modoConsola);
+    this._listaVisible(!this._modoConsola);
     if (this._modoConsola) return;
     const eventos = this.celda.bitacora.filter((e) => e.tipo === 'automata' && e.maquina === this.maquinaId).slice(-10);
     const codigo = new Map(this.modelo.eventos.map((e) => [e.id, e.codigo]));
     const palabra = eventos.map((e) => codigo.get(e.evento)).join(' ');
     const y = this._yLista ?? 300;
-    this.cabeceraLista.setPosition(12, y).setText(`Palabra observada (últimos 10): ${palabra || '—'}`);
-    const lineas = eventos.map((e) => `${e.t.toFixed(1).padStart(5)} s  ${codigo.get(e.evento)}  ${e.de} → ${e.a}`).reverse();
-    this.listaIzq.setPosition(12, y + 14).setText(lineas.slice(0, 5).join('\n'));
-    this.listaDer.setPosition(12 + 160, y + 14).setText(lineas.slice(5).join('\n'));
+    this.cabeceraLista.setPosition(12, y).setText(`Últimos ${eventos.length} eventos (palabra observada: ${palabra || '—'})`);
+    const filas = eventos.map((e) => ({ t: `${e.t.toFixed(1)} s`, c: codigo.get(e.evento), f: `${e.de} → ${e.a}` })).reverse();
+    this.columnas.forEach((col, k) => {
+      const x0 = 12 + k * 224;
+      const trozo = filas.slice(k * 5, k * 5 + 5);
+      col.t.setPosition(x0 + 32, y + 14).setText(trozo.map((r) => r.t).join('\n'));
+      col.c.setPosition(x0 + 40, y + 14).setText(trozo.map((r) => r.c).join('\n'));
+      col.f.setPosition(x0 + 54, y + 14).setText(trozo.map((r) => r.f).join('\n'));
+    });
+  }
+
+  _listaVisible(v) {
+    this.cabeceraLista.setVisible(v);
+    for (const c of this.columnas) [c.t, c.c, c.f].forEach((o) => o.setVisible(v));
   }
 }

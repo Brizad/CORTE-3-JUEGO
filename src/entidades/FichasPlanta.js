@@ -113,6 +113,8 @@ export class FichasPlanta {
 
   /** Posición de la estación de una transición. */
   estacion(transicion) {
+    // Con la vista de la red activa, las fichas viajan por las flechas: pasan por la barra de la transición.
+    if (this.escena.vistaRed?.activa) return this.escena.vistaRed.posicionBarra(transicion);
     const [celda, z] = ESTACION[transicion];
     return aPantalla(celda.x + 0.5, celda.y + 0.5, z);
   }
@@ -232,7 +234,7 @@ export class FichasPlanta {
       const p = this.ancla(l);
       g.lineStyle(3, COLORES.robot, pulso);
       g.strokeCircle(p.x, p.y, 17);
-      l.conflicto.setText(c.transiciones.join(' ↔ ')).setPosition(p.x, p.y + 23).setVisible(true);
+      // La leyenda (por ejemplo "t2a ↔ tr_ir") sale al pasar el mouse (Etiquetas.js); aquí solo el anillo naranja.
     }
   }
 

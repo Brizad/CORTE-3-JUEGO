@@ -86,6 +86,9 @@ export const TURNOS = [
   { duracion: 180, meta: 7, probFalla: 0.3, intervaloPedidos: 12 },
 ];
 
+// Turno 0 (tutorial, docs/GDD.md sección 18.5): sin límite de tiempo, sin meta, sin fallas y con pedidos que no vencen.
+export const TURNO_0 = { duracion: 1e9, meta: 1e9, probFalla: 0, intervaloPedidos: 25, pedidosVencen: false };
+
 // Puntaje del GDD (sección 8), en puntos. Los negativos restan.
 export const PUNTOS = {
   pieza: 100,

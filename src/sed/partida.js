@@ -2,11 +2,13 @@
 // Guarda lo que dura toda la partida: turno actual, puntaje acumulado, logros y el estado del generador al empezar el turno.
 // Sin motor gráfico ni DOM.
 
-import { TURNOS } from '../config.js';
+import { TURNOS, TURNO_0 } from '../config.js';
 import { logrosPersistentes } from './logros.js';
 
 export class Partida {
-  constructor() {
+  /** @param {{tutorial?:boolean}} [opciones] tutorial: el Turno 0 (sin tiempo, sin meta, pedidos que no vencen). */
+  constructor({ tutorial = false } = {}) {
+    this.tutorial = tutorial;
     this.turno = 0; // índice del turno actual (0, 1 o 2)
     this.puntaje = 0; // puntaje acumulado al empezar el turno actual
     this.logros = logrosPersistentes();
@@ -16,7 +18,7 @@ export class Partida {
 
   /** Parámetros del turno actual. */
   get parametros() {
-    return TURNOS[this.turno];
+    return this.tutorial ? TURNO_0 : TURNOS[this.turno];
   }
 
   get esUltimo() {
