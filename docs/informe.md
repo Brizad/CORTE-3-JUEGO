@@ -181,6 +181,8 @@ Cumplen 16 de 16. Los demás criterios (CA-01 a CA-03, CA-18, CA-20 a CA-22) se 
 | 3 | victoria | 7 / 7 | 3 (3) | 0 | 0 | 16 | 1545 | 169.7 | sin_red_de_seguridad |
 
 Puntaje total: 2860. Sin errores en la consola del navegador. Capturas: `docs/capturas/pruebas_resultados_turno1.png`, `..._turno2.png` y `..._turno3.png`.
+**Nota (balance):** esta corrida es anterior al ajuste de balance y se hizo con la meta del turno 3 en 7 piezas (por eso dice 7 / 7). El equipo bajó esa meta a 6 piezas (GDD, sección 17, decisión 14); con la meta nueva el turno 3 se midió con `scripts/balance.mjs`: el piloto gana 27 de 30 con una decisión por segundo y 0 de 30 con una cada 2 s (`docs/datos/balance.json`).
+
 
 ---
 
@@ -356,7 +358,7 @@ Resultados reales de la última ronda (GDD 18.10 a 18.16). Los scripts están en
 | Tutorial completo | `scripts/azar-navegador.mjs tutorial`: los 11 eventos de los pasos y luego clics al azar | Llega al paso "fin" con la red abierta |
 | Flujos con clics y teclas reales | `scripts/azar-navegador.mjs flujos` | 16 de 16: game over y reintento (con y sin Controlador), menú de pausa, ayuda, sonido, reiniciar turno, F1 y volver al título |
 | Celular | `scripts/movil-navegador.mjs` (emulación móvil con toques) en 360 x 640, 640 x 360, 800 x 360 y 844 x 390 | Sin scroll de la página; aviso de girar en vertical; toque, arrastre y pellizco funcionan; botones de 44 px lógicos = 29 a 32 px en pantalla (decisión n.º 21) |
-| Balance de los 3 turnos | `scripts/balance.mjs` (30 semillas, 5 ritmos de decisión) | Turno 1 ganable sin el Controlador; turno 3 posible (21 de 30 a 1 s por decisión) pero muy difícil (ver `docs/decisiones_por_confirmar.md`) |
+| Balance de los 3 turnos | `scripts/balance.mjs` (30 semillas, 5 ritmos de decisión) | Turno 1 ganable sin el Controlador. El turno 3 con 7 piezas solo se ganaba a 1 s por decisión (21/30), así que el equipo bajó la meta a 6: ahora gana 27/30 a 1 s, 15/30 a 1,5 s y 0/30 a 2 s (ver `docs/decisiones_por_confirmar.md`) |
 | Textos en español | `scripts/revisar-tildes.mjs` y lectura de las pantallas | Sin palabras sin tilde (queda 1 falso positivo del buscador en una cadena anidada) |
 | Pruebas del núcleo y del juego | `npm test` | 137 pruebas, todas pasan (17 nuevas: guardado, textos, pantalla completa y disposición del HUD) |
 
@@ -417,9 +419,12 @@ Esto hay que confirmarlo con el playtest de otro equipo (literal h, todavía pen
 
 - **Qué hicimos:** revisamos el juego con clics y teclas al azar, agregamos ayuda (tecla ? y botón), frases al pasar el mouse, aviso de turno de
   3 s, alerta del radar amarillo con la razón, menú de pausa y guardado del mejor puntaje y los logros, y probamos en tamaños de celular.
-- **Qué aprendimos del modelo:** medir el balance con el piloto automático nos mostró que el turno 3 es casi imposible para una persona
-  (el piloto gana el 70 % con una decisión por segundo y ninguna partida con una cada 2 s). No cambiamos los valores del GDD: lo dejamos
-  anotado con los números para que el equipo decida (meta de 6 piezas o 20 % de fallas).
+- **Qué aprendimos del modelo y qué cambiamos por ello:** medir el balance con el piloto automático nos mostró que el turno 3 era casi
+  imposible para una persona (con 7 piezas el piloto ganaba el 70 % con una decisión por segundo y ninguna partida con una cada 2 s). No
+  tocamos los valores del GDD por nuestra cuenta: dejamos los números anotados y el equipo decidió **bajar la meta del turno 3 de 7 a 6
+  piezas** (las fallas siguen en 30 % y los pedidos cada 12 s). Con la meta nueva el piloto gana 27 de 30 con una decisión por segundo y
+  15 de 30 con una cada 1,5 s, pero **sigue sin ganar ninguna con una decisión cada 2 s**: el ajuste ayuda a quien decide rápido, no a quien
+  decide más despacio. Si queremos que el turno 3 se gane a un clic cada 2 s, habrá que bajar también las fallas.
 - **Qué falló en las pruebas, y por qué no era el juego:** el navegador sin ventana a veces dejaba la pestaña "oculta" y detenía el dibujado, y
   los eventos de teclado sin código virtual no llegaban a Phaser; eso parecía un bloqueo del juego y no lo era. Aprendimos a revisar
   `document.visibilityState` antes de culpar al código.

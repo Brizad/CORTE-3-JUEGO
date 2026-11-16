@@ -68,6 +68,8 @@ Cumplen 16 de 16. Los demás criterios (CA-01 a CA-03, CA-18, CA-20 a CA-22) se 
 | 3 | victoria | 7 / 7 | 3 (3) | 0 | 0 | 16 | 1545 | 169.7 | sin_red_de_seguridad |
 
 Puntaje total: 2860. Sin errores en la consola del navegador. Capturas: `docs/capturas/pruebas_resultados_turno1.png`, `..._turno2.png` y `..._turno3.png`.
+**Nota (balance):** esta corrida es anterior al ajuste de balance y se hizo con la meta del turno 3 en 7 piezas (por eso dice 7 / 7). El equipo bajó esa meta a 6 piezas (GDD, sección 17, decisión 14); con la meta nueva el turno 3 se midió con `scripts/balance.mjs`: el piloto gana 27 de 30 con una decisión por segundo y 0 de 30 con una cada 2 s (`docs/datos/balance.json`).
+
 
 ---
 
@@ -242,8 +244,8 @@ Ver `docs/informe.md`, sección 2.i, y `docs/GDD.md`, secciones 18.10 a 18.16. R
 | Tutorial completo | `scripts/azar-navegador.mjs tutorial` | Llega al paso "fin" con la vista de red abierta |
 | Flujos de pausa, ayuda, game over y título | `scripts/azar-navegador.mjs flujos` | 16 de 16 |
 | Celular (360 x 640, 640 x 360, 800 x 360, 844 x 390) | `scripts/movil-navegador.mjs` | Sin scroll, aviso de girar en vertical, toque, arrastre y pellizco bien; botones de 29 a 32 px en pantalla |
-| Balance | `scripts/balance.mjs` | Tabla en `docs/decisiones_por_confirmar.md` |
-| Pruebas unitarias | `npm test` | 137 de 137 |
+| Balance | `scripts/balance.mjs` | Con la meta nueva del turno 3 (6 piezas, decisión del equipo): el piloto gana 27/30 a 1 s por decisión, 15/30 a 1,5 s y 0/30 a 2 s (con 7 piezas: 21/30, y 0/30 a 2 s). Tabla en `docs/decisiones_por_confirmar.md` |
+| Pruebas unitarias | `npm test` | 137 de 137 (las de turnos y de textos ya comprueban la meta de 6 piezas) |
 
 Las capturas de esta ronda están en `docs/capturas/` con el prefijo `final_`.
 

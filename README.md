@@ -48,7 +48,7 @@ La tecla **F** (fuerza una falla del husillo para probar la consola de reparaci�
 4. Despacha los AGV con los botones de la barra. **Nunca despaches los dos a la vez**: cada uno toma un recurso y espera el otro
    (deadlock). El radar pasa a amarillo cuando hay peligro. El **Controlador de celda** (−150) lo evita.
 5. Si una CNC falla, escribe en su consola una palabra del lenguaje `^H(CT?)+R$` (por ejemplo `HCTCR`) y pulsa Enter.
-6. Son 3 turnos de 180 s con metas de 3, 5 y 7 piezas. Hay 6 logros. Al empezar cada turno un aviso de 3 s dice la meta y la dificultad,
+6. Son 3 turnos de 180 s con metas de 3, 5 y 6 piezas. Hay 6 logros. Al empezar cada turno un aviso de 3 s dice la meta y la dificultad,
    y si el radar se pone amarillo la zona de alertas dice qué despacho evitar. Con **?** se abre la ayuda en cualquier momento.
 7. En el celular, usa el teléfono en horizontal (en vertical aparece un aviso para girarlo). El pellizco acerca y aleja la planta.
 

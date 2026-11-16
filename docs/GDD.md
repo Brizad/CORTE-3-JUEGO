@@ -142,8 +142,9 @@ Los pedidos llegan en t = n × intervalo, para n ≥ 1 y t < 180 s.
 |---|---|---|---|---|
 | 1 | 180 s | 3 piezas | 10 % | 25 s |
 | 2 | 180 s | 5 piezas | 20 % | 18 s |
-| 3 | 180 s | 7 piezas | 30 % | 12 s |
+| 3 | 180 s | 6 piezas | 30 % | 12 s |
 
+- **Ajuste de balance (decisión del equipo):** la meta del turno 3 bajó de 7 a 6 piezas. La medición de balance (`scripts/balance.mjs`, 30 semillas por casilla) mostró que con la meta de 7 el piloto ganaba 21 de 30 partidas con una decisión por segundo y ninguna con una decisión cada 2 s. Con 6 piezas gana 27 de 30 a 1 s, 15 de 30 a 1,5 s y 0 de 30 a 2 s. Las fallas (30 %) y los pedidos (cada 12 s) no cambian. Detalles en la sección 15 y en `docs/decisiones_por_confirmar.md`.
 - Cada turno empieza en M0 y con las 2 CNC y el brazo en su estado inicial (q0).
 - El Controlador de celda **no se conserva** entre turnos (ver 10).
 - El puntaje se acumula entre turnos.
@@ -331,7 +332,7 @@ Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba
 
 ### 14.5 Turnos, resultados y logros
 
-- **Turnos:** 3 turnos de 180 s con metas de 3, 5 y 7 piezas, falla por fresado de 10, 20 y 30 % y pedidos cada 25, 18 y 12 s.
+- **Turnos:** 3 turnos de 180 s con metas de 3, 5 y 6 piezas, falla por fresado de 10, 20 y 30 % y pedidos cada 25, 18 y 12 s.
   El puntaje se acumula entre turnos. Cada turno empieza en M0 con las 2 CNC y el brazo en su estado inicial.
 - **Fin del turno:** el turno termina al descargar la pieza de la meta (victoria) o al llegar a 180 s sin ella (derrota). Al terminar se
   llama a `desactivarControlador()` y sale la pantalla de **Resultados**: piezas / meta, fallas reparadas, intentos bloqueados,
@@ -370,20 +371,20 @@ Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba
   También sirve mandar el brazo a una CNC (tr_ir), porque con Robot_libre vacío t2a no se habilita.
 - Alternativa segura y cara: el Controlador de celda cuesta 150 puntos y serializa los AGV.
 
-**Ninguna estrategia gana siempre.** Carga del brazo estimada por turno (180 s disponibles):
+**Ninguna estrategia gana siempre.** Carga del brazo estimada por turno (180 s disponibles; la fila del turno 3 ya usa la meta de 6 piezas):
 
 | Turno | Fresados esperados (meta / (1 − p)) | Brazo en piezas | Brazo en AGV (pedidos × 5 s) | Total | Uso del brazo |
 |---|---|---|---|---|---|
 | 1 | 3,3 | 3,3 × 5 s + 3 × 4 s = 29 s | 7 × 5 s = 35 s | 64 s | 36 % |
 | 2 | 6,3 | 6,3 × 5 s + 5 × 4 s = 51 s | 9 × 5 s = 45 s | 96 s | 53 % |
-| 3 | 10 | 10 × 5 s + 7 × 4 s = 78 s | 14 × 5 s = 70 s | 148 s | 82 % |
+| 3 | 8,6 | 8,6 × 5 s + 6 × 4 s = 67 s | 14 × 5 s = 70 s | 137 s | 76 % |
 
-- En el turno 3 el brazo está casi saturado. El jugador no puede atender todo: debe elegir entre
+- En el turno 3 el brazo está muy cargado (76 % con la meta de 6 piezas; era 82 % con 7). El jugador no puede atender todo: debe elegir entre
   los pedidos (+40 cada uno, −20 si vencen) y las piezas (+100 y necesarias para ganar).
 - Ignorar todos los pedidos cuesta 14 × 20 = 280 puntos en el turno 3.
 - Priorizar solo los AGV no cumple la meta de piezas.
 - Comprar el Controlador evita el deadlock pero baja el rendimiento de los AGV.
-- Los valores de 5 s y 4 s por operación del brazo asumen 1 s de reacción por clic. Se deben medir en pruebas.
+- Los valores de 5 s y 4 s por operación del brazo asumen 1 s de reacción por clic. Se midieron con el piloto automático (`scripts/balance.mjs`): el turno 3 con meta de 7 era casi imposible para una persona, y por eso se bajó a 6 (decisión 14 de la sección 17).
 
 ## 16. Criterios de aceptación
 
@@ -405,7 +406,7 @@ Cada criterio se comprueba jugando o con el inspector.
 | CA-12 | Una falla ocurre entre 2 s y 8 s después de `i`. Con semilla 2026 la secuencia de fallas es siempre la misma | Repetir el turno con las mismas acciones |
 | CA-13 | La probabilidad de falla es 10 %, 20 % y 30 % en los turnos 1, 2 y 3 | Simular 1000 fresados por turno en una prueba automática y comparar |
 | CA-14 | Los pedidos llegan cada 25 s, 18 s y 12 s según el turno, y un pedido sin atender se vence a los 30 s con −20 | Dejar un pedido pendiente y observar |
-| CA-15 | Las metas son 3, 5 y 7 piezas. Cumplir la meta termina el turno como victoria | Jugar cada turno |
+| CA-15 | Las metas son 3, 5 y 6 piezas. Cumplir la meta termina el turno como victoria | Jugar cada turno |
 | CA-16 | Un AGV no puede descargar sin la mesa y el brazo: t1b y t2b solo se disparan con ambos recursos | Inspector: marcado antes y después de t1b |
 | CA-17 | El puntaje de cada acción coincide con la sección 8 | Ejecutar cada acción y comprobar |
 | CA-18 | Cada uno de los 6 logros se desbloquea con su condición y no antes | Jugar cada condición |
@@ -440,6 +441,9 @@ Estas decisiones cierran huecos de la lista original. El equipo las confirmó, c
 13. **Turnos y resultados:** "deadlocks evitados" cuenta las veces que el radar vuelve de amarillo a verde en el turno (el premio de +25
     sigue con su enfriamiento de 20 s). Al perder por tiempo no hay penalización de puntos extra. Tras un deadlock, el game over
     (reintentar desde el último verde) sigue siendo la pantalla de ese momento; el turno continúa si se reintenta.
+
+14. **Meta del turno 3 = 6 piezas (antes 7).** El equipo la bajó después de la medición de balance: con 7 piezas el turno 3 solo se ganaba con una decisión por segundo y sin errores (21 de 30 partidas del piloto) y con una decisión cada 2 s no se ganaba ninguna (0 de 30). Las fallas (30 %), los pedidos (cada 12 s), la duración (180 s) y los puntajes no cambian. Con 6 piezas el piloto gana 27/30 de 30 a 1 s por decisión y 0/30 a 2 s (ver `docs/decisiones_por_confirmar.md`).
+
 ## 18. Mejoras de jugabilidad (agregadas por el equipo después del playtest interno)
 
 Estas mejoras no cambian `docs/modelo/` ni las reglas del juego. Todo cambio de estado sigue pasando por δ de un autómata o por el

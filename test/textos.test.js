@@ -7,7 +7,7 @@ import { TURNOS, TURNO_0, COLORES } from '../src/config.js';
 test('el aviso de cada turno usa los valores del GDD', () => {
   assert.equal(avisoTurno(TURNOS[0], 0), 'Turno 1: 3 piezas, fallas 10 %, pedidos cada 25 s');
   assert.equal(avisoTurno(TURNOS[1], 1), 'Turno 2: 5 piezas, fallas 20 %, pedidos cada 18 s');
-  assert.equal(avisoTurno(TURNOS[2], 2), 'Turno 3: 7 piezas, fallas 30 %, pedidos cada 12 s');
+  assert.equal(avisoTurno(TURNOS[2], 2), 'Turno 3: 6 piezas, fallas 30 %, pedidos cada 12 s');
   assert.match(avisoTurno(TURNO_0, 0, true), /^Turno 0 \(tutorial\)/);
 });
 

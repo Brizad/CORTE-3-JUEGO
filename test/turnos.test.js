@@ -96,9 +96,9 @@ test('al terminar el turno se llama desactivarControlador y la red vuelve a la o
   assert.equal(celda.red.lugares.length, 9);
 });
 
-test('los 3 turnos del GDD: metas 3, 5 y 7; fallas 10, 20 y 30 %; pedidos cada 25, 18 y 12 s', () => {
+test('los 3 turnos del GDD: metas 3, 5 y 6; fallas 10, 20 y 30 %; pedidos cada 25, 18 y 12 s', () => {
   assert.deepEqual(TURNOS.map((t) => [t.duracion, t.meta, t.probFalla, t.intervaloPedidos]), [
-    [180, 3, 0.1, 25], [180, 5, 0.2, 18], [180, 7, 0.3, 12],
+    [180, 3, 0.1, 25], [180, 5, 0.2, 18], [180, 6, 0.3, 12],
   ]);
   const p = new Partida();
   assert.equal(p.parametros.meta, 3);

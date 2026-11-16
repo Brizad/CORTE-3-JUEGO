@@ -87,7 +87,7 @@ export const TIEMPOS = {
 export const TURNOS = [
   { duracion: 180, meta: 3, probFalla: 0.1, intervaloPedidos: 25 },
   { duracion: 180, meta: 5, probFalla: 0.2, intervaloPedidos: 18 },
-  { duracion: 180, meta: 7, probFalla: 0.3, intervaloPedidos: 12 },
+  { duracion: 180, meta: 6, probFalla: 0.3, intervaloPedidos: 12 },
 ];
 
 // Turno 0 (tutorial, docs/GDD.md sección 18.5): sin límite de tiempo, sin meta, sin fallas y con pedidos que no vencen.
