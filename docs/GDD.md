@@ -633,3 +633,10 @@ script lo evita con banderas de Edge y adelanta el reloj de simulación a mano. 
 - **Máquina seleccionada:** contorno amarillo plano sobre su silueta (en lugar del glow).
 - **Tarjetas de pedidos:** con el HUD de máquina abierto se desplazan 170 px hacia el lado libre para no tapar su título ni sus pestañas.
 No cambian estados, eventos, δ, Pre/Post ni puntajes.
+
+### 18.18 Parpadeo de transiciones
+- **Decisión del equipo:** la guía (5.7.3, punto 2) pide 0,5 s de parpadeo; se usan **3 s** (6 parpadeos de 0,5 s) para que se note al jugar y en la sustentación.
+- **HUD (CNC, brazo y AGV):** al ocurrir un evento de la máquina, su flecha y su etiqueta se pintan de amarillo grueso y parpadean 3 s; el nodo de destino pulsa de tamaño; después queda relleno fijo. Un evento nuevo reemplaza al parpadeo anterior. Vale también para los no controlables que ocurren solos (llegar, fin_fresado, falla_husillo).
+- **Botón pulsado:** destella en amarillo unos 0,45 s.
+- **Planta:** la máquina que cambió de estado muestra un destello amarillo de 0,7 s en su contorno.
+- Todo es dibujo plano y tweens (sin filtros glow). No cambia estados, δ, Pre/Post ni puntajes.

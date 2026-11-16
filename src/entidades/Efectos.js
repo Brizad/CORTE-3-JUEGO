@@ -52,7 +52,22 @@ export class Efectos {
     this.seleccionada = null;
     // Modo reducido (docs/GDD.md, sección 18.9): sin partículas, bloom ni glow de piezas. Se activa solo si los fps bajan de 50
     // o con ?efectos=0 en la dirección.
+    // Destello amarillo breve en el contorno de la máquina que cambió de estado (por evento propio o automático).
+    this._destellos = {};
+    this._baja = celda.alCambiar((e) => { if (e.tipo === 'automata') this.destellar(e.maquina); });
     this.reducido = new URLSearchParams(globalThis.location?.search ?? '').get('efectos') === '0';
+  }
+
+  /** Contorno amarillo que se desvanece en 0,7 s (tween sobre un Graphics plano, sin filtros). */
+  destellar(id) {
+    const ent = this.entidades().find((x) => x.id === id);
+    if (!ent?.silueta) return;
+    let g = this._destellos[id];
+    if (!g) g = this._destellos[id] = this.escena.add.graphics().setDepth(292);
+    g.clear().lineStyle(5, COLORES.espera, 1).strokePoints(ent.silueta, true);
+    this.escena.tweens.killTweensOf(g);
+    g.setAlpha(1);
+    this.escena.tweens.add({ targets: g, alpha: 0, duration: 700, ease: 'Quad.easeIn' });
   }
 
   /** Reduce los efectos para ganar fps. */
@@ -126,6 +141,7 @@ export class Efectos {
   }
 
   destruir() {
+    this._baja?.();
     this._quitarBloom();
     for (const { chispas, humo } of Object.values(this.emisores)) {
       chispas.destroy();

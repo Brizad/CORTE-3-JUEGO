@@ -21,7 +21,9 @@ const MARGEN_SUP = 32;
 const MARGEN_INF = 40;
 const RADIO = 22; // nodos de 44 px
 const BOTON = { ancho: 100, alto: 44, hueco: 8, y: 228 }; // táctil: 44 px como mínimo
-const PARPADEO = 0.5; // s de simulación que parpadea la última transición
+const PARPADEO = 3; // s (reloj real) que parpadea la última transición: decisión del equipo (la guía dice 0,5 s), docs/GDD.md 18.18
+const PERIODO_PARPADEO = 0.5; // 3 s / 0,5 s = 6 parpadeos
+const DESTELLO_BOTON = 0.45; // s que destella en amarillo el botón pulsado
 const HEX = (c) => `#${c.toString(16).padStart(6, '0')}`;
 
 const MODELO_DE = { CNC: MODELOS.cnc, BRAZO: MODELOS.brazo, AGV: MODELOS.agv };
@@ -77,6 +79,7 @@ export class HUDMaquina extends Phaser.Scene {
     this.gfxFijo = this.add.graphics(); // aristas y nodos sin iluminar
     this.gfxNodo = this.add.graphics(); // nodo del estado actual (relleno fuerte y borde grueso, sin filtros)
     this.gfxParpadeo = this.add.graphics(); // última transición
+    this.gfxDestello = this.add.graphics(); // destello del botón pulsado
     this.capaTextos = this.add.container(0, 0);
     this.capaBotones = this.add.container(0, 0);
     this.capaConsola = this.add.container(0, 0).setVisible(false);
@@ -96,7 +99,7 @@ export class HUDMaquina extends Phaser.Scene {
 
     this.contenedor.add([
       marco, this.titulo, this.cerrarBoton, this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos,
-      this.capaBotones, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, ...this.columnas.flatMap((c) => [c.t, c.c, c.f]), this.tip,
+      this.capaBotones, this.gfxDestello, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, ...this.columnas.flatMap((c) => [c.t, c.c, c.f]), this.tip,
     ]);
     this.botones = [];
     this._firmaBotones = '';
@@ -149,12 +152,16 @@ Regla: ${this.celda.razonSupervisor}`,
     this.capaConsola.setVisible(false);
     this._bajaCelda = this.celda.alCambiar((e) => {
       this._sucia = true;
+      // Evento de esta máquina (del jugador o automático): parpadea su flecha; el nuevo reemplaza al anterior.
+      if (e.tipo === 'automata' && e.maquina === this.maquinaId) this._parpadeo = { de: e.de, evento: e.evento, a: e.a, inicio: this.time.now };
       // Los puntos de esta máquina (reparación válida, palabra inválida, ayuda) se avisan en la consola.
       if (e.tipo === 'puntos' && e.maquina === this.maquinaId) {
         const signo = e.puntos > 0 ? '+' : '';
         this._mensaje = { texto: `${signo}${e.puntos} puntos: ${e.motivo}`, color: e.puntos > 0 ? TEXTO_HEX.operacion : TEXTO_HEX.espera, hasta: this.time.now + 3500 };
       }
     });
+    this._parpadeo = null;
+    this._destello = null;
     this._dibujarGrafo();
     this._estadoNodo = null;
     this._firmaBotones = '';
@@ -222,6 +229,7 @@ Regla: ${this.celda.razonSupervisor}`,
       g.fillPoints(a.flecha, true);
       const l = this._texto(a.rotulo.x, a.rotulo.y, a.etiqueta, { fontSize: '9px', fontStyle: 'bold', strokeThickness: 4 });
       l.setOrigin(a.origen.x, a.origen.y);
+      a.texto = l;
     }
     // Estado inicial: flecha de entrada desde la izquierda.
     const ini = this.pos[this.modelo.inicial];
@@ -425,33 +433,49 @@ Regla: ${this.celda.razonSupervisor}`,
     const ahora = this.celda.reloj.ahora;
     const estado = this.automata.estado;
 
-    // Nodo del estado actual: relleno con el color de su estado, borde claro y glow que pulsa.
-    if (estado !== this._estadoNodo) {
-      this._estadoNodo = estado;
-      const p = this.pos[estado];
-      const g = this.gfxNodo;
-      g.clear();
-      g.fillStyle(COLORES.texto, 0.25); // halo plano alrededor (sin filtro glow)
-      g.fillCircle(p.x, p.y, RADIO + 6);
-      g.fillStyle(aspectoDe(this.tipo, estado).color, 1);
-      g.fillCircle(p.x, p.y, RADIO);
-      g.lineStyle(5, COLORES.texto, 1);
-      g.strokeCircle(p.x, p.y, RADIO);
-      if (this.modelo.marcados.includes(estado)) g.lineStyle(2, COLORES.panel, 1).strokeCircle(p.x, p.y, RADIO - 6);
-    }
-    this.aviso.setText('Brazo en camino…').setVisible(this.celda.estado('BRAZO') === 'Moviendo');
-
-    // Última transición recorrida: parpadea PARPADEO s de simulación.
+    // Parpadeo de la última transición (3 s, dibujo plano): la flecha y su etiqueta en amarillo grueso y el nodo de destino pulsa.
     const b = this.gfxParpadeo;
     b.clear();
-    const ultimo = this._ultimoEvento();
-    if (ultimo && ahora - ultimo.t < PARPADEO && Math.floor((ahora - ultimo.t) / 0.125) % 2 === 0) {
-      const a = this.aristas.find((x) => x.de === ultimo.de && x.ev === ultimo.evento && x.a === ultimo.a);
-      if (a) {
-        b.lineStyle(4, COLORES.espera, 1);
-        b.strokePoints(a.puntos, false);
-      }
+    const pq = this._parpadeo;
+    const t = pq ? (this.time.now - pq.inicio) / 1000 : Infinity;
+    const activo = t < PARPADEO;
+    const encendido = activo && Math.floor(t / (PERIODO_PARPADEO / 2)) % 2 === 0;
+    const arista = pq ? this.aristas.find((x) => x.de === pq.de && x.ev === pq.evento && x.a === pq.a) : null;
+    for (const x of this.aristas) x.texto?.setColor(x === arista && encendido ? HEX(COLORES.espera) : TEXTO_HEX.texto);
+    if (arista && encendido) {
+      b.lineStyle(6, COLORES.espera, 1);
+      b.strokePoints(arista.puntos, false);
+      b.fillStyle(COLORES.espera, 1);
+      b.fillPoints(arista.flecha, true);
     }
+    // Nodo del estado actual: relleno con el color de su estado y borde grueso; durante el parpadeo pulsa de tamaño.
+    const escala = activo ? 1 + 0.22 * Math.abs(Math.sin((Math.PI * t) / PERIODO_PARPADEO)) : 1;
+    if (estado !== this._estadoNodo || escala !== this._escalaNodo) {
+      this._estadoNodo = estado;
+      this._escalaNodo = escala;
+      const p = this.pos[estado];
+      const g = this.gfxNodo;
+      const r = RADIO * escala;
+      g.clear();
+      g.fillStyle(COLORES.texto, 0.25); // halo plano alrededor (sin filtro glow)
+      g.fillCircle(p.x, p.y, r + 6);
+      g.fillStyle(aspectoDe(this.tipo, estado).color, 1);
+      g.fillCircle(p.x, p.y, r);
+      g.lineStyle(5, COLORES.texto, 1);
+      g.strokeCircle(p.x, p.y, r);
+      if (this.modelo.marcados.includes(estado)) g.lineStyle(2, COLORES.panel, 1).strokeCircle(p.x, p.y, r - 6);
+    }
+    // Destello amarillo del botón pulsado.
+    const d = this.gfxDestello;
+    d.clear();
+    if (this._destello) {
+      const k = 1 - (this.time.now - this._destello.inicio) / 1000 / DESTELLO_BOTON;
+      if (k > 0) {
+        d.fillStyle(COLORES.espera, 0.85 * k);
+        d.fillRect(this._destello.x, this._destello.y, this._destello.ancho, this._destello.alto);
+      } else this._destello = null;
+    }
+    this.aviso.setText('Brazo en camino…').setVisible(this.celda.estado('BRAZO') === 'Moviendo');
 
     // Los botones y la lista solo se rehacen cuando algo cambió.
     if (this._sucia) {
@@ -606,7 +630,7 @@ Regla: ${this.celda.razonSupervisor}`,
       if (d.tipo === 'rojo') rect.setStrokeStyle(3, 0xffffff, 1); // rojo relleno, borde blanco y texto blanco: se ve sin filtros
       rect.on('pointerover', () => this._mostrarTip(d.tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
-      rect.on('pointerup', () => this._pulsar(d));
+      rect.on('pointerup', () => this._pulsar(d, rect));
       this.capaBotones.add([rect, texto]);
       this.botones.push(boton);
     });
@@ -812,8 +836,9 @@ Regla: ${this.celda.razonSupervisor}`,
   }
 
   /** Clic en un botón: pide el evento a la Celda (δ y transición). Gris no hace nada. */
-  _pulsar(d) {
+  _pulsar(d, rect) {
     if (d.tipo === 'gris' || !d.maquina || this._pestana !== 'automata') return;
+    if (rect) this._destello = { x: rect.x, y: rect.y, ancho: rect.width, alto: rect.height, inicio: this.time.now };
     const r = this.celda.solicitar(d.maquina, d.evento, d.opciones);
     this._sucia = true;
     if (!r.ok) this._mostrarTip(`Rechazado (${r.motivo}). ${d.tip}`);
