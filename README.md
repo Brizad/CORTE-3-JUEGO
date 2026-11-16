@@ -1,0 +1,96 @@
+# RoboCell Tycoon 2.5D
+
+Simulador-juego isométrico en el navegador de una **celda de manufactura** con 2 CNC, 1 brazo robótico y 2 AGV. El jugador es el jefe
+de turno: decide cuándo disparar cada evento controlable. Las máquinas se gobiernan con **autómatas** (con un supervisor que impide un
+estado prohibido) y los recursos compartidos (la mesa de descarga y el brazo) con una **red de Petri** que puede caer en **deadlock**.
+El radar del árbol de cobertura avisa antes de que ocurra.
+
+Proyecto 2 de la guía *Laboratorio 1: Sistemas de Eventos Discretos con Phaser, Autómatas y Redes de Petri* (FLA-23 v.00),
+Modelado Discreto, Corte 3.
+
+**Integrantes:** Brian Acevedo, Brayan Amado y Manuel Carvajal.
+
+## Tecnología
+
+Phaser 4.2.1 (por CDN, no se instala con npm), Vite y JavaScript. Mouse, teclado y táctil. Phaser se carga desde
+`https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.min.js`, así que hace falta conexión a internet para jugar.
+
+## Cómo ejecutar
+
+Requisitos: Node.js 20.19 o más nuevo y npm. Python 3 solo para empaquetar el ZIP.
+
+```bash
+npm install            # instala Vite (Phaser llega por CDN)
+npm run dev            # servidor de desarrollo: http://localhost:5173
+npm test               # pruebas del núcleo y del juego (node --test)
+npm run build          # compila a dist/
+npm run preview        # sirve dist/: http://localhost:4173
+npm run pruebas        # conformidad modelo–juego y criterios del GDD
+npm run modelos        # regenera src/sed/modelos/*.json desde modelos/
+npm run empaquetar     # build + entrega/GrupoN_RoboCell.zip (index.html en la raíz)
+```
+
+La tecla **F** (fuerza una falla del husillo para probar la consola de reparación) solo existe con `npm run dev`.
+
+## Cómo se juega
+
+1. En el título: **Jugar**, **Tutorial** (Turno 0, paso a paso) o **Controles**.
+2. Haz clic en una máquina para abrir su HUD: grafo del autómata, botones de los eventos y la lista de los últimos eventos.
+   Verde = se puede, gris = no se puede ahora (al pasar el mouse dice por qué), rojo = lo inhibe el supervisor (−15 puntos si insistes).
+3. Carga una CNC: manda el brazo (`m`), abre la pinza (`a`), carga (`c`), cierra (`e`; el brazo vuelve solo) y inicia el fresado (`i`).
+   Descarga con `d` para sumar +100.
+4. Despacha los AGV con los botones de la barra. **Nunca despaches los dos a la vez**: cada uno toma un recurso y espera el otro
+   (deadlock). El radar pasa a amarillo cuando hay peligro. El **Controlador de celda** (−150) lo evita.
+5. Si una CNC falla, escribe en su consola una palabra del lenguaje `^H(CT?)+R$` (por ejemplo `HCTCR`) y pulsa Enter.
+6. Son 3 turnos de 180 s con metas de 3, 5 y 7 piezas. Hay 6 logros.
+
+## Controles
+
+| Acción | Mouse y teclado | Táctil |
+|---|---|---|
+| Abrir el HUD de una máquina | Clic en la máquina | Toque en la máquina |
+| Disparar un evento o una transición | Clic en su botón | Toque en su botón |
+| Pausa | **P** | Botón de pausa |
+| Inspector (ecuación de estado y árbol de cobertura) | **I** | Botón "Insp." |
+| Vista de la red de Petri | **R** | Botón "Red" |
+| Velocidad x1, x2 y x4 | **1**, **2**, **4** | Botones x1, x2, x4 |
+| Consola de reparación | **H**, **C**, **T**, **R**, Retroceso, Enter | Botones de comandos |
+| Cerrar un panel | **Esc** | Botón X |
+| Mover y acercar la cámara | Arrastrar y rueda | Arrastrar y pellizco |
+| Sonidos, fps y demostración | **M**, **F1**, **D** | — |
+
+## Estructura
+
+```
+index.html, vite.config.js        Phaser por CDN y base './'
+modelos/                          Archivos del software académico: .jff (JFLAP), .wmod (Supremica) y .pnml (PIPE2)
+docs/
+  GDD.md                          Documento de diseño del juego (sección 18: mejoras de jugabilidad)
+  arte.md                         Guía de arte
+  modelo/                         Modelo formal en Markdown (automatas.md y petri.md): manda sobre el GDD
+  pruebas.md, informe.md          Pruebas de la guía 5.9 y el informe con el postmortem
+  PLAN_FINAL.md, decisiones_por_confirmar.md
+  capturas/                       Capturas de las pruebas y de las funciones
+.agents/skills/                   Las 3 habilidades del agente (diseñador, ingeniero SED y director de arte)
+src/sed/                          Núcleo formal SIN Phaser ni DOM: Automata, composición y supervisor, RedPetri,
+                                  árbol de cobertura, Celda (sincroniza todo), consola de reparación, logros, tutorial
+src/sed/modelos/                  JSON que salen de modelos/ (los importa el navegador)
+src/entidades/, src/escenas/      Parte visible con Phaser: máquinas, fichas, vista de red, HUD, inspector, resultados
+src/arte/, src/iso/               Íconos, fichas y proyección isométrica 2:1
+src/audio/                        Sonidos con Web Audio
+test/                             Pruebas del núcleo (`npm test`)
+scripts/                          Exportar modelos, pruebas de conformidad, empaquetado
+PROMPTS.md                        Prompts usados, en orden, y cuáles hubo que corregir
+```
+
+## Reglas de diseño
+
+- El **modelo formal manda**: lo que digan `modelos/` y `docs/modelo/` no se cambia desde el juego.
+- Todo cambio de estado de una máquina pasa por **δ** (`Automata.ejecutar`) y todo recurso se mueve solo por el **disparo de una transición**
+  (`RedPetri.disparar`). Las animaciones solo muestran lo que ya pasó en el núcleo.
+- Si el GDD no define algo, se elige la opción más simple y se anota en `docs/decisiones_por_confirmar.md`.
+
+## Entrega
+
+`npm run empaquetar` deja `entrega/GrupoN_RoboCell.zip` (contenido de `dist/` con `index.html` en la raíz, muy por debajo de 25 MB).
+`netlify.toml` está listo para publicar en Netlify (opcional, guía 5.11): comando `npm run build`, carpeta `dist`.

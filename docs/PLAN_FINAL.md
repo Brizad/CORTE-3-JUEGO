@@ -13,5 +13,5 @@ en `docs/decisiones_por_confirmar.md`.
   temblor de cámara al bloquear o fallar, destello en los logros, transiciones entre escenas, tweens en fichas y radar, cámara con
   arrastre, rueda y pellizco; medición de fps.
 - [x] **Fase E · Pruebas y conformidad (guía 5.9):** `docs/pruebas.md` con las tablas llenas y capturas; 3 turnos completos a x4.
-- [ ] **Fase F · Entrega (guía 5.10 y 5.12):** build y preview sin 404, ZIP en `entrega/`, `netlify.toml`, README, PROMPTS.md,
+- [x] **Fase F · Entrega (guía 5.10 y 5.12):** build y preview sin 404, ZIP en `entrega/`, `netlify.toml`, README, PROMPTS.md,
   `docs/informe.md` con postmortem.

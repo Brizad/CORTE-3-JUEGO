@@ -1,0 +1,4 @@
+# Despliegue en Netlify (opcional, guía 5.11). No se publica desde aquí: Netlify ejecuta el comando y sirve la carpeta.
+[build]
+  command = "npm run build"
+  publish = "dist"

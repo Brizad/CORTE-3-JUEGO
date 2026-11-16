@@ -254,6 +254,8 @@ El inspector (tecla I) muestra el progreso de cada logro.
 | Consola de reparación: enviar | Botón Enviar | **Enter** | Botón Enviar |
 | Contador de fps | — | **F1** | Botón en el inspector |
 | Silenciar o activar los sonidos | — | **M** | — |
+| Vista de la red de Petri | Botón "Red" | **R** | Botón "Red" |
+| Modo demostración (el piloto juega solo) | — | **D** | — |
 | Mover la cámara | Arrastrar con el botón izquierdo | — | Arrastrar con un dedo |
 | Acercar y alejar | Rueda del mouse | — | Pellizco con dos dedos |
 

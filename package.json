@@ -12,7 +12,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "modelos": "node scripts/exportar-modelos.mjs",
-    "pruebas": "node scripts/pruebas-modelo.mjs && node scripts/pruebas-gdd.mjs"
+    "pruebas": "node scripts/pruebas-modelo.mjs && node scripts/pruebas-gdd.mjs",
+    "empaquetar": "npm run build && python scripts/empaquetar.py"
   },
   "repository": {
     "type": "git",

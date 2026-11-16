@@ -186,3 +186,109 @@ Medido con \`juego.loop.actualFps\` (promedio de 8 muestras). Equipo de prueba: 
 `);
 fs.writeFileSync(ruta('docs/pruebas.md'), md.join('\n') + '\n');
 console.log('docs/pruebas.md escrito');
+
+// ---------- docs/informe.md: tablas de las secciones 5.2 y 5.9 y borrador del postmortem ----------
+const cuerpoPruebas = md.join('\n').replace(/^# Pruebas y conformidad \(guía 5\.9\)\n/, '');
+const informe = `# Informe de RoboCell Tycoon 2.5D
+
+**Equipo:** Brian Acevedo, Brayan Amado y Manuel Carvajal. **Proyecto 2** de la guía *Laboratorio 1: Sistemas de Eventos Discretos con
+Phaser, Autómatas y Redes de Petri* (FLA-23 v.00). Repositorio: https://github.com/Brizad/CORTE-3-JUEGO
+
+Este informe reúne las tablas de la sección 5.2 (modelo formal verificado) y de la sección 5.9 (pruebas) y el postmortem de la
+sección 5.13 b. Los números salen de \`npm run pruebas\` y de las pruebas en el navegador guardadas en \`docs/datos/\`.
+
+> Aviso: JFLAP, Supremica y PIPE2 no se pudieron abrir en el entorno de trabajo automático. En las tablas, la columna del
+> "software académico" se calculó con un lector propio de los archivos \`.jff\` y \`.pnml\` (\`scripts/pruebas-modelo.mjs\`).
+> Antes de entregar hay que confirmar cada dato con una captura del programa correspondiente.
+
+---
+
+# Parte 1. Modelo formal verificado (sección 5.2)
+
+## 1.1 Autómatas (registro del modelo verificado)
+
+${seccion(modelo, 'Registro del modelo verificado (autómatas)')}
+
+Todos los eventos son observables (Σuo = ∅), por eso no hay autómata observador. En todas las máquinas q0 = Qm.
+
+## 1.2 Palabras de prueba (8 o más por autómata)
+
+${seccion(modelo, 'Palabras de prueba por máquina (JFLAP contra el juego)')}
+
+## 1.3 Lenguaje de reparación
+
+Expresión regular de la ficha: \`^H(CT?)+R$\`; en JFLAP: \`H(C(T+!))(C(T+!))*R\`, convertida a NFA, a DFA y minimizada (DFA mínimo de 5 estados).
+
+${seccion(modelo, 'Lenguaje de reparación ^H(CT?)+R$ (DFA de JFLAP, RegExp y juego)')}
+
+## 1.4 Composición y supervisor (Supremica)
+
+${seccion(modelo, 'Composición CNC ‖ Brazo y supervisor')}
+
+Regla del supervisor: ¬(CNC = Fresando ∧ Brazo = Mandril_Abierto). Deshabilita \`iniciar_fresado\` en (Cargado, Mandril_Abierto) y
+\`abrir_mandril\` en (Fresando, Mandril_Cerrado): esos son los botones que el juego muestra en rojo.
+
+## 1.5 Red de Petri (PIPE2)
+
+${seccion(modelo, 'Red de Petri (cálculo independiente sobre robocell.pnml contra el juego)')}
+
+Regla de prevención: el lugar monitor **Celda_libre** (p10, k = 1). t1a y t2a toman su ficha y t1c y t2c la devuelven. Invariante
+IP5: Celda_libre + p5 + p6 + p7 + p8 = 1. Con él, el árbol tiene 12 nodos y 7 marcados y ningún marcado muerto. El detalle de las
+matrices Pre, Post e incidencia y de los invariantes P y T está en \`docs/modelo/petri.md\`.
+
+---
+
+# Parte 2. Pruebas (sección 5.9)
+${cuerpoPruebas.replace(/^Resultados reales de RoboCell Tycoon 2\.5D\./m, 'Resultados reales de RoboCell Tycoon 2.5D.').replace(/^## /gm, '## 2.').replace(/^### /gm, '### ')}
+
+---
+
+# Parte 3. Postmortem (sección 5.13 b)
+
+## 1. ¿Qué funcionó bien en el modelo formal, el diseño, el arte y el código?
+
+- **Modelo formal:** modelar primero en JFLAP y en PIPE2 y escribir el modelo en Markdown nos dio una especificación clara. Con un script
+  que lee los archivos por su cuenta comprobamos 68 datos entre el modelo y el juego y no hubo ninguna diferencia.
+- **Diseño:** el GDD citaba en cada mecánica el elemento del modelo que la produce. Eso evitó discutir reglas: si algo no estaba en el
+  modelo, no se inventaba.
+- **Arte:** dibujar todo en código con una paleta fija de 14 colores mantuvo el estilo y dejó el ZIP en menos de 1 MB.
+- **Código:** el núcleo (\`src/sed/\`) no usa Phaser ni el DOM. Por eso se prueba con Node (120 pruebas) y la parte visual solo muestra lo
+  que ya pasó. Tener una sola clase (\`Celda\`) que sincroniza autómatas, red y reloj hizo fácil agregar el radar, el Controlador y el
+  tutorial sin tocar las reglas.
+
+## 2. ¿Qué diferencias aparecieron entre el modelo verificado y el juego, y cómo se resolvieron?
+
+- En el documento \`petri.md\` había un error de transcripción: el marcado M7 estaba escrito con p1 = 1, pero t2b consume \`Mesa_libre\`.
+  Lo vimos al dibujar el árbol (un nodo salía sin nombre). Corregimos el documento; el modelo y la red no cambiaron.
+- El modelo dice que \`tr_volver\` dura 0 s, pero en pantalla el brazo tarda 0,5 s en volver. Lo dejamos como detalle visual y lo anotamos.
+- El bloqueo por \`Celda_libre\` no es un "intento bloqueado" del supervisor: el GDD se corrigió para que solo avise y no reste puntos.
+- Al escribir rápido en la consola de reparación, Phaser entregaba varias veces la misma tecla en equipos lentos. Ahora cada tecla se
+  atiende una sola vez.
+
+## 3. ¿Qué prompts dieron mejores resultados y cuáles hubo que reescribir? ¿Qué decidió el agente que no estaba en el modelo ni en el GDD?
+
+- Funcionaron mejor los prompts que pedían un criterio medible y una captura ("abre el HUD de una CNC, del brazo y de un AGV y toma
+  capturas en las que el estado iluminado coincida con el sprite").
+- Hubo que corregir el HUD de máquina (el panel de la guía era muy pequeño y una línea verde atravesaba la pantalla por un filtro sin
+  margen) y la primera versión del tutorial (comprobaba el estado actual y se atascaba si el jugador era rápido; ahora lee la bitácora).
+- El agente decidió, y quedó escrito en \`docs/decisiones_por_confirmar.md\`: dónde van las fichas y las barras de la vista de red, el
+  tamaño del panel del HUD, las tarjetas de pedidos y las piezas visibles, y los tiempos solo visuales (por ejemplo, el regreso de
+  los AGV al depósito).
+
+## 4. ¿Qué mecánica hizo más visible la teoría para el jugador?
+
+Creemos que el **radar con la vista de la red de Petri**: el jugador ve que, después de despachar el AGV1, el radar se pone amarillo y
+que la barra de t2a queda en naranja (conflicto). Cuando provoca el deadlock, las barras se ponen rojas. El **botón rojo del
+supervisor** (con la regla al pasar el mouse) y el aviso "AGV1 espera: falta Robot_libre" (AND-join) también hicieron visible la teoría.
+Esto hay que confirmarlo con el playtest de otro equipo (literal h, todavía pendiente).
+
+## 5. ¿Qué cambiarían con una semana más? ¿Qué parte del modelo de la Fase 2 del curso ya anticipan?
+
+- Hacer el playtest con otro equipo y probar el arrastre y el pellizco en un teléfono real.
+- Reemplazar los dibujos en código por sprites con las imágenes generadas (guía 5.4) y seguir ajustando el balance de los turnos.
+- Confirmar los resultados con capturas de JFLAP, Supremica y PIPE2.
+- De la Fase 2 ya anticipamos la **síntesis del supervisor** (controlabilidad y no bloqueo), el **análisis de acotación y de invariantes**
+  de la red de Petri y el **árbol de cobertura** como herramienta de verificación de deadlock.
+`;
+fs.writeFileSync(ruta('docs/informe.md'), informe);
+console.log('docs/informe.md escrito');
