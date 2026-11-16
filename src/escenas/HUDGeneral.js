@@ -43,6 +43,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.alertas = new Alertas(this, this.celda);
     this._zona({ x: 540, y: 450, ancho: 412, alto: 82 });
     this._puntaje();
+    this._tarjetasPedidos();
     this._radar();
     this._panelFichas();
     this._botonesTactiles();
@@ -95,6 +96,58 @@ export class HUDGeneral extends Phaser.Scene {
     this.add.text(z.x + 225, z.y + 3, 'Piezas / meta', ESTILO({ fontSize: '9px', color: '#8794a3' })).setOrigin(0.5, 0);
     this.txtPuntaje = this.add.text(z.x + 75, z.y + 14, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' })).setOrigin(0.5, 0);
     this.txtPiezas = this.add.text(z.x + 225, z.y + 14, '', ESTILO({ fontSize: '20px', fontStyle: 'bold' })).setOrigin(0.5, 0);
+  }
+
+  // ---- Arriba al centro, debajo del puntaje: pedidos como tarjetas con barra de tiempo (docs/GDD.md, sección 18.7) ----
+
+  _tarjetasPedidos() {
+    this.tarjetas = [0, 1, 2].map((i) => {
+      const x = 330 + i * 102;
+      return {
+        x, g: this.add.graphics(),
+        titulo: this.add.text(x + 6, 55, '', ESTILO({ fontSize: '10px', fontStyle: 'bold' })),
+        tiempo: this.add.text(x + 96, 55, '', ESTILO({ fontSize: '10px' })).setOrigin(1, 0),
+        clave: '',
+      };
+    });
+    this.masPedidos = this.add.text(636, 62, '', ESTILO({ fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.espera }));
+    this._zona({ x: 330, y: 52, ancho: 300, alto: 34 });
+  }
+
+  _dibujarTarjetas() {
+    const c = this.celda;
+    const ahora = c.reloj.ahora;
+    const vence = c.turno.pedidosVencen !== false;
+    const limite = c.tiempos.pedidoVence;
+    const lista = c.pedidos.slice(0, 3);
+    this.tarjetas.forEach((t, i) => {
+      const p = lista[i];
+      const resto = p ? Math.max(0, limite - (ahora - p.t)) : 0;
+      const frac = vence ? resto / limite : 1;
+      const color = !vence ? COLORES.mantenimiento : p?.vencido ? COLORES.fallo : frac > 1 / 3 ? COLORES.operacion : frac > 1 / 6 ? COLORES.espera : COLORES.fallo;
+      const clave = p ? `${p.id}|${Math.round(frac * 40)}|${p.vencido}` : '-';
+      if (clave === t.clave) return;
+      t.clave = clave;
+      const g = t.g;
+      g.clear();
+      if (!p) {
+        t.titulo.setText('');
+        t.tiempo.setText('');
+        return;
+      }
+      g.fillStyle(COLORES.panel, 0.9);
+      g.fillRoundedRect(t.x, 52, 98, 34, 4);
+      g.lineStyle(1.5, color, 1);
+      g.strokeRoundedRect(t.x, 52, 98, 34, 4);
+      // Barra del tiempo que le queda al pedido.
+      g.fillStyle(COLORES.banda, 0.8);
+      g.fillRect(t.x + 6, 74, 86, 7);
+      g.fillStyle(color, 1);
+      g.fillRect(t.x + 6, 74, 86 * Math.max(0.02, frac), 7);
+      t.titulo.setText(`Pedido #${p.id}`);
+      t.tiempo.setText(!vence ? 'sin límite' : p.vencido ? 'vencido' : `${Math.ceil(resto)} s`).setColor(p.vencido ? TEXTO_HEX.fallo : TEXTO_HEX.texto);
+    });
+    this.masPedidos.setText(c.pedidos.length > 3 ? `+${c.pedidos.length - 3}` : '');
   }
 
   // ---- Arriba derecha: radar ----
@@ -342,6 +395,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.txtPiezas.setText(tutorial ? String(c.estadisticas.piezas) : `${c.estadisticas.piezas} / ${c.turno.meta}`);
 
     this.alertas.actualizar();
+    this._dibujarTarjetas();
     this._dibujarFichas();
     this._dibujarTactiles();
     this._dibujarDespacho();

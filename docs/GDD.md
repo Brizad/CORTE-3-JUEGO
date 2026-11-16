@@ -493,3 +493,43 @@ El paso avanza cuando el estado del modelo cumple la condición (no cuando se ha
    las barras bloqueadas en rojo. En el tutorial no hay game over ni penalización: el jugador puede reintentar el final o empezar el turno 1.
 
 El tutorial no guarda puntaje ni logros.
+
+### 18.6 Piezas visibles
+
+Capa solo visual: no agrega estados, eventos ni reglas. Todo sale de los estados de las CNC y de los eventos `c` y `d` del modelo.
+
+- **Entrada:** una zona junto al brazo, en la celda (6, 5), con 3 bloques en bruto (grises). Los bloques en bruto no se acaban: la zona se
+  rellena sola después de cada carga.
+- **Al cargar (`c`):** un bloque sale de la Entrada y el brazo lo lleva a la CNC (viaja en arco por encima de la pinza). Mientras la CNC está
+  en Cargado o Fresando, el bloque se ve sobre la máquina.
+- **Al terminar el fresado (`f`):** el bloque se convierte en una pieza brillante (dorada, con glow) sobre la CNC en Terminado.
+- **Falla (`x`):** el bloque de la CNC en Falla se ve rojo.
+- **Al descargar (`d`):** la pieza viaja a la zona **Piezas terminadas**, en la celda (6, 3), y se apila (hasta 10 visibles). La zona
+  muestra un contador con las piezas del turno.
+
+### 18.7 Pedidos como tarjetas
+
+Arriba al centro, debajo del puntaje, cada pedido pendiente es una tarjeta con su número y una barra del tiempo que le queda de los
+30 s (verde, luego amarilla en el último tercio y roja en el último sexto). Un pedido vencido (sigue pendiente) se ve rojo y fijo con
+"vencido". Se muestran hasta 3 tarjetas (los pedidos más antiguos) y un "+n" si hay más. Los pedidos y su vencimiento son los de la
+sección 6; las tarjetas solo los muestran.
+
+### 18.8 Pantalla de título
+
+Nombre del juego, integrantes del equipo (Brian Acevedo, Brayan Amado y Manuel Carvajal) y tres botones: **Jugar**, **Tutorial**
+(Turno 0, sección 18.5) y **Controles** (la tabla de controles de la sección 13 en un panel). La partida empieza solo con Jugar o con Enter.
+
+### 18.9 Efectos de pulido (Phaser 4)
+
+Cada efecto tiene un propósito y no cambia reglas:
+
+| Efecto | Dónde | Propósito |
+|---|---|---|
+| Glow | Máquina seleccionada; estado actual en el HUD; botón bloqueado por el supervisor | Mostrar qué está abierto y qué está inhibido |
+| Bloom | Cámara, unos instantes, al fallar el husillo y en el deadlock | Subrayar el evento crítico |
+| Partículas | Chispas en la CNC mientras fresa; humo en la CNC en Falla | Mostrar el estado de la máquina |
+| Temblor de cámara | Al bloquear un evento prohibido, al fallar una CNC y en el deadlock | Marcar el evento negativo |
+| Destello de cámara | Al ganar un logro | Premiar |
+| Transiciones | Fundido entre Título, Planta y Resultados | Dar continuidad |
+| Tweens | Fichas entre lugares, aviso de logro, pulso del radar al cambiar de color | Mostrar el flujo y el cambio |
+| Cámara | Arrastre, rueda y pellizco | Explorar la planta |

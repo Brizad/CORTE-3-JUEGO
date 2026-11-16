@@ -16,6 +16,7 @@ import { FichasPlanta } from '../entidades/FichasPlanta.js';
 import { Estaciones } from '../entidades/Estaciones.js';
 import { Etiquetas } from '../entidades/Etiquetas.js';
 import { VistaRed } from '../entidades/VistaRed.js';
+import { Piezas } from '../entidades/Piezas.js';
 import { Logros } from '../sed/logros.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
@@ -67,6 +68,7 @@ export class Planta extends Phaser.Scene {
       this.estaciones.destruir();
       this.etiquetas.destruir();
       this.vistaRed.destruir();
+      this.piezas.destruir();
       this._bajaTemblor();
       this.logros.detener();
       this.scene.stop('Resultados');
@@ -163,6 +165,7 @@ export class Planta extends Phaser.Scene {
     this.estaciones = new Estaciones(this, this.celda);
     this.etiquetas = new Etiquetas(this, this.celda, () => this.fichas);
     this.vistaRed = new VistaRed(this, this.celda, () => this.fichas);
+    this.piezas = new Piezas(this, this.celda, () => this.entidades);
     // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
     this._bajaTemblor = this.celda.alCambiar((e) => {
       if (e.tipo === 'rechazo' && e.motivo === 'supervisor') this.cameras.main.shake(300, 0.004);
@@ -210,7 +213,7 @@ export class Planta extends Phaser.Scene {
       .setScrollFactor(0)
       .setVisible(false);
     this.textoDemo = this.add
-      .text(ANCHO / 2, 52, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.operacion })
+      .text(ANCHO / 2, 98, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.operacion })
       .setOrigin(0.5)
       .setDepth(100)
       .setScrollFactor(0);
@@ -223,6 +226,7 @@ export class Planta extends Phaser.Scene {
     this.fichas.actualizar();
     this.estaciones.actualizar();
     this.vistaRed.actualizar();
+    this.piezas.actualizar();
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
     this.textoPausa.setVisible(r.enPausa);
