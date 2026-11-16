@@ -114,6 +114,8 @@ export class HUDGeneral extends Phaser.Scene {
       };
     });
     this.masPedidos = this.add.text(636, 62, '', ESTILO({ fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.espera }));
+    // Contenedor: se desplaza hacia el lado libre cuando el HUD de una máquina está abierto (no tapa su título ni sus pestañas).
+    this.contTarjetas = this.add.container(0, 0, [...this.tarjetas.flatMap((t) => [t.g, t.titulo, t.tiempo]), this.masPedidos]);
     this._zona(ZONAS.tarjetas);
   }
 
@@ -418,6 +420,9 @@ export class HUDGeneral extends Phaser.Scene {
 
     this.alertas.actualizar();
     this._dibujarTarjetas();
+    // Con el HUD de máquina abierto a la derecha (x 492..952) las tarjetas van a la izquierda; si está a la izquierda, a la derecha.
+    const hud = this.scene.get('HUDMaquina');
+    this.contTarjetas.x = hud?.abierto ? (hud.panelX > 480 ? -170 : 170) : 0;
     this._dibujarFichas();
     this._dibujarTactiles();
     this._dibujarDespacho();

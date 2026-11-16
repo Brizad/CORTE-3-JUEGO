@@ -625,3 +625,11 @@ los 3 turnos se recorren hasta la pantalla de resultados y el tutorial llega a s
 (game over y las dos formas de reintentar, menú de pausa, ayuda, sonido, reiniciar turno, F1 y volver al título) pasan todas.
 Nota sobre el entorno: en Edge sin GPU el dibujado va a 1 a 40 fps y a veces la pestaña queda "oculta" (se detiene `requestAnimationFrame`); el
 script lo evita con banderas de Edge y adelanta el reloj de simulación a mano. Eso no es un error del juego.
+
+### 18.17 Correcciones de jugabilidad (sin filtros en el HUD)
+- **Lentitud al abrir una CNC:** la causa eran los filtros glow de Phaser 4 (nodo del estado actual, botones rojos y la máquina seleccionada), que se re-renderizaban en cada cuadro. Se quitaron: ahora todo es relleno y borde planos.
+- **Estado actual del grafo:** relleno con el color de su estado (arte.md), borde blanco grueso (5 px) y halo plano.
+- **Botones vetados por el supervisor:** botón rojo relleno con borde y texto blancos; la razón sale al pasar el mouse.
+- **Máquina seleccionada:** contorno amarillo plano sobre su silueta (en lugar del glow).
+- **Tarjetas de pedidos:** con el HUD de máquina abierto se desplazan 170 px hacia el lado libre para no tapar su título ni sus pestañas.
+No cambian estados, eventos, δ, Pre/Post ni puntajes.

@@ -107,15 +107,16 @@ export class Efectos {
       humo.timeScale = escala;
     }
     // Glow en la máquina seleccionada: el filtro se crea al abrir su HUD y se quita al cerrarlo.
+    // Contorno amarillo de la máquina seleccionada: un polígono plano (un filtro glow ralentizaba el juego al abrir el HUD).
     if (seleccionada !== this.seleccionada) {
-      const anterior = this.entidades().find((e) => e.id === this.seleccionada);
-      if (anterior?.cuerpo.filters) anterior.cuerpo.filters.internal.clear(); // sin filtros activos no se renderiza nada extra
-      const nueva = this.entidades().find((e) => e.id === seleccionada);
-      if (nueva) {
-        nueva.cuerpo.enableFilters();
-        nueva.cuerpo.filters.internal.addGlow(COLORES.espera, 5, 0).setPaddingOverride(null);
-      }
       this.seleccionada = seleccionada;
+      this.contorno ??= this.escena.add.graphics().setDepth(291);
+      this.contorno.clear();
+      const nueva = this.entidades().find((e) => e.id === seleccionada);
+      if (nueva?.silueta) {
+        this.contorno.lineStyle(3, COLORES.espera, 1);
+        this.contorno.strokePoints(nueva.silueta, true);
+      }
     }
   }
 

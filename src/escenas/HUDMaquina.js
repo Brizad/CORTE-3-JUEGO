@@ -75,10 +75,7 @@ export class HUDMaquina extends Phaser.Scene {
     this.capaComposicion.add([this.txtCompEstado, this.txtCompB]);
 
     this.gfxFijo = this.add.graphics(); // aristas y nodos sin iluminar
-    this.gfxNodo = this.add.graphics(); // nodo del estado actual (con glow)
-    this.gfxNodo.enableFilters();
-    // setPaddingOverride(null): Phaser 4 no da margen al filtro por defecto y el borde del nodo se estira por la pantalla.
-    this.glow = this.gfxNodo.filters.internal.addGlow(COLORES.texto, 4, 0).setPaddingOverride(null);
+    this.gfxNodo = this.add.graphics(); // nodo del estado actual (relleno fuerte y borde grueso, sin filtros)
     this.gfxParpadeo = this.add.graphics(); // última transición
     this.capaTextos = this.add.container(0, 0);
     this.capaBotones = this.add.container(0, 0);
@@ -434,13 +431,14 @@ Regla: ${this.celda.razonSupervisor}`,
       const p = this.pos[estado];
       const g = this.gfxNodo;
       g.clear();
+      g.fillStyle(COLORES.texto, 0.25); // halo plano alrededor (sin filtro glow)
+      g.fillCircle(p.x, p.y, RADIO + 6);
       g.fillStyle(aspectoDe(this.tipo, estado).color, 1);
       g.fillCircle(p.x, p.y, RADIO);
-      g.lineStyle(3, COLORES.texto, 1);
+      g.lineStyle(5, COLORES.texto, 1);
       g.strokeCircle(p.x, p.y, RADIO);
-      if (this.modelo.marcados.includes(estado)) g.strokeCircle(p.x, p.y, RADIO - 4);
+      if (this.modelo.marcados.includes(estado)) g.lineStyle(2, COLORES.panel, 1).strokeCircle(p.x, p.y, RADIO - 6);
     }
-    this.glow.outerStrength = 4 + 3 * Math.sin(this.time.now / 250);
     this.aviso.setText('Brazo en camino…').setVisible(this.celda.estado('BRAZO') === 'Moviendo');
 
     // Última transición recorrida: parpadea PARPADEO s de simulación.
@@ -468,8 +466,6 @@ Regla: ${this.celda.razonSupervisor}`,
       this._refrescarComposicion();
     }
     if (this._modoConsola && this._consolaLista && this._pestana === 'automata') this._refrescarConsola();
-    // Los botones rojos pulsan.
-    for (const bt of this.botones) if (bt.glow) bt.glow.outerStrength = 3 + 3 * Math.sin(this.time.now / 200);
   }
 
   /** Último evento de esta máquina en la bitácora de la Celda. */
@@ -606,11 +602,8 @@ Regla: ${this.celda.razonSupervisor}`,
           fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: d.tipo === 'gris' ? '#8794a3' : TEXTO_HEX.texto, align: 'center', wordWrap: { width: ancho - 8 },
         })
         .setOrigin(0.5);
-      const boton = { rect, texto, d, glow: null };
-      if (d.tipo === 'rojo') {
-        rect.enableFilters();
-        boton.glow = rect.filters.internal.addGlow(COLORES.fallo, 4, 0).setPaddingOverride(null);
-      }
+      const boton = { rect, texto, d };
+      if (d.tipo === 'rojo') rect.setStrokeStyle(3, 0xffffff, 1); // rojo relleno, borde blanco y texto blanco: se ve sin filtros
       rect.on('pointerover', () => this._mostrarTip(d.tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
       rect.on('pointerup', () => this._pulsar(d));
