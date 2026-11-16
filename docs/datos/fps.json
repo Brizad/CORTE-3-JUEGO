@@ -1,0 +1,14 @@
+{
+  "sin": {
+    "inicio": 53,
+    "pico": 53,
+    "inspector": 43,
+    "errores": []
+  },
+  "con": {
+    "inicio": 60,
+    "pico": 55,
+    "inspector": 22,
+    "errores": []
+  }
+}

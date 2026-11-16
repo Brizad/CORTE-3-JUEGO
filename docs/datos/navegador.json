@@ -1,0 +1,241 @@
+{
+  "errores": [],
+  "A12": {
+    "a1": [
+      {
+        "maquina": "CNC1",
+        "estado": "Fresando",
+        "color": "operacion",
+        "icono": "chispas",
+        "esperado": "operacion / chispas",
+        "ok": true
+      },
+      {
+        "maquina": "BRAZO",
+        "estado": "Moviendo",
+        "color": "operacion",
+        "icono": "flechas",
+        "esperado": "operacion / flechas",
+        "ok": true
+      },
+      {
+        "maquina": "AGV1",
+        "estado": "Viajando",
+        "color": "operacion",
+        "icono": "flecha",
+        "esperado": "operacion / flecha",
+        "ok": true
+      },
+      {
+        "maquina": "AGV1",
+        "estado": "Esperando",
+        "color": "espera",
+        "icono": "relojArena",
+        "esperado": "espera / relojArena",
+        "ok": true
+      }
+    ],
+    "a2": [
+      {
+        "maquina": "CNC1",
+        "nodoIluminado": "Fresando",
+        "estadoDelAutomata": "Fresando",
+        "aristasHUD": 6,
+        "aristasJFLAP": 6,
+        "mismasAristas": true,
+        "mismaDistribucion": true
+      },
+      {
+        "maquina": "BRAZO",
+        "nodoIluminado": "Mandril_Cerrado",
+        "estadoDelAutomata": "Mandril_Cerrado",
+        "aristasHUD": 7,
+        "aristasJFLAP": 7,
+        "mismasAristas": true,
+        "mismaDistribucion": true
+      },
+      {
+        "maquina": "AGV1",
+        "nodoIluminado": "Esperando",
+        "estadoDelAutomata": "Esperando",
+        "aristasHUD": 4,
+        "aristasJFLAP": 4,
+        "mismasAristas": true,
+        "mismaDistribucion": true
+      }
+    ]
+  },
+  "A3": {
+    "CNC1": {
+      "eventos": 7,
+      "igual": true,
+      "cadena": true
+    },
+    "CNC2": {
+      "eventos": 5,
+      "igual": true,
+      "cadena": true
+    },
+    "BRAZO": {
+      "eventos": 32,
+      "igual": true,
+      "cadena": true
+    },
+    "AGV1": {
+      "eventos": 4,
+      "igual": true,
+      "cadena": true
+    },
+    "AGV2": {
+      "eventos": 0,
+      "igual": true,
+      "cadena": true
+    }
+  },
+  "A8": {
+    "disparos": [
+      "t1a",
+      "tr_ir",
+      "tr_volver"
+    ],
+    "marcadoJuego": [
+      0,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "marcadoAMano": [
+      0,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "inspector": "k = 3   u_k = [0, 0, 0, 0, 0, 0, 0, 1]ᵀ  (dispara tr_volver) M_k = M_{k−1} + Aᵀ·u_k",
+    "ok": true
+  },
+  "C": [
+    {
+      "w": "HCTCR",
+      "estado": "Libre",
+      "delta": 50
+    },
+    {
+      "w": "HCR",
+      "estado": "Libre",
+      "delta": 50
+    },
+    {
+      "w": "HCTR",
+      "estado": "Libre",
+      "delta": 50
+    },
+    {
+      "w": "HCCTCR",
+      "estado": "Libre",
+      "delta": 50
+    },
+    {
+      "w": "HTCR",
+      "estado": "Falla",
+      "delta": -30
+    },
+    {
+      "w": "HR",
+      "estado": "Falla",
+      "delta": -30
+    },
+    {
+      "w": "HCT",
+      "estado": "Falla",
+      "delta": -30
+    },
+    {
+      "w": "HCTTR",
+      "estado": "Falla",
+      "delta": -30
+    }
+  ],
+  "D": {
+    "provocar": {
+      "radarInicial": "verde",
+      "tras1": "amarillo",
+      "tras2": "rojo",
+      "marcado": "0,0,0,0,1,1,0,0,0",
+      "deadlock": true,
+      "puntaje": -200
+    },
+    "prevenir": {
+      "radarInicial": "verde",
+      "controlador": true,
+      "puntaje": -350,
+      "tras1": "verde",
+      "tras2": "verde",
+      "deadlock": false,
+      "marcado": "0,1,0,1,1,0,0,0,0,0",
+      "puntajeTras": -350,
+      "despues": {
+        "agv1": "Libre",
+        "ciclos": 1,
+        "radar": "verde"
+      }
+    },
+    "amarilloVerde": {
+      "radarInicial": "verde",
+      "tras1": "amarillo",
+      "tras": "verde",
+      "puntaje": 25
+    }
+  },
+  "E": [
+    {
+      "intento": "Iniciar el fresado con el mandril abierto (clic en el botón rojo i)",
+      "antes": "Cargado | Mandril_Abierto | 0 | 0",
+      "despues": "Cargado | Mandril_Abierto | -15 | 1",
+      "tras3": "Cargado | Mandril_Abierto | -45 | 3"
+    },
+    {
+      "intento": "Abrir el mandril con la CNC fresando (clic en el botón rojo a)",
+      "antes": "Fresando | Mandril_Cerrado | -45 | 3",
+      "despues": "Fresando | Mandril_Cerrado | -60 | 4"
+    },
+    {
+      "intento": "Despachar el AGV2 con el robot ocupado (estación incompleta, AND-join)",
+      "antes": "1,0,1,1,0,0,0,0,1",
+      "resultado": "{\"ok\":false,\"motivo\":\"recurso\"}",
+      "despues": "1,0,1,1,0,0,0,0,1 falta: Robot_libre",
+      "prohibido": false
+    }
+  ],
+  "F_mouse": {
+    "hud": true,
+    "boton": true,
+    "pausa": true,
+    "inspector": true,
+    "velocidad": "2 y 4",
+    "arrastre": true,
+    "rueda": true
+  },
+  "F_tactil": {
+    "hud": true,
+    "boton": true,
+    "consolaVisible": true,
+    "palabra": "HCR",
+    "consola": "Libre",
+    "velocidad": 4,
+    "pausa": true,
+    "inspector": true,
+    "arrastre": false,
+    "pellizco": false,
+    "zoom": "1.00 → 1.00"
+  }
+}

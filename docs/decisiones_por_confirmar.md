@@ -14,3 +14,8 @@ Cada una dice dónde se aplicó.
 | 7 | Modo reducido automático: si el juego baja de 50 fps durante 4 s seguidos, se apagan partículas, bloom y glow de las piezas. `?efectos=0` lo activa desde el inicio y `?auto=0` desactiva la vigilancia (para medir) | `src/escenas/Planta.js` |
 | 8 | El radar se sigue calculando tras cada disparo (cuesta menos de 1 ms), no cada 0,5 s | `src/sed/celda.js` |
 | 9 | Se agregó `<link rel="icon" href="data:,">` a `index.html` para que el navegador no pida `favicon.ico` (daba un 404 en la consola) | `index.html` |
+| 10 | Los resultados "del software académico" (JFLAP, Supremica, PIPE2) se calcularon con un lector propio de los .jff y .pnml (`scripts/pruebas-modelo.mjs`), porque esos programas no se pueden abrir desde el entorno automático. El equipo debe confirmarlos con una captura de cada programa | `docs/pruebas.md` |
+| 11 | El arrastre y el pellizco táctiles no se pudieron verificar en el navegador sin ventana (los toques sueltos sí). Hay que probarlos en un teléfono o una tableta | `docs/pruebas.md`, literal f |
+| 12 | El playtest con otro equipo (literal h) queda pendiente | `docs/pruebas.md`, literal h |
+| 13 | Phaser puede entregar el mismo evento de teclado varias veces en equipos lentos (se vio al escribir H, C, T, R rápido): cada evento se atiende una sola vez | `src/escenas/HUDMaquina.js`, `src/entrada/gestorEntrada.js` |
+| 14 | "Desborde" no se usa en este proyecto (todos los lugares tienen k = 1 estricta), por eso la fila de la guía se marca "n/a" | `docs/pruebas.md` |

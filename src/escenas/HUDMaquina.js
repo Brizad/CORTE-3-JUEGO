@@ -102,6 +102,7 @@ export class HUDMaquina extends Phaser.Scene {
     this.botones = [];
     this._firmaBotones = '';
     // Teclado de la consola de reparación (H, C, T, R, Retroceso y Enter).
+    this._atendidas = new WeakSet();
     this.input.keyboard.on('keydown', this._alTecla, this);
     this._modoConsola = false;
     this._consolaLista = false;
@@ -716,6 +717,9 @@ Regla: ${this.celda.razonSupervisor}`,
 
   /** Teclado de la consola: H, C, T, R, Retroceso y Enter. */
   _alTecla(evento) {
+    // En equipos lentos Phaser puede entregar varias veces el mismo evento de teclado: cada tecla se atiende una sola vez.
+    if (this._atendidas.has(evento)) return;
+    this._atendidas.add(evento);
     if (!this.abierto || !this._modoConsola || this._pestana !== 'automata') return;
     const k = evento.key;
     if (k === 'Enter') this._enviar();

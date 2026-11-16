@@ -11,7 +11,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "modelos": "node scripts/exportar-modelos.mjs"
+    "modelos": "node scripts/exportar-modelos.mjs",
+    "pruebas": "node scripts/pruebas-modelo.mjs && node scripts/pruebas-gdd.mjs"
   },
   "repository": {
     "type": "git",

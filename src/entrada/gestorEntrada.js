@@ -34,6 +34,7 @@ export class GestorEntrada {
     this._gesto = null; // {x0, y0, xa, ya, movido}
     this._distanciaPellizco = 0;
     this._activo = true;
+    this._atendidas = new WeakSet();
     this._conectar();
   }
 
@@ -122,6 +123,9 @@ export class GestorEntrada {
   }
 
   _alTecla(evento) {
+    // Cada tecla se atiende una sola vez aunque Phaser entregue el mismo evento varias veces (equipos lentos).
+    if (this._atendidas.has(evento)) return;
+    this._atendidas.add(evento);
     const tecla = evento.key;
     if (tecla === 'p' || tecla === 'P') this._emitir(ACCIONES.PAUSA);
     else if (tecla === 'i' || tecla === 'I') this._emitir(ACCIONES.INSPECTOR);

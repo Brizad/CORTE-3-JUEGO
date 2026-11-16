@@ -1,0 +1,5 @@
+[
+  {"turno": 1, "resultado": "victoria", "meta": 3, "piezas": 3, "fallas": 0, "fallasReparadas": 0, "intentosBloqueados": 0, "pedidosVencidos": 0, "deadlocksEvitados": 1, "ciclosAGV": 1, "puntajeTurno": 365, "puntaje": 365, "tiempo": 47.1, "logros": ["primera_pieza", "manos_seguras"]},
+  {"turno": 2, "resultado": "victoria", "meta": 5, "piezas": 5, "fallas": 3, "fallasReparadas": 3, "intentosBloqueados": 0, "pedidosVencidos": 0, "deadlocksEvitados": 7, "ciclosAGV": 5, "puntajeTurno": 950, "puntaje": 1315, "tiempo": 106.5, "logros": ["ojo_de_radar", "mecanico_fino"]},
+  {"turno": 3, "resultado": "victoria", "meta": 7, "piezas": 7, "fallas": 3, "fallasReparadas": 3, "intentosBloqueados": 0, "pedidosVencidos": 0, "deadlocksEvitados": 16, "ciclosAGV": 13, "puntajeTurno": 1545, "puntaje": 2860, "tiempo": 169.7, "logros": ["sin_red_de_seguridad"]}
+]
