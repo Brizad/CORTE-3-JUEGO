@@ -199,7 +199,7 @@ export class Piezas {
     }
     // Contador.
     const c = aPantalla(TERMINADAS.x + 0.5, TERMINADAS.y + 0.5);
-    this.contador.setPosition(c.x, c.y - 38 - Math.floor(n / 4) * ALTO_BLOQUE).setText(`${this.mostradas}`);
+    this.contador.setPosition(c.x, c.y - 24 - Math.floor(n / 4) * ALTO_BLOQUE).setText(`${this.mostradas}`);
 
     // Bloques en vuelo.
     const v = this.vuelos;
