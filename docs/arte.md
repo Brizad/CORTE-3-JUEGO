@@ -7,7 +7,7 @@ Reglas de juego: `docs/GDD.md`. Modelo formal: `docs/modelo/`.
 
 | Parámetro | Valor |
 |---|---|
-| Tamaño del juego | 960 × 540 px |
+| Tamaño del juego | 960 × 540 px lógicos; el canvas se dibuja a 1920 × 1080 (zoom 2 en las cámaras, GDD 18.11) |
 | Escala | FIT (se ajusta a la ventana y conserva la proporción) |
 | Rejilla | Isométrica 2:1, celdas de 64 × 32 px |
 | Planta | 12 × 10 celdas (gx = 0..11, gy = 0..9) |

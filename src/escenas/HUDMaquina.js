@@ -9,6 +9,7 @@ import { MODELOS } from '../modelos.js';
 import { ConsolaReparacion, COMANDOS } from '../sed/consola.js';
 import { EXPRESION_TEXTO } from '../sed/lenguaje.js';
 import { claveDe } from '../sed/composicion.js';
+import { camaraLogica } from './camara.js';
 
 const PANEL = { ancho: 460, alto: 392, y: 56, xDerecha: 492, xIzquierda: 8 }; // docs/arte.md, sección 7 y docs/GDD.md, sección 18.2
 const ANCHO_UTIL = PANEL.ancho - 24; // ancho del contenido del panel
@@ -32,6 +33,7 @@ export class HUDMaquina extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     this.abierto = false;
     this.maquinaId = null;
     this.celda = null;

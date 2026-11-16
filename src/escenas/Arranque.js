@@ -6,6 +6,7 @@ import { Reloj } from '../sed/reloj.js';
 import { crearAleatorio } from '../sed/aleatorio.js';
 import { Partida } from '../sed/partida.js';
 import { Sonidos } from '../audio/sonidos.js';
+import { camaraLogica } from './camara.js';
 
 export class Arranque extends Phaser.Scene {
   constructor() {
@@ -13,6 +14,7 @@ export class Arranque extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     // Servicios compartidos por todas las escenas (se guardan en el registro del juego).
     this.registry.set('reloj', new Reloj({ velocidades: VELOCIDADES }));
     this.registry.set('aleatorio', crearAleatorio(SEMILLA));

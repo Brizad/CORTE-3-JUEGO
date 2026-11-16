@@ -1,7 +1,7 @@
 // Gestor de entrada: mouse, teclado y táctil emiten las mismas acciones.
 // Las demás capas escuchan acciones y nunca leen el dispositivo directamente.
 
-import { VELOCIDADES } from '../config.js';
+import { VELOCIDADES, RES } from '../config.js';
 
 /** Nombres de las acciones que emite el gestor. */
 export const ACCIONES = {
@@ -81,11 +81,12 @@ export class GestorEntrada {
   }
 
   _alPulsar(p) {
-    this._gesto = { x0: p.x, y0: p.y, xa: p.x, ya: p.y, movido: false };
+    const x = p.x / RES, y = p.y / RES;
+    this._gesto = { x0: x, y0: y, xa: x, ya: y, movido: false };
   }
 
   _alMover(p) {
-    this._emitir(ACCIONES.PUNTERO, { x: p.x, y: p.y });
+    this._emitir(ACCIONES.PUNTERO, { x: p.x / RES, y: p.y / RES });
     const input = this.escena.input;
     const p1 = input.pointer1;
     const p2 = input.pointer2;
@@ -105,10 +106,11 @@ export class GestorEntrada {
     // Arrastre con el botón izquierdo o con un dedo.
     if (p.isDown && this._gesto) {
       const g = this._gesto;
-      if (!g.movido && Math.hypot(p.x - g.x0, p.y - g.y0) > UMBRAL_ARRASTRE) g.movido = true;
-      if (g.movido) this._emitir(ACCIONES.ARRASTRE, { dx: p.x - g.xa, dy: p.y - g.ya });
-      g.xa = p.x;
-      g.ya = p.y;
+      const px = p.x / RES, py = p.y / RES;
+      if (!g.movido && Math.hypot(px - g.x0, py - g.y0) > UMBRAL_ARRASTRE) g.movido = true;
+      if (g.movido) this._emitir(ACCIONES.ARRASTRE, { dx: px - g.xa, dy: py - g.ya });
+      g.xa = px;
+      g.ya = py;
     }
   }
 
@@ -116,7 +118,7 @@ export class GestorEntrada {
     const g = this._gesto;
     this._gesto = null;
     this._distanciaPellizco = 0;
-    if (g && !g.movido) this._emitir(ACCIONES.SELECCIONAR, { x: p.x, y: p.y });
+    if (g && !g.movido) this._emitir(ACCIONES.SELECCIONAR, { x: p.x / RES, y: p.y / RES });
   }
 
   _alRueda(_puntero, _objetos, _dx, dy) {

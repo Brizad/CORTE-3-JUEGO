@@ -5,6 +5,10 @@
 export const ANCHO = 960;
 export const ALTO = 540;
 
+// Resolución de dibujo: el canvas mide ANCHO*RES x ALTO*RES y cada cámara usa zoom RES, de modo que todo el código
+// sigue usando coordenadas lógicas de 960x540 pero se dibuja nítido al agrandar.
+export const RES = 2;
+
 // Rejilla isométrica 2:1: cada celda mide 64 x 32 px.
 export const TILE_W = 64;
 export const TILE_H = 32;

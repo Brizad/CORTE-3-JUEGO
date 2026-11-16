@@ -3,6 +3,7 @@
 
 import { COLORES, TEXTO_HEX, ANCHO, ALTO } from '../config.js';
 import { Partida } from '../sed/partida.js';
+import { camaraLogica } from './camara.js';
 
 export const INTEGRANTES = ['Brian Acevedo', 'Brayan Amado', 'Manuel Carvajal'];
 
@@ -27,6 +28,7 @@ export class Titulo extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     this.cameras.main.setBackgroundColor(COLORES.panel);
     this.cameras.main.fadeIn(350, 22, 27, 34);
     this._ya = false;

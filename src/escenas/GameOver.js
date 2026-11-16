@@ -4,6 +4,7 @@
 
 import { COLORES, TEXTO_HEX, ANCHO, PUNTOS } from '../config.js';
 import { nombreMarcado } from '../sed/cobertura.js';
+import { camaraLogica } from './camara.js';
 
 const PANEL = { ancho: 560, alto: 360 };
 
@@ -13,6 +14,7 @@ export class GameOver extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     const planta = this.scene.get('Planta');
     this.planta = planta;
     this.celda = planta.celda;

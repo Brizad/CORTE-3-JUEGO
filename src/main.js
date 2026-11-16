@@ -1,6 +1,6 @@
 // Punto de entrada. Phaser 4.2.1 llega por CDN (objeto global Phaser); no se importa desde npm.
 
-import { ANCHO, ALTO } from './config.js';
+import { ANCHO, ALTO, RES } from './config.js';
 import { Arranque } from './escenas/Arranque.js';
 import { Titulo } from './escenas/Titulo.js';
 import { Planta } from './escenas/Planta.js';
@@ -12,7 +12,7 @@ import { Tutorial } from './escenas/Tutorial.js';
 import { Resultados } from './escenas/Resultados.js';
 
 // Textos nítidos al agrandar: resolución del texto = densidad de pantalla (mínimo 2).
-const RESOLUCION_TEXTO = Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+const RESOLUCION_TEXTO = RES;
 const crearTexto = Phaser.GameObjects.GameObjectFactory.prototype.text;
 Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, texto, estilo) {
   return crearTexto.call(this, x, y, texto, { resolution: RESOLUCION_TEXTO, ...estilo });
@@ -20,8 +20,9 @@ Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, texto, est
 
 const configuracion = {
   type: Phaser.WEBGL, // WebGL: necesario para los filtros de Phaser 4
-  width: ANCHO,
-  height: ALTO,
+  width: ANCHO * RES,
+  height: ALTO * RES,
+  render: { antialias: true, roundPixels: false },
   parent: 'game-container',
   backgroundColor: '#000000',
   scale: {

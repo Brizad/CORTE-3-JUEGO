@@ -5,6 +5,7 @@
 import { COLORES, TEXTO_HEX } from '../config.js';
 import { GuiaTutorial, PASOS } from '../sed/tutorial.js';
 import { Partida } from '../sed/partida.js';
+import { camaraLogica } from './camara.js';
 
 const CAJA = { x: 8, y: 56, ancho: 410, alto: 70 };
 
@@ -14,6 +15,7 @@ export class Tutorial extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     this.planta = this.scene.get('Planta');
     this.celda = this.planta.celda;
     this.guia = new GuiaTutorial();
@@ -68,18 +70,18 @@ export class Tutorial extends Phaser.Scene {
     if (o.tipo === 'maquina') {
       const e = this.planta.entidades.find((q) => q.id === o.id);
       if (!e) return null;
-      const cam = this.planta.cameras.main;
       const p = e.silueta[0]; // vértice superior
-      return { x: (p.x - cam.scrollX - cam.centerX) * cam.zoom + cam.centerX, y: (p.y - cam.scrollY - cam.centerY) * cam.zoom + cam.centerY - 4 };
+      const q = this.planta.aPantallaLogica(p.x, p.y);
+      return { x: q.x, y: q.y - 4 };
     }
     if (o.tipo === 'boton') {
       const b = hud.abierto ? hud.posicionBoton?.(o.etiqueta) : null;
       if (b) return b;
       // Sin el HUD abierto: se señala la máquina para abrirlo.
       const e = this.planta.entidades.find((q) => q.id === 'CNC1');
-      const cam = this.planta.cameras.main;
       const p = e.silueta[0];
-      return { x: (p.x - cam.scrollX - cam.centerX) * cam.zoom + cam.centerX, y: (p.y - cam.scrollY - cam.centerY) * cam.zoom + cam.centerY - 4 };
+      const q = this.planta.aPantallaLogica(p.x, p.y);
+      return { x: q.x, y: q.y - 4 };
     }
     if (o.tipo === 'barra') {
       const b = this.scene.get('HUDGeneral').despacho?.[o.clave];

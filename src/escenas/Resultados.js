@@ -5,6 +5,7 @@
 import { COLORES, TEXTO_HEX, ANCHO, TURNOS } from '../config.js';
 import { LOGROS } from '../sed/logros.js';
 import { Partida } from '../sed/partida.js';
+import { camaraLogica } from './camara.js';
 
 const PANEL = { ancho: 620, alto: 456 };
 
@@ -14,6 +15,7 @@ export class Resultados extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     this.cameras.main.fadeIn(300, 22, 27, 34);
     const planta = this.scene.get('Planta');
     this.planta = planta;

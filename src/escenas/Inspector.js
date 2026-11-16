@@ -6,6 +6,7 @@
 
 import { COLORES, TEXTO_HEX } from '../config.js';
 import { arbolCobertura, nombreMarcado } from '../sed/cobertura.js';
+import { camaraLogica } from './camara.js';
 
 const PANEL = { x: 8, y: 58, ancho: 944, alto: 390 };
 const CW = 24; // ancho de celda de las tablas
@@ -21,6 +22,7 @@ export class Inspector extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
     this.abierto = false;
     this.pestana = 'matrices';
     this.arbolDesde = 'm0'; // 'm0' o 'actual'

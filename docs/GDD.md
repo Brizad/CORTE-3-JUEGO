@@ -542,5 +542,19 @@ El juego conserva su resolución interna de 960x540 y no cambia el modelo. Cambi
 
 - `#game-container` ocupa `100vw x 100vh`; Phaser usa `Scale.FIT` con `autoCenter: CENTER_BOTH`, así que el juego crece manteniendo 16:9 y
   deja franjas negras si la ventana no es 16:9. Phaser convierte las coordenadas del puntero al espacio interno, por lo que clics y toques caen bien.
-- Pantalla completa: botón ⛶ bajo el radar (arriba a la derecha) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
+- Pantalla completa: botón ⛶ (arriba a la derecha, junto al radar) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
 - Los textos se crean con `resolution` = max(2, devicePixelRatio) para verse nítidos al agrandar.
+
+### 18.11 Alta resolución
+
+El canvas se dibuja a 1920x1080 (`RES = 2` en `src/config.js`) y se muestra con `Scale.FIT` (se reduce por CSS en pantallas menores, así que se
+ve nítido en 1366x768, 1920x1080 y celulares). La resolución lógica sigue siendo 960x540: cada escena llama a `camaraLogica(this)`
+(`src/escenas/camara.js`), que pone la cámara en zoom 2 con origen arriba a la izquierda, y todo el código sigue usando coordenadas de 960x540.
+
+- Entrada: `GestorEntrada` divide las coordenadas del puntero entre `RES`; la planta las vuelve a multiplicar al llamar a `getWorldPoint`.
+  Clic, toque, arrastre, rueda y pellizco caen en el mismo lugar que antes (comprobado con un clic real sobre "Jugar" y sobre la CNC 1).
+- La vista de la planta (zoom y desplazamiento) se guarda en coordenadas lógicas (`Planta.vista`) y `_aplicarVista()` la pasa a la cámara real.
+- `render: { antialias: true, roundPixels: false }`; los textos usan `resolution: RES`. Los trazos de Graphics se escalan con la cámara y conservan su grosor visual.
+- El contador de FPS solo aparece con F1. Si el juego baja de 50 fps se reducen los efectos (ya existía); si aun así no alcanza, bajar `RES` a 1.67 (1600x900).
+- Capturas a 1920x1080: `docs/capturas/hd_planta.png`, `hd_hud_maquina.png` y `hd_vista_red.png`. Medición de fps: en el navegador sin GPU (WebGL por software) dio 28 fps y bajó con el bloom, por lo que no es representativa; debe confirmarse en un equipo real y, si baja de 50, usar `RES` = 1.67.
+- Para ahorrar espacio, el panel del radar mide 134 px y el botón ⛶ ocupa su antiguo borde derecho.

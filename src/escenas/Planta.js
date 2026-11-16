@@ -1,7 +1,7 @@
 // Escena principal: la planta isométrica de 12 x 10 celdas (docs/arte.md).
 // El update solo avanza el reloj y dibuja. No hay reglas de juego aquí.
 
-import { COLORES, TEXTO_HEX, ANCHO, PLANTA, ALTOS, SEMILLA, TURNOS } from '../config.js';
+import { COLORES, TEXTO_HEX, ANCHO, RES, PLANTA, ALTOS, SEMILLA, TURNOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
 import { oscurecer, aclarar, puntoEnPoligono } from '../iso/formas.js';
 import { GestorEntrada, ACCIONES } from '../entrada/gestorEntrada.js';
@@ -19,6 +19,7 @@ import { VistaRed } from '../entidades/VistaRed.js';
 import { Piezas } from '../entidades/Piezas.js';
 import { Efectos } from '../entidades/Efectos.js';
 import { Logros } from '../sed/logros.js';
+import { camaraLogica } from './camara.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
 const ZOOM_MIN = 0.8;
@@ -31,6 +32,9 @@ export class Planta extends Phaser.Scene {
   }
 
   create() {
+    camaraLogica(this);
+    // Vista de la planta en coordenadas lógicas (zoom alrededor del centro de 960x540); _aplicarVista la pasa a la cámara real.
+    this.vista = { zoom: 1, sx: 0, sy: 0 };
     // Servicios creados en Arranque.
     this.reloj = this.registry.get('reloj');
     this.reloj.reiniciar();
@@ -312,7 +316,7 @@ export class Planta extends Phaser.Scene {
 
     // Pasar el mouse sobre una máquina la ilumina.
     e.on(ACCIONES.PUNTERO, ({ x, y }) => {
-      const mundo = this.cameras.main.getWorldPoint(x, y);
+      const mundo = this.cameras.main.getWorldPoint(x * RES, y * RES);
       let sobreAlguna = false;
       const bajo = this._entidadEn(mundo.x, mundo.y);
       this.etiquetas.mover(mundo.x, mundo.y, this._bajoPanel(x, y) || !!bajo);
@@ -330,7 +334,7 @@ export class Planta extends Phaser.Scene {
     // Clic o toque: abre el HUD de la máquina bajo el puntero.
     e.on(ACCIONES.SELECCIONAR, ({ x, y }) => {
       if (this._bajoPanel(x, y)) return;
-      const mundo = this.cameras.main.getWorldPoint(x, y);
+      const mundo = this.cameras.main.getWorldPoint(x * RES, y * RES);
       const m = this._entidadEn(mundo.x, mundo.y);
       if (!m) this.etiquetas.tocar(mundo.x, mundo.y); // toque sobre un lugar: muestra su etiqueta unos segundos
       if (m) hud().abrir?.(m.id, m.nombre);
@@ -339,14 +343,29 @@ export class Planta extends Phaser.Scene {
 
     // Cámara: arrastre y rueda o pellizco.
     e.on(ACCIONES.ARRASTRE, ({ dx, dy }) => {
-      const cam = this.cameras.main;
-      cam.scrollX = Phaser.Math.Clamp(cam.scrollX - dx / cam.zoom, -DESPLAZAMIENTO_MAX, DESPLAZAMIENTO_MAX);
-      cam.scrollY = Phaser.Math.Clamp(cam.scrollY - dy / cam.zoom, -DESPLAZAMIENTO_MAX, DESPLAZAMIENTO_MAX);
+      const v = this.vista;
+      v.sx = Phaser.Math.Clamp(v.sx - dx / v.zoom, -DESPLAZAMIENTO_MAX, DESPLAZAMIENTO_MAX);
+      v.sy = Phaser.Math.Clamp(v.sy - dy / v.zoom, -DESPLAZAMIENTO_MAX, DESPLAZAMIENTO_MAX);
+      this._aplicarVista();
     });
     e.on(ACCIONES.ZOOM, ({ factor }) => {
-      const cam = this.cameras.main;
-      cam.setZoom(Phaser.Math.Clamp(cam.zoom * factor, ZOOM_MIN, ZOOM_MAX));
+      this.vista.zoom = Phaser.Math.Clamp(this.vista.zoom * factor, ZOOM_MIN, ZOOM_MAX);
+      this._aplicarVista();
     });
+  }
+
+  /** Pasa la vista lógica (zoom en torno al centro de 960x540) a la cámara de alta resolución (origen arriba a la izquierda). */
+  _aplicarVista() {
+    const { zoom, sx, sy } = this.vista;
+    const cam = this.cameras.main;
+    cam.setZoom(zoom * RES);
+    cam.setScroll(sx + ANCHO / 2 - ANCHO / 2 / zoom, sy + 270 - 270 / zoom);
+  }
+
+  /** Posición en la pantalla lógica (960x540) de un punto del mundo. */
+  aPantallaLogica(x, y) {
+    const { zoom, sx, sy } = this.vista;
+    return { x: (x - sx - ANCHO / 2) * zoom + ANCHO / 2, y: (y - sy - 270) * zoom + 270 };
   }
 
   /** La entidad bajo un punto del mundo (la de adelante si se solapan), o undefined. */
