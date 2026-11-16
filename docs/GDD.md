@@ -535,3 +535,12 @@ Cada efecto tiene un propósito y no cambia reglas:
 | Transiciones | Fundido entre Título, Planta y Resultados | Dar continuidad |
 | Tweens | Fichas entre lugares, aviso de logro, pulso del radar al cambiar de color | Mostrar el flujo y el cambio |
 | Cámara | Arrastre, rueda y pellizco | Explorar la planta |
+
+### 18.10 Pantalla completa y escalado
+
+El juego conserva su resolución interna de 960x540 y no cambia el modelo. Cambios:
+
+- `#game-container` ocupa `100vw x 100vh`; Phaser usa `Scale.FIT` con `autoCenter: CENTER_BOTH`, así que el juego crece manteniendo 16:9 y
+  deja franjas negras si la ventana no es 16:9. Phaser convierte las coordenadas del puntero al espacio interno, por lo que clics y toques caen bien.
+- Pantalla completa: botón ⛶ bajo el radar (arriba a la derecha) y tecla **G** (la F sigue forzando fallas en desarrollo), con `scale.toggleFullscreen()`.
+- Los textos se crean con `resolution` = max(2, devicePixelRatio) para verse nítidos al agrandar.

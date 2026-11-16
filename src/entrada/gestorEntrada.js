@@ -13,6 +13,7 @@ export const ACCIONES = {
   CERRAR: 'cerrar', // tecla Esc
   FPS: 'fps', // tecla F1
   FORZAR_FALLA: 'forzarFalla', // tecla F: solo en desarrollo, fuerza falla_husillo en la CNC que fresa
+  PANTALLA_COMPLETA: 'pantallaCompleta', // tecla G: entra o sale de pantalla completa (F ya fuerza fallas)
   RED_PETRI: 'redPetri', // tecla R: vista de la red de Petri sobre la planta
   SILENCIO: 'silencio', // tecla M: activa o desactiva los sonidos
   DEMO: 'demo', // tecla D: modo demostración (provisional, hasta que exista el HUD de eventos)
@@ -132,6 +133,7 @@ export class GestorEntrada {
     else if (tecla === 'd' || tecla === 'D') this._emitir(ACCIONES.DEMO);
     else if (tecla === 'r' || tecla === 'R') this._emitir(ACCIONES.RED_PETRI);
     else if (tecla === 'm' || tecla === 'M') this._emitir(ACCIONES.SILENCIO);
+    else if (tecla === 'g' || tecla === 'G') this._emitir(ACCIONES.PANTALLA_COMPLETA);
     else if (tecla === 'f' || tecla === 'F') this._emitir(ACCIONES.FORZAR_FALLA);
     else if (tecla === 'Escape') this._emitir(ACCIONES.CERRAR);
     else if (tecla === 'F1') {

@@ -11,6 +11,13 @@ import { GameOver } from './escenas/GameOver.js';
 import { Tutorial } from './escenas/Tutorial.js';
 import { Resultados } from './escenas/Resultados.js';
 
+// Textos nítidos al agrandar: resolución del texto = densidad de pantalla (mínimo 2).
+const RESOLUCION_TEXTO = Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+const crearTexto = Phaser.GameObjects.GameObjectFactory.prototype.text;
+Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, texto, estilo) {
+  return crearTexto.call(this, x, y, texto, { resolution: RESOLUCION_TEXTO, ...estilo });
+};
+
 const configuracion = {
   type: Phaser.WEBGL, // WebGL: necesario para los filtros de Phaser 4
   width: ANCHO,

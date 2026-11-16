@@ -235,6 +235,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.iconoPausa = this.add.graphics();
     this.botonInspector = this._boton(678, 4, BOTON_TACTIL, BOTON_TACTIL, 'Insp.', emitir(ACCIONES.INSPECTOR), 'Inspector (pausa la simulación)', { fuente: '10px' });
     this.botonRed = this._boton(722, 4, BOTON_TACTIL, BOTON_TACTIL, 'Red', emitir(ACCIONES.RED_PETRI), 'Vista de la red de Petri (R)', { fuente: '11px' });
+    this.botonPantalla = this._boton(908, 52, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (G)', { fuente: '22px' });
   }
 
   _dibujarTactiles() {

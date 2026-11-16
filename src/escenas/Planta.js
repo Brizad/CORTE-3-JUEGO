@@ -293,6 +293,7 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.INSPECTOR, () => {
       if (!this.celda.terminado) inspector().alternar?.();
     });
+    e.on(ACCIONES.PANTALLA_COMPLETA, () => this.scale.toggleFullscreen());
     e.on(ACCIONES.SILENCIO, () => this.sonidos.alternarSilencio());
     e.on(ACCIONES.RED_PETRI, () => {
       // Con la consola de reparación abierta, R es el comando de reset: no abre la vista.
