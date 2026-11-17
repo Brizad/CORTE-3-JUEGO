@@ -639,40 +639,25 @@ Pruébalo en el navegador, npm test y npm run build deben pasar. Commit "Parpade
 
 Resultado: GDD 18.18.
 
-## Prompt 30 · Funcionó (con decisiones anotadas)
+## Prompt 30 · Reemplazado por el 31
 
-*Que se sienta como un juego y se entienda en 1 minuto, sin tocar los modelos.*
+*Una primera versión del pedido «que se sienta como un juego» (acciones con macros, atajos 1, 2 y Espacio). El equipo la cambió en el prompt 31:
+las macros contradicen la guía (cada botón dispara un evento). Qué se hizo y qué se deshizo: GDD 18.19 (parcial) y 18.20.*
 
-Fecha: 2026-11-16
+## Prompt 31 · Funcionó (con decisiones anotadas)
+
+*Juego de coordinación y velocidad: controles paso a paso, entregas de metal y dificultad.*
+
+Fecha: 2026-11-17
 
 ```text
-Objetivo: que RoboCell se sienta como un JUEGO y que alguien que nunca leyó la guía lo entienda en 1 minuto. Reglas que NO se tocan: los modelos (autómatas, red de Petri, JSON de src/sed/), δ, el supervisor y el puntaje. Cada acción del jugador debe seguir disparando los eventos reales del autómata uno por uno (se deben ver en el historial del HUD). Todo en español.
-
-A. CLARIDAD
-1. Texto del AGV: hoy dice "lleva la pieza de la mesa al pedido" y es falso (en la red de la ficha D.2 el AGV no depende de las piezas). Cámbialo por: "AGV i: trae material. Para descargarlo necesita la MESA y el ROBOT al mismo tiempo."
-2. Intro corta antes del Turno 1 (y en el botón ?), máximo 5 líneas.
-3. Etiquetas fijas sobre el mapa: "CNC 1", "CNC 2", "Brazo", "Mesa", "AGV 1", "AGV 2".
-4. Pedidos: en vez de un número que solo sube, "AGV 1 espera · 12 s" con cuenta regresiva de 30 s en color (verde > amarillo > rojo).
-5. Radar: tooltip "M6 = foto actual de las fichas. Verde: seguro. Amarillo: si despachas otro AGV ahora, te trabas. Rojo: trabado." y el texto "últimos estados" debajo de los cuadritos.
-6. AGV esperando: texto simple sobre él, "Espera el robot" o "Espera la mesa".
-
-B. CONTROLES DE JUEGO (dos capas en el panel de cada máquina)
-1. Pestaña "Acciones" (la que abre por defecto): solo botones grandes con ícono de ESA máquina, con verbos de juego (Libre: "Cargar bloque"; Cargado: "Fresar"; Fresando: barra de progreso; Terminado: "Sacar pieza"; Falla: la consola H C T C R). Al hacer clic en una CNC NO deben aparecer botones del brazo. Si el brazo está ocupado, el botón dice "Brazo ocupado" en gris.
-2. Pestaña "Autómata": el grafo actual con los botones de eventos verde/gris/rojo tal como está hoy.
-3. Atajos de teclado: 1 y 2 seleccionan CNC 1 y CNC 2, Espacio hace la acción principal de la máquina seleccionada, Q y W despachan AGV 1 y AGV 2, Tab cambia entre "Acciones" y "Autómata". Muéstralos en el botón ?.
-4. Cursor de mano y borde resaltado al pasar el mouse por cualquier cosa clicable.
-
-C. INMERSIÓN
-1. Sonido sintetizado con Web Audio (sin archivos): zumbido de fresado, clic de botón, "ding" al terminar pieza, alarma corta en Falla, tono grave en deadlock, fanfarria corta al ganar. Botón de silencio arriba y tecla M.
-2. Texto flotante en el sitio del evento: "+100", "+40", "−20 pedido vencido".
-3. Barra de objetivo visible: "Piezas 2/5" con progreso y el tiempo restante; en los últimos 30 s el reloj parpadea en rojo.
-4. El brazo se ve girando hacia la CNC que atiende, y el carrito avanza por la ruta (no aparece de golpe).
-5. Al ganar o perder el turno, una frase corta de jefe de planta.
-
-D. CIERRE
-Mantén unos 60 fps (mídelo con F1). Corre npm test (deben pasar todas). Revisa en el navegador que nada se monte encima de otra cosa y que el tutorial siga funcionando con los nuevos botones (actualiza sus pasos si hace falta). Anota todo en docs/GDD.md §18. Haz commit "Juego mas claro e inmersivo" y push.
+El juego es de COORDINACIÓN Y VELOCIDAD: el jugador opera el brazo entre 2 CNC paso a paso, fresa, repara y atiende los AGV sin trabar la celda.
+Quiero que se sienta como un videojuego y que sea DIFÍCIL: el público son adultos que juegan videojuegos.
+REGLAS QUE NO SE TOCAN: autómatas, red de Petri, JSON de src/sed/, δ, supervisor, valores de puntaje del GDD §9, radar, inspector y posiciones del HUD del GDD §12. Cada botón y cada tecla dispara UN solo evento del autómata.
+1. Quitar macros. 2. Panel de máquina en «Autómata» con segunda pestaña «Acciones»; Tab cambia. 3. Barra de control fija abajo al centro (brazo Z X A C D E V; CNC F y G con luz y progreso, «Reparar» en Falla; AGV Q y W y Controlador); 1, 2 y 4 solo velocidad.
+4. AGV = entregas de metal sin cambiar la red (tarjeta "AGV 1 trae metal · 12 s", caja que baja a la mesa, textos nuevos; nada de «cliente» ni «pedido»).
+5. Sensación de videojuego (cuenta 3, 2, 1, objetivo, feedback, textos flotantes, racha visual, sonido, estrellas y frase del jefe). 6. Ayuda justa (intro de 6 líneas, etiquetas, pistas solo en el tutorial, tooltip del radar). 7. Dificultad calibrada con scripts/balance.mjs: experto 0,8 s gana los 3 turnos con poco margen, bueno 1,2 s gana el 1 y el 2, lento 2 s gana el 1 justo y pierde el 2; 20 semillas; tabla en el GDD. 8. Cierre: npm test, build, recorrido del navegador, nada superpuesto. Commit "Controles paso a paso, entregas de metal y dificultad" y push.
 ```
 
-Resultado: GDD 18.19 y `docs/pruebas.md`, literal j. Decisiones que el pedido no definía (tecla V para la velocidad, a qué AGV se
-atribuye cada pedido, pausa de 0,5 s entre eventos): `docs/decisiones_por_confirmar.md`, filas 24 a 29.
-
+Resultado: GDD 18.20, `docs/decisiones_por_confirmar.md` (filas 24 a 30) y `docs/pruebas.md`, literal j. Decisiones que el pedido no definía: las teclas
+de pantalla completa (L), demostración (F2) y forzar falla (F3); a qué AGV se atribuye cada entrega; las estrellas.

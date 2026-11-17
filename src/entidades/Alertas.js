@@ -2,7 +2,7 @@
 // Muestra los últimos avisos del núcleo (falla del husillo, puntos de la reparación, ayuda...).
 
 import { COLORES, TEXTO_HEX } from '../config.js';
-import { razonRadarAmarillo } from '../textos.js';
+import { razonRadarAmarillo, motivoLegible } from '../textos.js';
 
 const ZONA = { x: 540, y: 450, ancho: 412, alto: 82 };
 const LINEAS = 4;
@@ -43,10 +43,10 @@ export class Alertas {
 
   _alEvento(e) {
     if (e.tipo === 'automata' && e.evento === 'falla_husillo') {
-      this.avisar(`${e.maquina}: falla del husillo. Abre su HUD y repárala (H, C, T, R).`, 'fallo');
+      this.avisar(`${e.maquina}: falla del husillo. Pulsa «Reparar» y escribe H C T C R.`, 'fallo');
     } else if (e.tipo === 'puntos') {
       const signo = e.puntos > 0 ? '+' : '';
-      this.avisar(`${e.maquina ? `${e.maquina}: ` : ''}${signo}${e.puntos} puntos (${e.motivo})`, e.puntos > 0 ? 'operacion' : 'espera');
+      this.avisar(`${e.maquina ? `${e.maquina}: ` : ''}${signo}${e.puntos} puntos (${motivoLegible(e.motivo)})`, e.puntos > 0 ? 'operacion' : 'espera');
     } else if (e.tipo === 'rechazo' && e.motivo === 'celda') {
       this.avisar('Controlador de celda activo', 'espera'); // no resta puntos
     } else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') {

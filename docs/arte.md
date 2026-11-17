@@ -209,11 +209,11 @@ flechas simples eligen la curvatura que las deja lejos de los demás nodos. El h
 
 Distribución del panel de una CNC, de arriba hacia abajo:
 
-0. **Pestaña «Acciones»** (la que abre, GDD 18.19): línea "Estado: …" con un punto del color del estado, una frase de lo que hace la
-   máquina, un botón grande de 436 × 80 px con el ícono de la máquina y el verbo en 22 px (verde si se puede, gris si no, azul mientras
-   el brazo trabaja), o la barra de progreso del fresado, o la consola de reparación; debajo, el historial de eventos en letra de ancho
-   fijo. Todo lo clicable se resalta con borde amarillo `#e0b21b` de 3 px y cursor de mano. Lo que sigue describe la pestaña «Autómata».
-1. Título, pestañas **Acciones**, **Autómata** y **Composición** (esta solo en las CNC), aviso "Brazo en camino…" (verde, arriba a la derecha, solo
+0. **Pestañas (GDD 18.20):** «Autómata» (la que abre) y «Acciones». En «Acciones» cada evento de la máquina es un botón de 46 px de alto con
+   ícono, verbo, código del evento, la tecla en una esquinita y su color (verde, gris o rojo con la razón al pasar el mouse); en las CNC, el
+   botón «Fresar» lleva la barra de progreso del fresado; en Falla va la consola de reparación. Debajo, el historial de eventos en letra de
+   ancho fijo. Todo lo clicable se resalta con borde amarillo `#e0b21b` de 3 px y cursor de mano. Lo que sigue describe la pestaña «Autómata».
+1. Título, pestañas **Autómata**, **Acciones** y **Composición** (esta solo en las CNC), aviso "Brazo en camino…" (verde, arriba a la derecha, solo
    con el brazo en Moviendo) y botón X. La pestaña Composición reemplaza el cuerpo del panel con las cifras 20 / 19 y el estado
    compuesto actual en 20 px (espera `#e0b21b`; rojo si fuera el estado prohibido).
 2. Grafo del autómata. Estado actual: nodo relleno con su color, borde claro de 5 px y halo plano (sin filtros, GDD 18.17). Última
@@ -241,6 +241,7 @@ Distribución del panel de una CNC, de arriba hacia abajo:
 | Arriba izquierda | x 8–124, y 8–48 | Reloj (s restantes; rojo y parpadeando en los últimos 30 s), turno y velocidad. A su derecha, los botones de pantalla completa, ayuda y altavoz (x 126–258) y x1, x2 y x4 (x 258–390) |
 | Arriba centro | x 394–630, y 8–48 | Puntaje (18 px; negativo en rojo) y barra de objetivo: "Piezas 2/5", barra de progreso y "quedan N s". Debajo (y 52–86) las tarjetas de pedidos de 118 px: "AGV 1 espera · 12 s". Junto al radar: botones de pausa e inspector (x 634–766) |
 | Arriba derecha | x 770–952, y 8–48 | Radar del Árbol de Cobertura |
+| Barra de control | y 400–446 | Brazo (7 botones de 56 × 46 px, x 8–424) a la izquierda y «Fresar» de cada CNC (174 × 46 px, x 600–952) a la derecha, con la tecla en una esquinita, luz de estado y barra de progreso; en el hueco del medio se ve la punta de la planta. Los AGV (x 424–536) y el Controlador siguen abajo, entre las fichas y las alertas |
 | Abajo izquierda | x 8–420, y 450–532 | Fichas por lugar: p1..p9 (y p10), cada una con su forma y color a 14 px, el contador m/k y el nombre del lugar |
 | Abajo derecha | x 540–952, y 450–532 | Alertas. En el hueco central (x 424–536) van "Despachar AGV1", "Despachar AGV2" y "Controlador de celda" |
 

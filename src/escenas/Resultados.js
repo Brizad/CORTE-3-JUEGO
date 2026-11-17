@@ -6,7 +6,7 @@ import { COLORES, TEXTO_HEX, ANCHO, TURNOS } from '../config.js';
 import { LOGROS } from '../sed/logros.js';
 import { Partida } from '../sed/partida.js';
 import { camaraLogica } from './camara.js';
-import { fraseJefe } from '../textos.js';
+import { fraseJefe, estrellas } from '../textos.js';
 import { resaltable } from './resaltar.js';
 
 const PANEL = { ancho: 620, alto: 456 };
@@ -49,7 +49,26 @@ export class Resultados extends Phaser.Scene {
           ? `Turno ${partida.turno + 1} perdido`
           : `Turno ${partida.turno + 1} perdido: se acabó el tiempo`;
     texto(20, 14, titulo, { fontSize: '24px', fontStyle: 'bold', color: victoria ? TEXTO_HEX.operacion : TEXTO_HEX.fallo });
-    // Frase corta del jefe de planta y, al lado, el resumen de la meta.
+    // Estrellas del turno (1 a 3 según las piezas sobre la meta): entran una por una con un rebote.
+    const n = estrellas(r);
+    for (let i = 0; i < 3; i++) {
+      const g = this.add.graphics({ x: x0 + PANEL.ancho - 130 + i * 44, y: y0 + 34 });
+      const puntos = [];
+      for (let k = 0; k < 10; k++) {
+        const ang = (-90 + k * 36) * (Math.PI / 180);
+        const radio = k % 2 === 0 ? 18 : 8;
+        puntos.push({ x: Math.cos(ang) * radio, y: Math.sin(ang) * radio });
+      }
+      g.fillStyle(i < n ? COLORES.celda : COLORES.banda, i < n ? 1 : 0.5);
+      g.fillPoints(puntos, true);
+      g.lineStyle(1.5, COLORES.texto, i < n ? 0.9 : 0.3);
+      g.strokePoints(puntos, true);
+      if (i < n) {
+        g.setScale(0);
+        this.tweens.add({ targets: g, scale: 1, delay: 350 + i * 260, duration: 380, ease: 'Back.easeOut' });
+      }
+    }
+    // Frase corta del jefe de planta y, debajo, el resumen de la meta.
     texto(20, 44, `«${fraseJefe(r)}»`, { fontSize: '15px', fontStyle: 'bold', color: TEXTO_HEX.espera });
     texto(20, 66, victoria ? `Meta cumplida: ${r.piezas} de ${r.meta} piezas en ${Math.round(r.tiempo)} s.` : `Meta: ${r.piezas} de ${r.meta} piezas en ${Math.round(r.tiempo)} s.`, { fontSize: '11px', color: '#8794a3' });
 
@@ -57,10 +76,10 @@ export class Resultados extends Phaser.Scene {
       ['Piezas descargadas', `${r.piezas} / ${r.meta}`],
       ['Fallas reparadas', `${r.fallasReparadas} de ${r.fallas}`],
       ['Intentos bloqueados por el supervisor', String(r.intentosBloqueados)],
-      ['Pedidos vencidos', String(r.pedidosVencidos)],
+      ['Entregas de metal perdidas', String(r.pedidosVencidos)],
       ['Deadlocks evitados (radar de amarillo a verde)', String(r.deadlocksEvitados)],
       ['Deadlocks sufridos', String(r.deadlocks)],
-      ['Ciclos de AGV', String(r.ciclosAGV)],
+      ['Entregas de metal recibidas', String(r.ciclosAGV)],
       ['Puntaje de este turno', `${r.puntajeTurno >= 0 ? '+' : ''}${r.puntajeTurno}`],
       ['Puntaje total', String(r.puntaje)],
     ];

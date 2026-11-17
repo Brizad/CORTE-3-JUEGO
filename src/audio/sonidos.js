@@ -51,7 +51,10 @@ export class Sonidos {
 
   alternarSilencio() {
     this.silenciado = !this.silenciado;
-    if (this.silenciado) this.zumbido(false);
+    if (this.silenciado) {
+      this.zumbido(false);
+      this.ambiente(false);
+    }
     return this.silenciado;
   }
 
@@ -82,6 +85,46 @@ export class Sonidos {
   /** Logro: arpegio ascendente. */
   logro() {
     [523, 659, 784, 1047].forEach((f, i) => this._tono({ frecuencia: f, duracion: 0.16, tipo: 'triangle', retraso: i * 0.09 }));
+  }
+
+  /** Tic del reloj: uno por segundo en los últimos 30 s del turno y en la cuenta 3, 2, 1. */
+  tic() {
+    if (!this._libre('tic', 200)) return;
+    this._tono({ frecuencia: 1000, duracion: 0.04, tipo: 'square', volumen: 0.35 });
+  }
+
+  /** Zumbido de fábrica de fondo, muy suave: suena mientras el turno corre (activo = true). */
+  ambiente(activo) {
+    if (!activo || this.silenciado) {
+      if (this._ambiente) {
+        const { osc, osc2, ganancia, ctx } = this._ambiente;
+        const t = ctx.currentTime;
+        ganancia.gain.setValueAtTime(this.volumen * 0.07, t);
+        ganancia.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+        osc.stop(t + 0.35);
+        osc2.stop(t + 0.35);
+        this._ambiente = null;
+      }
+      return;
+    }
+    if (this._ambiente) return;
+    const ctx = this._contexto();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const ganancia = ctx.createGain();
+    osc.type = 'triangle';
+    osc2.type = 'sine';
+    osc.frequency.setValueAtTime(55, ctx.currentTime);
+    osc2.frequency.setValueAtTime(82.5, ctx.currentTime);
+    ganancia.gain.setValueAtTime(0.0001, ctx.currentTime);
+    ganancia.gain.exponentialRampToValueAtTime(this.volumen * 0.07, ctx.currentTime + 0.8);
+    osc.connect(ganancia);
+    osc2.connect(ganancia);
+    ganancia.connect(ctx.destination);
+    osc.start();
+    osc2.start();
+    this._ambiente = { osc, osc2, ganancia, ctx };
   }
 
   /** Clic de un botón de la interfaz. */

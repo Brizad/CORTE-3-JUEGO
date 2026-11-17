@@ -432,15 +432,17 @@ Esto hay que confirmarlo con el playtest de otro equipo (literal h, todavía pen
   tapaba el título del Inspector (ahora la disposición del HUD tiene una prueba que impide encimes).
 - **Pendiente:** en un teléfono horizontal pequeño los botones miden unos 30 px en pantalla; cumplir 44 px reales exige rediseñar la barra.
 
-## 7. Juego más claro e inmersivo (después de jugarlo nosotros)
+## 7. Del juego «con macros» a un juego de coordinación y velocidad
 
-- **Qué notamos:** el juego exigía conocer el autómata para jugar (había que pulsar `m`, `a`, `c`, `e` en orden) y el texto del AGV decía
-  algo que la red no hace. Alguien que no leyó la guía no sabía qué hacer.
-- **Qué hicimos sin tocar el modelo:** una pestaña «Acciones» con verbos ("Cargar bloque", "Fresar", "Sacar pieza", "Despachar AGV 1")
-  que encadenan los mismos eventos, uno por uno, pidiéndolos a la Celda; la pestaña «Autómata» sigue igual. Además: intro de 5 líneas,
-  rótulos en el mapa, pedidos con cuenta regresiva, atajos (1, 2, Espacio, Q, W, Tab), sonidos, textos de puntos, barra de objetivo y
-  una frase del jefe de planta al terminar. Detalle en `docs/GDD.md`, sección 18.19.
-- **Qué nos enseñó:** la capa de "juego" y la capa "formal" pueden convivir si la primera solo llama a `evaluar` y `solicitar`: las
-  pruebas comprueban que "Cargar bloque" deja en la bitácora exactamente `m, l, a, c, e, m` y que nunca genera un intento bloqueado.
-- **Pendiente:** medir los fps con F1 en un equipo real y probar los atajos con otro equipo en el playtest.
-
+- **Qué notamos:** una primera versión con botones «Cargar bloque» y «Sacar pieza» escondía el autómata (un clic disparaba 5 eventos) y el
+  juego no pedía coordinar nada. El público (adultos que juegan videojuegos) necesita decisiones rápidas, y la guía exige que cada botón dispare un evento.
+- **Qué hicimos sin tocar el modelo:** quitamos las macros; una barra de control fija con un botón y una tecla por evento (Z, X, A, C, D, E, V para el
+  brazo; F y G para las CNC; Q y W para los AGV) y el panel de máquina con las pestañas «Autómata» y «Acciones». Los pedidos pasaron a ser
+  **entregas de metal** que trae un AGV (caja de metal, plazo con cuenta regresiva) sin cambiar la red. Agregamos cuenta 3, 2, 1, racha visual,
+  estrellas, sonidos y animaciones. Detalle en `docs/GDD.md`, sección 18.20.
+- **Qué nos enseñó la dificultad:** calibramos con jugadores simulados que operan paso a paso. Fue más útil medir «cuántas piezas haría en 180 s» (el
+  margen sobre la meta) que solo contar victorias: con eso ajustamos metas, fallas, frecuencia y plazo de las entregas hasta que el experto gane
+  el turno 3 con +1, el bueno lo pierda a veces y el lento pierda el 2. La parte formal ayudó: el radar amarillo es justo la señal de que
+  las entregas en pareja tientan al deadlock.
+- **Pendiente:** medir los fps con F1 en un equipo real y probar las teclas con otro equipo en el playtest (las letras del juego quitaron la
+  pantalla completa a la tecla L y la demostración a F2).

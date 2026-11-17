@@ -1,10 +1,12 @@
 // Rótulos de la planta (docs/GDD.md, sección 18.19):
 //  - Nombres fijos de las máquinas: "CNC 1", "CNC 2", "Brazo", "AGV 1" y "AGV 2" (el del AGV lo sigue por su ruta). "Mesa" lo pone el Escenario.
-//  - Textos flotantes en el sitio del evento: "+100", "+40", "−20 pedido vencido". Suben y se desvanecen con un tween.
+//  - Textos flotantes en el sitio del evento: "+100 pieza", "+40 metal", "−15 bloqueado", "−20 entrega perdida". Suben y se
+//    desvanecen con un tween.
 // Solo muestran lo que ya pasó en el modelo: no cambian reglas ni puntajes.
 
 import { COLORES, TEXTO_HEX, POSICIONES, ALTOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
+import { etiquetaPuntos } from '../textos.js';
 
 const PROFUNDIDAD = 420;
 const NOMBRES = { CNC1: 'CNC 1', CNC2: 'CNC 2', BRAZO: 'Brazo', AGV1: 'AGV 1', AGV2: 'AGV 2' };
@@ -71,11 +73,11 @@ export class Rotulos {
     }
   }
 
-  /** Texto de puntos en el sitio del evento: "+100" en verde, "−20 pedido vencido" en rojo. */
+  /** Texto de puntos en el sitio del evento: "+100 pieza" en verde, "−20 entrega perdida" en rojo. */
   _puntos(e) {
     const ent = e.maquina ? this.entidades().find((q) => q.id === e.maquina) : null;
     const base = ent?.silueta?.length ? { x: ent.silueta.reduce((a, q) => a + q.x, 0) / ent.silueta.length, y: Math.min(...ent.silueta.map((q) => q.y)) - 26 } : SIN_MAQUINA;
-    const texto = e.puntos > 0 ? `+${e.puntos}` : `−${Math.abs(e.puntos)} ${e.motivo}`;
+    const texto = etiquetaPuntos(e.puntos, e.motivo);
     // Varios textos casi a la vez (por ejemplo −200 y −20): se apilan para que no se tapen.
     const ahora = this.escena.time.now;
     const u = this._ultimoFlotante;

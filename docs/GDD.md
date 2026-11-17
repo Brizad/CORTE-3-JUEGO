@@ -126,25 +126,31 @@ Cada fila cita lo que la produce. El juego no añade reglas fuera de esta tabla.
   Con la misma semilla y las mismas acciones, el turno es idéntico.
 - **Reintento:** al reintentar un turno se restaura el estado del generador del inicio de ese turno.
 
-### 6.1 Pedidos por turno
+### 6.1 Entregas de metal por turno (los "pedidos" de AGV)
 
 Los pedidos llegan en t = n × intervalo, para n ≥ 1 y t < 180 s.
 
 | Turno | Intervalo | Pedidos en el turno |
 |---|---|---|
 | 1 | 25 s | 7 (25, 50, …, 175 s) |
-| 2 | 18 s | 9 (18, 36, …, 162 s) |
-| 3 | 12 s | 14 (12, 24, …, 168 s) |
+| 2 | 20 s | 8 (20, 40, …, 160 s) |
+| 3 | 18 s, y cada 4 entregas llega otra 2 s después | 11 (18, 36, 54, 72, 74, 90, 108, 126, 144, 146, 162 s) |
+
+**Actualizado en 18.20:** el equipo cambió estos valores (la guía no los fija) y en el juego cada pedido es una **entrega de metal**
+que trae un AGV. El modelo no cambia: es el mismo evento `v` y las mismas transiciones t1a y t2a.
 
 ## 7. Turnos y dificultad
 
 | Turno | Duración | Meta | Prob. de falla por fresado | Intervalo de pedidos |
 |---|---|---|---|---|
-| 1 | 180 s | 3 piezas | 10 % | 25 s |
-| 2 | 180 s | 5 piezas | 20 % | 18 s |
-| 3 | 180 s | 6 piezas | 30 % | 12 s |
+| 1 | 180 s | 6 piezas | 10 % | 25 s (plazo 30 s) |
+| 2 | 180 s | 8 piezas | 15 % | 20 s (plazo 30 s) |
+| 3 | 180 s | 8 piezas | 20 % | 18 s con parejas (plazo **20 s**) |
 
-- **Ajuste de balance (decisión del equipo):** la meta del turno 3 bajó de 7 a 6 piezas. La medición de balance (`scripts/balance.mjs`, 30 semillas por casilla) mostró que con la meta de 7 el piloto ganaba 21 de 30 partidas con una decisión por segundo y ninguna con una decisión cada 2 s. Con 6 piezas gana 27 de 30 a 1 s, 15 de 30 a 1,5 s y 0 de 30 a 2 s. Las fallas (30 %) y los pedidos (cada 12 s) no cambian. Detalles en la sección 15 y en `docs/decisiones_por_confirmar.md`.
+**Valores actualizados en 18.20** (decisión del equipo, calibrada con `scripts/balance.mjs`). Los de antes eran 3, 5 y 6 piezas, fallas de
+10, 20 y 30 % y pedidos cada 25, 18 y 12 s. Los valores de puntaje (sección 8) no cambian.
+
+- **Historia del balance:** el turno 3 pasó de 7 a 6 piezas por la medición con el piloto (sección 15) y luego se recalibraron los 3 turnos en 18.20 (jugadores que operan paso a paso).
 - Cada turno empieza en M0 y con las 2 CNC y el brazo en su estado inicial (q0).
 - El Controlador de celda **no se conserva** entre turnos (ver 10).
 - El puntaje se acumula entre turnos.
@@ -245,22 +251,24 @@ El inspector (tecla I) muestra el progreso de cada logro.
 | Acción | Mouse | Teclado | Táctil |
 |---|---|---|---|
 | Abrir el HUD de una máquina | Clic en la máquina | — | Toque en la máquina |
-| Disparar un evento controlable | Clic en su botón | — | Toque en su botón |
-| Mandar el brazo (tr_ir) o despachar AGV (t1a, t2a) | Clic en el botón del HUD | — | Toque en el botón |
+| Disparar un evento controlable | Clic en su botón (pestaña «Autómata» o «Acciones») | — | Toque en su botón |
+| Brazo: ir a CNC 1 / CNC 2 (m, tr_ir) | Botón de la barra de control | **Z** / **X** | Botón de la barra |
+| Brazo: abrir pinza (a) / meter bloque (c) / sacar pieza (d) / cerrar pinza (e) | Botón de la barra | **A** / **C** / **D** / **E** | Botón de la barra |
+| Brazo: volver (m, tr_volver) | Botón de la barra | **V** | Botón de la barra |
+| Fresar en CNC 1 / CNC 2 (i); en Falla, «Reparar» | Botón de la barra | **F** / **G** | Botón de la barra |
+| Atender AGV 1 / AGV 2 (v, t1a o t2a) | Botón de la barra | **Q** / **W** | Botón de la barra |
 | Pausa | Botón de pausa | **P** | Botón de pausa |
 | Inspector | Botón del inspector | **I** | Botón del inspector |
-| Velocidad x1, x2, x4 | Botones de velocidad | **V** (pasa de una a otra; sección 18.19) | Botones de velocidad |
-| Acción principal de la máquina (sección 18.19) | Botón grande de «Acciones» | **Espacio** | Botón grande |
-| Elegir CNC 1 o CNC 2 | Clic en la máquina | **1**, **2** | Toque en la máquina |
-| Despachar AGV 1 o AGV 2 | Botones de abajo | **Q**, **W** | Botones de abajo |
-| Cambiar entre «Acciones» y «Autómata» | Pestañas del panel | **Tab** | Pestañas del panel |
+| Velocidad x1, x2, x4 | Botones de velocidad | **1**, **2**, **4** | Botones de velocidad |
+| Cambiar entre «Autómata» y «Acciones» en el panel | Pestañas del panel | **Tab** | Pestañas del panel |
 | Cerrar el HUD o un panel | Botón X | **Esc** | Botón X |
 | Consola de reparación: símbolos | Botones H, C, T, R | **H**, **C**, **T**, **R** | Botones H, C, T, R |
 | Consola de reparación: enviar | Botón Enviar | **Enter** | Botón Enviar |
-| Contador de fps | — | **F1** | Botón en el inspector |
+| Contador de fps | — | **F1** | — |
+| Pantalla completa | Botón ⛶ | **L** | Botón ⛶ |
 | Silenciar o activar los sonidos | Botón del altavoz | **M** | Botón del altavoz |
 | Vista de la red de Petri | Botón "Red" | **R** | Botón "Red" |
-| Modo demostración (el piloto juega solo) | — | **D** | — |
+| Modo demostración (el piloto juega solo) | — | **F2** | — |
 | Mover la cámara | Arrastrar con el botón izquierdo | — | Arrastrar con un dedo |
 | Acercar y alejar | Rueda del mouse | — | Pellizco con dos dedos |
 
@@ -336,7 +344,7 @@ Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba
 
 ### 14.5 Turnos, resultados y logros
 
-- **Turnos:** 3 turnos de 180 s con metas de 3, 5 y 6 piezas, falla por fresado de 10, 20 y 30 % y pedidos cada 25, 18 y 12 s.
+- **Turnos:** 3 turnos de 180 s con metas de 6, 8 y 8 piezas, falla por fresado de 10, 15 y 20 % y entregas de metal cada 25, 20 y 18 s (18.20).
   El puntaje se acumula entre turnos. Cada turno empieza en M0 con las 2 CNC y el brazo en su estado inicial.
 - **Fin del turno:** el turno termina al descargar la pieza de la meta (victoria) o al llegar a 180 s sin ella (derrota). Al terminar se
   llama a `desactivarControlador()` y sale la pantalla de **Resultados**: piezas / meta, fallas reparadas, intentos bloqueados,
@@ -383,6 +391,7 @@ Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba
 | 2 | 6,3 | 6,3 × 5 s + 5 × 4 s = 51 s | 9 × 5 s = 45 s | 96 s | 53 % |
 | 3 | 8,6 | 8,6 × 5 s + 6 × 4 s = 67 s | 14 × 5 s = 70 s | 137 s | 76 % |
 
+- **Actualización (18.20):** los tiempos de esta tabla son los de los turnos originales; la calibración vigente está en la tabla de 18.20.
 - En el turno 3 el brazo está muy cargado (76 % con la meta de 6 piezas; era 82 % con 7). El jugador no puede atender todo: debe elegir entre
   los pedidos (+40 cada uno, −20 si vencen) y las piezas (+100 y necesarias para ganar).
 - Ignorar todos los pedidos cuesta 14 × 20 = 280 puntos en el turno 3.
@@ -408,9 +417,9 @@ Cada criterio se comprueba jugando o con el inspector.
 | CA-10 | El radar de amarillo a verde suma +25, con enfriamiento de 20 s | Despachar AGV1 y esperar t1b |
 | CA-11 | Los tiempos coinciden con la tabla: 2 s del brazo, 10 s de fresado, 4 s de viaje del AGV, 5 s de descarga | Medir con el reloj del turno a velocidad x1 |
 | CA-12 | Una falla ocurre entre 2 s y 8 s después de `i`. Con semilla 2026 la secuencia de fallas es siempre la misma | Repetir el turno con las mismas acciones |
-| CA-13 | La probabilidad de falla es 10 %, 20 % y 30 % en los turnos 1, 2 y 3 | Simular 1000 fresados por turno en una prueba automática y comparar |
-| CA-14 | Los pedidos llegan cada 25 s, 18 s y 12 s según el turno, y un pedido sin atender se vence a los 30 s con −20 | Dejar un pedido pendiente y observar |
-| CA-15 | Las metas son 3, 5 y 6 piezas. Cumplir la meta termina el turno como victoria | Jugar cada turno |
+| CA-13 | La probabilidad de falla es 10 %, 15 % y 20 % en los turnos 1, 2 y 3 (18.20) | Simular 1000 fresados por turno en una prueba automática y comparar |
+| CA-14 | Las entregas de metal llegan cada 25 s, 20 s y 18 s según el turno (con parejas en el turno 3), y una sin atender se pierde a los 30 s (20 s en el turno 3) con −20 (18.20) | Dejar un pedido pendiente y observar |
+| CA-15 | Las metas son 6, 8 y 8 piezas (18.20). Cumplir la meta termina el turno como victoria | Jugar cada turno |
 | CA-16 | Un AGV no puede descargar sin la mesa y el brazo: t1b y t2b solo se disparan con ambos recursos | Inspector: marcado antes y después de t1b |
 | CA-17 | El puntaje de cada acción coincide con la sección 8 | Ejecutar cada acción y comprobar |
 | CA-18 | Cada uno de los 6 logros se desbloquea con su condición y no antes | Jugar cada condición |
@@ -646,7 +655,7 @@ No cambian estados, eventos, δ, Pre/Post ni puntajes.
 - **Planta:** la máquina que cambió de estado muestra un destello amarillo de 0,7 s en su contorno.
 - Todo es dibujo plano y tweens (sin filtros glow). No cambia estados, δ, Pre/Post ni puntajes.
 
-### 18.19 Juego más claro e inmersivo
+### 18.19 Juego más claro e inmersivo (reemplazado en parte por 18.20: las macros y los atajos 1, 2, Espacio y Tab de la versión de «Acciones» ya no existen)
 Objetivo: que se sienta como un juego y que alguien que no leyó la guía lo entienda en 1 minuto. **No cambian** los modelos
 (autómatas, red de Petri, JSON de `src/sed/modelos/`), δ, el supervisor ni el puntaje. Cada acción del jugador sigue disparando los
 eventos reales del autómata, uno por uno, y todos quedan en el historial del HUD.
@@ -698,3 +707,94 @@ eventos reales del autómata, uno por uno, y todos quedan en el historial del HU
 
 **D. Tutorial:** pasa de 17 a 12 pasos y usa los botones nuevos: abrir la CNC 1, «Cargar bloque», ver la pestaña «Autómata»,
 «Fresar», «Sacar pieza», despachar el AGV 1 y provocar el interbloqueo con Q y W. Sigue avanzando con el estado real del modelo.
+
+### 18.20 Controles paso a paso, entregas de metal y dificultad
+Objetivo: un juego de **coordinación y velocidad** para adultos que juegan videojuegos: el jugador opera el brazo entre las 2 CNC paso
+a paso, fresa, repara y atiende los AGV sin trabar la celda. **No cambian** los autómatas, la red de Petri, los JSON de `src/sed/modelos/`,
+δ, el supervisor, los valores de puntaje (sección 8), el radar, el inspector ni las zonas del HUD de la sección 14.
+
+**1. Se quitan las macros.** «Cargar bloque» y «Sacar pieza» ya no encadenan eventos (se borró `src/sed/acciones.js`). Cada botón y cada
+tecla dispara **un solo evento** del autómata (`src/sed/controles.js`: `describir` dice si está verde, gris o rojo y por qué; `ejecutar`
+lo pide a la Celda con `solicitar`). El historial del panel muestra cada evento que hizo el jugador. `l · llegar` y `fin_fresado` los
+dispara el reloj (no son controlables); la vuelta del brazo tras `e` o `d` es la automática de la decisión 4 de la sección 17.
+
+**2. Panel de máquina (guía, p. 20).** Se abre en la pestaña **«Autómata»** (grafo, estado iluminado, botones de Γ(q) verde, gris o rojo con
+la razón formal y los últimos 10 eventos). La pestaña **«Acciones»** tiene los mismos eventos de *esa* máquina como botones grandes con ícono
+y verbo (CNC: Meter bloque, Fresar, Sacar pieza; brazo: sus 7 eventos; AGV: Atender). En el panel de una CNC no hay botones del brazo y
+viceversa; los eventos compartidos `c` y `d` sí aparecen en la CNC. **Tab** cambia de pestaña. La CNC conserva «Composición». En Falla, la consola
+H C T C R sale en «Acciones» (en «Autómata», el botón `r · reset` lleva a ella). El panel mide 340 px de alto (y 56–396) para no tapar la barra.
+
+**3. Barra de control fija** (y 400–446; el brazo a la izquierda, las CNC a la derecha, los AGV y el Controlador en el hueco de abajo entre las
+fichas y las alertas):
+
+| Botón | Tecla | Evento |
+|---|---|---|
+| Ir a CNC 1 · Ir a CNC 2 | Z · X | `m` mover (tr_ir) |
+| Abrir pinza | A | `a` abrir_mandril |
+| Meter bloque | C | `c` cargar (compartido CNC y brazo) |
+| Sacar pieza | D | `d` descargar (compartido) |
+| Cerrar pinza | E | `e` cerrar_mandril (el brazo vuelve solo) |
+| Volver | V | `m` mover (tr_volver, a mano) |
+| CNC 1 · Fresar | F | `i` iniciar_fresado |
+| CNC 2 · Fresar | G | `i` iniciar_fresado |
+| Atender AGV 1 · Atender AGV 2 | Q · W | `v` reservar (t1a o t2a) |
+| Controlador de celda | — | compra de −150 (no es un evento del autómata) |
+
+Cada botón de CNC tiene una luz con el color del estado y la barra de progreso del fresado; en Falla dice **«Reparar»** y abre su panel con la
+consola (no dispara ningún evento). Colores: verde = se puede; gris = ahora no o no controlable (el tooltip da la razón formal); rojo = lo
+bloquea el supervisor (tooltip con la razón; intentarlo resta 15 como siempre). La tecla va en una esquinita del botón y todos miden 46 px de
+alto o más. **Teclas:** 1, 2 y 4 quedan solo para la velocidad; P pausa, I inspector, Esc cierra, M silencia. Para dejar libres las letras
+del juego, la pantalla completa pasó a **L**, el modo demostración a **F2** y forzar una falla (solo en desarrollo) a **F3**. Con la
+consola abierta, C, T, H, R y Enter son de la consola (la C no es «Meter bloque»). Mantener una tecla pulsada no repite el evento.
+
+**4. AGV = entregas de metal (sin cambiar la red).** Los "pedidos" son **entregas de metal**; ningún texto usa "pedido" ni "cliente" (una
+prueba lo revisa). Tarjeta "AGV 1 trae metal · 12 s" con cuenta regresiva (verde más de la mitad del plazo, amarillo hasta un sexto y rojo
+después; "AGV 2 en camino" si ya salió; "Metal en cola" si hay más entregas que AGV). Al vencer, el texto flotante dice "−20 entrega perdida".
+El AGV lleva una **caja de metal**; al descargar (con la mesa y el robot), el brazo se ve girado hacia la mesa, la caja baja a ella y al
+terminar desaparece con un destello; luego el AGV vuelve. Texto del AGV: "AGV i: trae metal. Para descargarlo necesita la MESA y el ROBOT al
+mismo tiempo." Esperando: "Espera el robot", "Espera la mesa" o ambas. (El brazo girado es solo visual: el autómata del brazo sigue en Reposo
+porque la ficha Robot_libre la tiene el AGV.)
+
+**5. Sensación de videojuego.**
+- **Inicio de turno:** tarjeta animada "TURNO 1 · Meta N piezas · 180 s" con la dificultad y la cuenta 3, 2, 1, ¡Ya!. El reloj de simulación
+  espera a la cuenta (durante ella los controles, la pausa, el inspector y la ayuda no responden).
+- **Objetivo:** "Piezas 2/N" con barra de progreso (una división por pieza) y "quedan N s". En los últimos 30 s el reloj se pone rojo,
+  parpadea y suena un tic por segundo.
+- **Feedback:** el botón se hunde al pulsarlo y suena un clic; la pinza se abre y se cierra, la **puerta de la CNC se cierra al fresar**,
+  hay chispas mientras fresa y humo en Falla; la máquina que cambió de estado destella.
+- **Movimiento:** el brazo gira y se extiende hacia la CNC elegida y los AGV recorren su ruta (nunca aparecen de golpe).
+- **Textos flotantes** donde ocurre: "+100 pieza", "+40 metal", "+50 reparada", "−15 bloqueado", "−20 entrega perdida", "−30 palabra inválida".
+- **Racha** (solo visual, no cambia el puntaje): "Racha ×3" con piezas seguidas sin errores; se reinicia con un intento bloqueado, una palabra
+  inválida, una entrega perdida o un interbloqueo (`src/sed/racha.js`).
+- **Sonido** con Web Audio, sin archivos: zumbido de fábrica de fondo muy suave, fresado, clic, ding de pieza, alarma de Falla, tono grave
+  de deadlock, fanfarria al ganar, tic del reloj. Botón del altavoz arriba y tecla M.
+- **Pantalla final** con 1 a 3 estrellas (3 si se cumplió la meta, 2 con la mitad o más de las piezas, 1 con menos) y la frase del jefe de
+  planta ("¡Turno cumplido!", "Faltaron 2 piezas: atiende el metal a tiempo.").
+
+**6. Ayuda.** Intro «Cómo jugar» (6 líneas, con las teclas) antes del turno 1 y en el botón «?»; etiquetas fijas en el mapa (CNC 1, CNC 2, Brazo,
+Mesa, AGV 1, AGV 2); tooltip del radar ("M6 = foto actual de las fichas…") y "últimos estados" bajo los cuadritos. Las **pistas del siguiente paso
+solo existen en el tutorial**; en los turnos no hay. El tutorial se rehízo con los botones nuevos: **16 pasos, un botón por paso** y frases de 100
+caracteres como máximo (Z, A, C, E, F, clic en la CNC, Z, A, D, Q, Q, W).
+
+**7. Dificultad.** Los valores de turnos son decisiones del equipo (no de la guía). Se calibraron con `scripts/balance.mjs`: jugadores
+simulados que operan paso a paso (el piloto, un evento por decisión, sin errores) a 0,8 s (experto), 1,2 s (bueno) y 2 s (lento), 20 semillas
+(2026 a 2045). «Piezas en 180 s» es cuántas haría el jugador si el turno no terminara al llegar a la meta; el margen es la mediana menos la meta.
+
+| Turno | Jugador | Victorias | Piezas en 180 s (mín–mediana–máx) | Margen | Tiempo medio al ganar (s) | Puntaje medio | Entregas perdidas (media) |
+|---|---|---|---|---|---|---|---|
+| 1 | experto (0.8 s) | 20 de 20 | 10–12–13 (meta 6) | +6 | 90.6 | 824 | 0 |
+| 1 | bueno (1.2 s) | 20 de 20 | 8–10–11 (meta 6) | +4 | 98.1 | 839 | 0 |
+| 1 | lento (2 s) | 20 de 20 | 6–8–8 (meta 6) | +2 | 144.2 | 956 | 0 |
+| 2 | experto (0.8 s) | 20 de 20 | 9–12–13 (meta 8) | +4 | 116.2 | 1152 | 0 |
+| 2 | bueno (1.2 s) | 19 de 20 | 7–10–10 (meta 8) | +2 | 144.3 | 1246 | 0 |
+| 2 | lento (2 s) | 0 de 20 | 5–7–7 (meta 8) | -1 | — | 1175 | 0 |
+| 3 | experto (0.8 s) | 20 de 20 | 8–9–11 (meta 8) | +1 | 147.7 | 1342 | 0.15 |
+| 3 | bueno (1.2 s) | 13 de 20 | 6–8–9 (meta 8) | +0 | 155.4 | 1352 | 0.8 |
+| 3 | lento (2 s) | 0 de 20 | 4–6–6 (meta 8) | -2 | — | 1179 | 0.9 |
+
+Lectura (cumple lo pedido): el **experto** gana los 3 turnos y el turno 3 con poco margen (+1); el **bueno** gana el turno 1 y casi siempre el 2
+(19 de 20) y pierde a menudo el 3 (13 de 20); el **lento** gana el turno 1 justo (termina hacia los 144 s) y pierde el 2 y el 3. Las palancas
+fueron: más entregas (25 → 20 → 18 s), plazo de 20 s y parejas de entregas en el turno 3 (para tentar el deadlock: dos AGV libres a la vez
+con el radar en amarillo), más fallas (10, 15 y 20 %) y metas de 6, 8 y 8 piezas. Límite de la medición: el piloto no comete errores ni
+paraleliza las dos CNC como un humano, así que es una cota para quien juega sin errores a ese ritmo.
+

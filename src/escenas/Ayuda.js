@@ -1,5 +1,5 @@
 // Ayuda corta (docs/GDD.md, secciones 18.13 y 18.19). Dos páginas:
-//  - «Cómo se juega»: la intro de 5 líneas y los atajos de teclado. Es la que sale antes del turno 1 y al pulsar "?".
+//  - «Cómo jugar»: la intro de 6 líneas y los atajos de teclado. Es la que sale antes del turno 1 y al pulsar "?".
 //  - «Controles y colores»: la tabla de controles y la leyenda de colores y del radar.
 // Se abre con "?" o desde el menú de pausa. Mientras está abierta (si no viene del menú) la simulación queda en pausa.
 
@@ -62,27 +62,27 @@ export class Ayuda extends Phaser.Scene {
     const celda = this.planta.celda;
     const meta = this.planta.partida.tutorial ? TURNOS[0].meta : celda.turno.meta;
     const x = PANEL.x + 28;
-    this._texto(capa, x, PANEL.y + 14, this.inicio ? 'Bienvenido a RoboCell' : 'Cómo se juega', { fontSize: '24px', fontStyle: 'bold' });
+    this._texto(capa, x, PANEL.y + 14, 'Cómo jugar', { fontSize: '24px', fontStyle: 'bold' });
     let y = PANEL.y + 62;
     introLineas(meta).forEach((linea, i) => {
-      const punto = this.add.circle(x + 6, y + 10, 5, [COLORES.celda, COLORES.robot, COLORES.agv, COLORES.fallo, COLORES.operacion][i]);
+      const punto = this.add.circle(x + 6, y + 10, 5, [COLORES.celda, COLORES.robot, COLORES.fallo, COLORES.agv, COLORES.espera, COLORES.operacion][i]);
       capa.add(punto);
-      const t = this._texto(capa, x + 24, y, linea, { fontSize: '16px', wordWrap: { width: PANEL.ancho - 80 }, lineSpacing: 3 });
-      y += t.height + 12;
+      const t = this._texto(capa, x + 24, y, linea, { fontSize: '15px', wordWrap: { width: PANEL.ancho - 76 }, lineSpacing: 3 });
+      y += t.height + 9;
     });
-    y += 6;
-    this._texto(capa, x, y, 'Atajos de teclado', { fontSize: '14px', fontStyle: 'bold', color: TEXTO_HEX.espera });
-    y += 26;
+    y += 2;
+    this._texto(capa, x, y, 'Teclas (cada una dispara un solo evento)', { fontSize: '14px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    y += 24;
     ATAJOS.forEach(([tecla, que], i) => {
       const cx = x + (i % 2) * 410;
-      const cy = y + Math.floor(i / 2) * 30;
+      const cy = y + Math.floor(i / 2) * 28;
       const caja = this.add.rectangle(cx, cy, 78, 24, COLORES.banda).setOrigin(0).setStrokeStyle(1, COLORES.texto, 0.7);
       capa.add(caja);
       this._texto(capa, cx + 39, cy + 12, tecla, { fontSize: '12px', fontStyle: 'bold' }).setOrigin(0.5);
       this._texto(capa, cx + 88, cy + 5, que, { fontSize: '13px' });
     });
-    y += Math.ceil(ATAJOS.length / 2) * 30 + 8;
-    this._texto(capa, x, y, 'Haz clic en una máquina para ver sus acciones. La pestaña «Autómata» muestra su grafo y sus eventos.', { fontSize: '12px', color: '#8794a3' });
+    y += Math.ceil(ATAJOS.length / 2) * 28 + 4;
+    this._texto(capa, x, y, 'Haz clic en una máquina para ver su autómata. Verde = se puede, gris = ahora no, rojo = lo bloquea el supervisor (−15).', { fontSize: '12px', color: '#8794a3' });
   }
 
   /** Página «Controles y colores»: tabla de controles y leyenda de colores y del radar. */
@@ -117,7 +117,7 @@ export class Ayuda extends Phaser.Scene {
   _mostrar(pagina) {
     this.pagina = pagina;
     for (const [clave, capa] of Object.entries(this.paginas)) capa.setVisible(clave === pagina);
-    this.txtCambiar.setText(pagina === 'juego' ? 'Controles y colores' : 'Cómo se juega');
+    this.txtCambiar.setText(pagina === 'juego' ? 'Controles y colores' : 'Cómo jugar');
   }
 
   contiene() {
@@ -131,7 +131,8 @@ export class Ayuda extends Phaser.Scene {
     const c = this.planta.celda;
     const menu = this.scene.get('MenuPausa');
     const desdeMenu = menu?.scene.isActive() && menu.abierto;
-    if (!this._pausaPrevia && !desdeMenu && !c.deadlock && !c.terminado) this.planta.reloj.reanudar();
+    const enCuenta = this.scene.get('HUDGeneral')?.enCuenta; // la cuenta 3, 2, 1 reanuda el reloj al terminar
+    if (!this._pausaPrevia && !desdeMenu && !enCuenta && !c.deadlock && !c.terminado) this.planta.reloj.reanudar();
     this.scene.stop('Ayuda');
   }
 }

@@ -18,6 +18,7 @@ import { explorar } from './cobertura.js';
 import { TIEMPOS, TURNOS, PUNTOS, DURACION_AYUDA, ENFRIAMIENTO_RADAR } from '../config.js';
 
 export const CNCS = ['CNC1', 'CNC2'];
+const SEPARACION_PAREJA = 2; // s entre las dos entregas de una pareja
 export const AGVS = ['AGV1', 'AGV2'];
 
 // Transiciones de cada AGV en la red (a = reservar, b = iniciar descarga, c = fin de descarga).
@@ -42,6 +43,8 @@ export class Celda {
     this.aleatorio = aleatorio;
     this.turno = turno;
     this.tiempos = tiempos;
+    // Plazo de cada entrega de metal: el del turno si lo define (GDD 18.20), o los 30 s del GDD, sección 6.
+    this.plazoEntrega = turno.plazoEntrega ?? tiempos.pedidoVence;
 
     // Una instancia de Automata por máquina.
     this.automatas = {
@@ -123,12 +126,21 @@ export class Celda {
     const t = n * this.turno.intervaloPedidos;
     if (t >= this.turno.duracion) return;
     this.reloj.programar(t, () => {
-      const pedido = { id: ++this._siguientePedido, t: this.reloj.ahora, vencido: false };
-      this.pedidos.push(pedido);
-      this._emitir({ tipo: 'pedido', pedido });
-      this._programarVencimiento(pedido, this.reloj.ahora + this.tiempos.pedidoVence);
+      this._llegaEntrega();
+      // Entregas en pareja (GDD 18.20): cada `parejas` entregas llega otra 2 s después, para tentar a atender los dos AGV a la vez.
+      if (this.turno.parejas && n % this.turno.parejas === 0 && t + SEPARACION_PAREJA < this.turno.duracion) {
+        this.reloj.programar(t + SEPARACION_PAREJA, () => this._llegaEntrega());
+      }
       this._programarPedido(n + 1);
     });
+  }
+
+  /** Llega una entrega de metal (un pedido de AGV): queda pendiente y empieza a correr su plazo. */
+  _llegaEntrega() {
+    const pedido = { id: ++this._siguientePedido, t: this.reloj.ahora, vencido: false };
+    this.pedidos.push(pedido);
+    this._emitir({ tipo: 'pedido', pedido });
+    this._programarVencimiento(pedido, this.reloj.ahora + this.plazoEntrega);
   }
 
   /** Cada pedido penaliza una sola vez, al cumplir 30 s sin atender; sigue pendiente aunque haya vencido. */
@@ -138,7 +150,7 @@ export class Celda {
       if (this.pedidos.includes(pedido) && !pedido.vencido) {
         pedido.vencido = true;
         this.estadisticas.pedidosVencidos++;
-        this.sumarPuntos(PUNTOS.pedidoVencido, 'pedido vencido');
+        this.sumarPuntos(PUNTOS.pedidoVencido, 'entrega perdida');
         this._emitir({ tipo: 'pedidoVencido', pedido });
       }
     });
@@ -525,7 +537,7 @@ export class Celda {
     for (const cnc of CNCS) if (this.estado(cnc) === 'Fresando') this._programarFresado(cnc);
     this._programarFinTurno();
     this._programarPedido(Math.floor(snap.t / this.turno.intervaloPedidos) + 1);
-    for (const p of this.pedidos) if (!p.vencido) this._programarVencimiento(p, Math.max(snap.t, p.t + this.tiempos.pedidoVence));
+    for (const p of this.pedidos) if (!p.vencido) this._programarVencimiento(p, Math.max(snap.t, p.t + this.plazoEntrega));
     this._emitir({ tipo: 'restaurado', t: snap.t });
     this._recalcularRadar(null);
     this._automaticos();

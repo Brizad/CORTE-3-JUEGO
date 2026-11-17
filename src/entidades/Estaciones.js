@@ -1,9 +1,9 @@
 // Estaciones de los AGV: muestran qué espera un AGV detenido en su estación ("Espera el robot" o "Espera la mesa", AND-join)
-// y, sobre la base de cada AGV libre con un pedido pendiente, la cuenta regresiva del pedido (docs/GDD.md, secciones 5, 6 y 18.19).
+// y, sobre la base de cada AGV libre con una entrega de metal pendiente, su cuenta regresiva (docs/GDD.md, secciones 5, 6 y 18.20).
 
 import { TEXTO_HEX, ALTOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
-import { textoEsperaAGV, etiquetasPedidos, cuentaPedido } from '../textos.js';
+import { textoEsperaAGV, etiquetasEntregas, cuentaEntrega } from '../textos.js';
 
 const PROFUNDIDAD = 410;
 const HEX_NIVEL = { operacion: TEXTO_HEX.operacion, espera: TEXTO_HEX.espera, fallo: TEXTO_HEX.fallo, mantenimiento: TEXTO_HEX.texto };
@@ -32,7 +32,7 @@ export class Estaciones {
           .text(e.x, e.y, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera, stroke: '#161b22', strokeThickness: 3 })
           .setOrigin(0.5)
           .setDepth(PROFUNDIDAD),
-        // Cuenta regresiva del pedido que espera a este AGV ("Pedido · 12 s"), sobre su base.
+        // Cuenta regresiva de la entrega que trae este AGV ("Metal · 12 s"), sobre su base.
         pedido: escena.add
           .text(b.x, b.y, '', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.texto, backgroundColor: 'rgba(22,27,34,0.8)', padding: { x: 4, y: 2 } })
           .setOrigin(0.5)
@@ -46,17 +46,17 @@ export class Estaciones {
   actualizar() {
     const c = this.celda;
     const estados = { AGV1: c.estado('AGV1'), AGV2: c.estado('AGV2') };
-    const rotulos = etiquetasPedidos(c.pedidos, estados);
+    const rotulos = etiquetasEntregas(c.pedidos, estados);
     for (const [agv, it] of Object.entries(this.items)) {
       // AND-join: el AGV espera en la estación y la transición no está habilitada.
       const aviso = estados[agv] === 'Esperando' ? textoEsperaAGV(c.faltantes(it.cfg.transicion)) : '';
-      // Pedido que espera a este AGV (libre en su base): cuenta regresiva con color.
+      // Entrega de metal que trae este AGV (libre en su base): cuenta regresiva con color.
       const i = rotulos.findIndex((r) => r.agv === agv);
       let pedido = '';
       let color = TEXTO_HEX.texto;
       if (i >= 0 && estados[agv] === 'Libre') {
-        const cuenta = cuentaPedido(c.pedidos[i], c.reloj.ahora, c.tiempos.pedidoVence, c.turno.pedidosVencen !== false);
-        pedido = `Pedido · ${cuenta.texto}`;
+        const cuenta = cuentaEntrega(c.pedidos[i], c.reloj.ahora, c.plazoEntrega, c.turno.pedidosVencen !== false);
+        pedido = `Metal · ${cuenta.texto}`;
         color = HEX_NIVEL[cuenta.nivel];
       }
       const clave = `${aviso}|${pedido}|${color}`;

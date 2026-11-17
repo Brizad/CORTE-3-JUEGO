@@ -1,7 +1,11 @@
 // Gestor de entrada: mouse, teclado y táctil emiten las mismas acciones.
 // Las demás capas escuchan acciones y nunca leen el dispositivo directamente.
 
-import { RES } from '../config.js';
+import { RES, VELOCIDADES } from '../config.js';
+import { VERBOS } from '../sed/controles.js';
+
+// Tecla de cada verbo de la barra de control: z → 'ir1', a → 'abrir'... (docs/GDD.md, sección 18.20).
+const TECLA_VERBO = new Map(VERBOS.map((v) => [v.tecla.toLowerCase(), v.id]));
 
 /** Nombres de las acciones que emite el gestor. */
 export const ACCIONES = {
@@ -9,20 +13,17 @@ export const ACCIONES = {
   SOLICITAR_EVENTO: 'solicitarEvento', // {codigo, origen}: un botón del HUD pide un evento
   PAUSA: 'pausa', // tecla P
   INSPECTOR: 'inspector', // tecla I
-  VELOCIDAD: 'velocidad', // botones x1, x2 y x4: {valor}
-  VELOCIDAD_CICLO: 'velocidadCiclo', // tecla V: pasa de x1 a x2, a x4 y otra vez a x1
-  ELEGIR_CNC: 'elegirCNC', // teclas 1 y 2: {n}
-  ACCION_PRINCIPAL: 'accionPrincipal', // tecla Espacio: la acción principal de la máquina elegida
-  DESPACHAR: 'despachar', // teclas Q y W: {n} = AGV 1 o AGV 2
-  PESTANA: 'pestana', // tecla Tab: «Acciones» <-> «Autómata»
+  VELOCIDAD: 'velocidad', // teclas 1, 2 y 4 y botones x1, x2 y x4: {valor}
+  CONTROL: 'control', // teclas Z, X, A, C, D, E, V, F, G, Q y W: {id, tecla: true}: UN evento del autómata por tecla
+  PESTANA: 'pestana', // tecla Tab: «Autómata» <-> «Acciones»
   CERRAR: 'cerrar', // tecla Esc
   FPS: 'fps', // tecla F1
-  FORZAR_FALLA: 'forzarFalla', // tecla F: solo en desarrollo, fuerza falla_husillo en la CNC que fresa
+  FORZAR_FALLA: 'forzarFalla', // tecla F3: solo en desarrollo, fuerza falla_husillo en la CNC que fresa
   AYUDA: 'ayuda', // tecla ?: controles y leyenda de colores
-  PANTALLA_COMPLETA: 'pantallaCompleta', // tecla G: entra o sale de pantalla completa (F ya fuerza fallas)
+  PANTALLA_COMPLETA: 'pantallaCompleta', // tecla L: entra o sale de pantalla completa (F y G son «Fresar»)
   RED_PETRI: 'redPetri', // tecla R: vista de la red de Petri sobre la planta
   SILENCIO: 'silencio', // tecla M: activa o desactiva los sonidos
-  DEMO: 'demo', // tecla D: modo demostración (provisional, hasta que exista el HUD de eventos)
+  DEMO: 'demo', // tecla F2: modo demostración (el piloto juega solo); D es «Sacar pieza»
   PUNTERO: 'puntero', // el puntero se mueve: {x, y}
   ARRASTRE: 'arrastre', // arrastre con mouse o un dedo: {dx, dy}
   ZOOM: 'zoom', // rueda o pellizco: {factor}
@@ -136,28 +137,31 @@ export class GestorEntrada {
     if (this._atendidas.has(evento)) return;
     this._atendidas.add(evento);
     const tecla = evento.key;
-    if (tecla === 'p' || tecla === 'P') this._emitir(ACCIONES.PAUSA);
-    else if (tecla === 'i' || tecla === 'I') this._emitir(ACCIONES.INSPECTOR);
-    else if (tecla === 'd' || tecla === 'D') this._emitir(ACCIONES.DEMO);
-    else if (tecla === 'r' || tecla === 'R') this._emitir(ACCIONES.RED_PETRI);
-    else if (tecla === 'm' || tecla === 'M') this._emitir(ACCIONES.SILENCIO);
-    else if (tecla === '?') this._emitir(ACCIONES.AYUDA);
-    else if (tecla === 'g' || tecla === 'G') this._emitir(ACCIONES.PANTALLA_COMPLETA);
-    else if (tecla === 'f' || tecla === 'F') this._emitir(ACCIONES.FORZAR_FALLA);
-    else if (tecla === 'Escape') this._emitir(ACCIONES.CERRAR);
-    else if (tecla === 'F1') {
+    const k = tecla.length === 1 ? tecla.toLowerCase() : tecla;
+    if (evento.ctrlKey || evento.metaKey || evento.altKey) return; // atajos del navegador
+    if (k === 'p') this._emitir(ACCIONES.PAUSA);
+    else if (k === 'i') this._emitir(ACCIONES.INSPECTOR);
+    else if (k === 'r') this._emitir(ACCIONES.RED_PETRI);
+    else if (k === 'm') this._emitir(ACCIONES.SILENCIO);
+    else if (k === '?') this._emitir(ACCIONES.AYUDA);
+    else if (k === 'l') this._emitir(ACCIONES.PANTALLA_COMPLETA);
+    else if (k === 'Escape') this._emitir(ACCIONES.CERRAR);
+    else if (k === 'F1') {
       evento.preventDefault(); // evita la ayuda del navegador
       this._emitir(ACCIONES.FPS);
-    } else if (tecla === '1' || tecla === '2') this._emitir(ACCIONES.ELEGIR_CNC, { n: Number(tecla) });
-    else if (tecla === ' ') {
-      evento.preventDefault(); // el espacio no desplaza la página
-      this._emitir(ACCIONES.ACCION_PRINCIPAL);
-    } else if (tecla === 'q' || tecla === 'Q') this._emitir(ACCIONES.DESPACHAR, { n: 1 });
-    else if (tecla === 'w' || tecla === 'W') this._emitir(ACCIONES.DESPACHAR, { n: 2 });
-    else if (tecla === 'v' || tecla === 'V') this._emitir(ACCIONES.VELOCIDAD_CICLO);
-    else if (tecla === 'Tab') {
+    } else if (k === 'F2') {
+      evento.preventDefault();
+      this._emitir(ACCIONES.DEMO);
+    } else if (k === 'F3') {
+      evento.preventDefault();
+      this._emitir(ACCIONES.FORZAR_FALLA);
+    } else if (k === 'Tab') {
       evento.preventDefault(); // el Tab no pasa el foco a otro elemento de la página
       this._emitir(ACCIONES.PESTANA);
+    } else if (tecla.length === 1 && VELOCIDADES.includes(Number(tecla))) this._emitir(ACCIONES.VELOCIDAD, { valor: Number(tecla) });
+    else if (TECLA_VERBO.has(k)) {
+      if (evento.repeat) return; // mantener la tecla pulsada no repite el evento
+      this._emitir(ACCIONES.CONTROL, { id: TECLA_VERBO.get(k), tecla: true });
     }
   }
 }

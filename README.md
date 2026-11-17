@@ -31,6 +31,8 @@ npm run empaquetar     # build + entrega/GrupoN_RoboCell.zip (index.html en la r
 node scripts/balance.mjs                 # mide el balance de los 3 turnos con el piloto (docs/datos/balance.json)
 node scripts/azar-navegador.mjs juego 120 4   # clics y teclas al azar en Edge sin ventana (modos: juego, tutorial, flujos, galeria)
 node scripts/movil-navegador.mjs         # tamaños de celular: sin scroll, aviso de girar, toques y pellizco
+node scripts/juego-navegador.mjs 5173    # recorrido de los controles paso a paso, la barra, la consola, las entregas y el tutorial
+node scripts/costo-cuadro.mjs 5173       # costo de JS por cuadro (los fps reales se leen con F1)
 node scripts/revisar-tildes.mjs          # busca palabras sin tilde en los textos del juego
 ```
 
@@ -41,38 +43,41 @@ La tecla **F** (fuerza una falla del husillo para probar la consola de reparaci�
 ## Cómo se juega
 
 1. En el título: **Jugar**, **Tutorial** (Turno 0, paso a paso) o **Controles**. El título muestra tu mejor puntaje y tus logros (se guardan en el navegador).
-2. Haz clic en una máquina (o pulsa **1** o **2** para las CNC) y se abre su panel en la pestaña **Acciones**: un botón grande con
-   lo que toca hacer. **Cargar bloque** manda el brazo y dispara solo sus eventos (`m`, `l`, `a`, `c`, `e` y la vuelta), **Fresar**
-   inicia el fresado (`i`) y **Sacar pieza** descarga (`d`) y suma +100. **Espacio** hace la acción de la máquina elegida.
-3. La pestaña **Autómata** (tecla **Tab**) muestra el grafo, los botones de cada evento y los últimos eventos.
-   Verde = se puede, gris = no se puede ahora (al pasar el mouse dice por qué), rojo = lo inhibe el supervisor (−15 puntos si insistes).
-4. Despacha los AGV con los botones de la barra o con **Q** y **W** antes de que venza su pedido (30 s). **Nunca despaches los dos a la vez**: cada uno toma un recurso y espera el otro
-   (deadlock). El radar pasa a amarillo cuando hay peligro. El **Controlador de celda** (−150) lo evita.
-5. Si una CNC falla, escribe en su consola una palabra del lenguaje `^H(CT?)+R$` (por ejemplo `HCTCR`) y pulsa Enter.
-6. Son 3 turnos de 180 s con metas de 3, 5 y 6 piezas. Hay 6 logros. Al empezar cada turno un aviso de 3 s dice la meta y la dificultad,
-   y si el radar se pone amarillo la zona de alertas dice qué despacho evitar. Con **?** se abre la ayuda en cualquier momento.
+2. **Opera el brazo paso a paso** con la barra de abajo (cada botón y cada tecla dispara UN evento del autómata): **Ir a CNC 1** (Z) o
+   **Ir a CNC 2** (X), **Abrir pinza** (A), **Meter bloque** (C), **Cerrar pinza** (E; el brazo vuelve solo), y luego **Fresar** (F o G).
+   Para descargar: ir (Z o X), abrir (A) y **Sacar pieza** (D), que suma +100. Verde = se puede, gris = ahora no (al pasar el mouse dice
+   por qué), rojo = lo bloquea el supervisor (−15 puntos si insistes).
+3. Haz clic en una máquina para ver su **autómata**: grafo, estado iluminado, botones de cada evento y los últimos eventos. **Tab** cambia
+   a la pestaña «Acciones», con los mismos eventos como botones grandes.
+4. Los AGV traen **metal**: atiéndelos con **Q** y **W** antes de que venza la entrega (30 s; 20 s en el turno 3). **Nunca atiendas los dos
+   a la vez**: cada uno toma un recurso y espera el otro (deadlock). El radar pasa a amarillo cuando hay peligro. El **Controlador de celda**
+   (−150) lo evita.
+5. Si una CNC falla, su botón dice **Reparar**: escribe en su consola una palabra del lenguaje `^H(CT?)+R$` (por ejemplo `HCTCR`) y pulsa Enter.
+6. Son 3 turnos de 180 s con metas de 6, 8 y 8 piezas. Hay 6 logros. Cada turno empieza con una tarjeta y la cuenta 3, 2, 1, ¡Ya!,
+   y si el radar se pone amarillo la zona de alertas dice qué AGV no atender. Con **?** se abre «Cómo jugar» en cualquier momento.
 7. En el celular, usa el teléfono en horizontal (en vertical aparece un aviso para girarlo). El pellizco acerca y aleja la planta.
 
 ## Controles
 
 | Acción | Mouse y teclado | Táctil |
 |---|---|---|
-| Abrir el HUD de una máquina | Clic en la máquina | Toque en la máquina |
-| Acción de la máquina (Cargar bloque, Fresar, Sacar pieza) | Botón grande o **Espacio** | Toque en el botón |
-| Elegir CNC 1 o CNC 2 | **1**, **2** | Toque en la máquina |
-| Despachar AGV 1 o AGV 2 | **Q**, **W** | Botones de abajo |
-| Cambiar entre «Acciones» y «Autómata» | **Tab** | Pestañas del panel |
-| Disparar un evento o una transición | Clic en su botón (pestaña Autómata) | Toque en su botón |
+| Brazo: ir a CNC 1 / CNC 2 | **Z** / **X** | Botones de la barra |
+| Brazo: abrir pinza / meter bloque / sacar pieza / cerrar pinza | **A** / **C** / **D** / **E** | Botones de la barra |
+| Brazo: volver a reposo | **V** | Botón de la barra |
+| Fresar en CNC 1 / CNC 2 (en Falla: Reparar) | **F** / **G** | Botones de la barra |
+| Atender AGV 1 / AGV 2 | **Q** / **W** | Botones de la barra |
+| Ver el autómata de una máquina | Clic en la máquina | Toque en la máquina |
+| Cambiar entre «Autómata» y «Acciones» | **Tab** | Pestañas del panel |
 | Pausa y menú (Continuar, Reiniciar turno, Ayuda, Sonido, Título) | **P** | Botón de pausa |
-| Ayuda: cómo se juega, atajos, controles y colores | **?** | Botón "?" |
+| Ayuda: cómo jugar, teclas, controles y colores | **?** | Botón "?" |
 | Inspector (ecuación de estado y árbol de cobertura) | **I** | Botón "Insp." |
 | Vista de la red de Petri | **R** | Botón "Red" |
-| Velocidad x1, x2 y x4 | **V** (pasa de una a otra) | Botones x1, x2, x4 |
+| Velocidad x1, x2 y x4 | **1**, **2**, **4** | Botones x1, x2, x4 |
 | Consola de reparación | **H**, **C**, **T**, **R**, Retroceso, Enter | Botones de comandos |
 | Cerrar un panel | **Esc** | Botón X |
 | Mover y acercar la cámara | Arrastrar y rueda | Arrastrar y pellizco |
-| Pantalla completa | **G** | Botón ⛶ |
-| Silenciar, fps y demostración | **M**, **F1**, **D** | Botón del altavoz |
+| Pantalla completa | **L** | Botón ⛶ |
+| Silenciar, fps y demostración | **M**, **F1**, **F2** | Botón del altavoz |
 
 ## Estructura
 

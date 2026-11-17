@@ -249,20 +249,19 @@ Ver `docs/informe.md`, sección 2.i, y `docs/GDD.md`, secciones 18.10 a 18.16. R
 
 Las capturas de esta ronda están en `docs/capturas/` con el prefijo `final_`.
 
-## j) Juego más claro e inmersivo (GDD 18.19)
+## j) Controles paso a paso, entregas de metal y dificultad (GDD 18.20)
 
 | Prueba | Script | Resultado |
 |---|---|---|
-| Pruebas unitarias | `npm test` | 156 de 156. Nuevas: `test/acciones.test.js` (10: cada verbo dispara sus eventos en orden y uno por uno, "Brazo ocupado", nunca insiste contra el supervisor, espera si la red no habilita tr_ir, historial), `test/textos.test.js` (6 más: texto del AGV, intro de 5 líneas, atajos, radar, pedidos y frase del jefe), `test/tutorial.test.js` (12 pasos con los botones nuevos) y `test/sonidos.test.js` (10 sonidos y el zumbido) |
-| Recorrido en el navegador (producción, `npm run preview`) | `scripts/juego-navegador.mjs` | 34 comprobaciones bien y 0 errores de página (2 corridas seguidas): la intro sale antes del turno 1 y pausa; 1 abre la CNC 1 en «Acciones»; Espacio en «Cargar bloque» dispara `m, l, a, c, e, m` en ese orden; la CNC 2 dice «Brazo ocupado»; Tab pasa a «Autómata»; «Fresar» muestra la barra de progreso; «Sacar pieza» suma la pieza; la tarjeta dice "AGV 1 espera · N s"; Q despacha; el AGV detenido dice "Espera el robot"; en Falla la consola sale en «Acciones» y H C T C R + Enter repara; V cambia la velocidad; el mouse resalta los botones; el altavoz y M silencian; salen los resultados con la frase del jefe; el tutorial llega al final con los botones nuevos |
-| Clics y teclas al azar (ahora también Espacio, Tab, Q, W y V) | `scripts/azar-navegador.mjs juego 120 4` | 0 excepciones y 0 atascos |
-| Tutorial y flujos de pausa, ayuda y game over | `scripts/azar-navegador.mjs tutorial` y `flujos` | El tutorial llega a "fin"; flujos 16 de 16 |
-| Celular | `scripts/movil-navegador.mjs` | 42 comprobaciones bien, sin errores |
-| Costo por cuadro | `scripts/costo-cuadro.mjs` | El `update` de la planta y los dos HUD gasta de 0,8 a 1,6 ms de JS por cuadro (el presupuesto a 60 fps es 16,7 ms). No se agregó ningún filtro. **Los fps reales hay que leerlos con F1 en el equipo del jugador:** el navegador de pruebas no tiene GPU y no sirve para medirlos |
+| Pruebas unitarias | `npm test` | 156 de 156. Nuevas: `test/controles.test.js` (cada botón dispara UN evento, sin macros, verde, gris y rojo con razón, «Reparar», barra dentro del lienzo y sin encimes, racha), `test/turnos.test.js` (metas, plazo de 20 s y parejas del turno 3), `test/textos.test.js` (intro, teclas, entregas, puntos flotantes, estrellas y que ningún texto diga "pedido" ni "cliente"), `test/tutorial.test.js` (16 pasos, un botón por paso) y `test/sonidos.test.js` |
+| Conformidad con el GDD | `npm run pruebas` | 68 comparaciones sin diferencias y 16 de 16 criterios (CA-13, CA-14 y CA-15 ya usan los valores nuevos) |
+| Recorrido en el navegador (`npm run preview`) | `scripts/juego-navegador.mjs` | 46 comprobaciones bien y 0 errores de página: intro y cuenta 3, 2, 1 con el reloj detenido; colores de la barra; Z, A, C, E, F disparan un evento cada una; el rojo resta 15; el panel abre en «Autómata», Tab pasa a «Acciones» y la CNC no tiene botones del brazo; «Reparar» abre la consola y la C es un símbolo; la tarjeta dice "AGV 1 trae metal · N s"; resultados con estrellas; tutorial de 16 pasos con teclas |
+| Clics y teclas al azar (con las teclas nuevas) | `scripts/azar-navegador.mjs juego 120 4` | 0 excepciones y 0 atascos; flujos 16 de 16; tutorial hasta "fin" |
+| Celular | `scripts/movil-navegador.mjs` | Sin errores, sin scroll |
+| Costo por cuadro | `scripts/costo-cuadro.mjs` | 0,6 a 0,9 ms de JS por cuadro (el presupuesto a 60 fps es 16,7 ms). Sin filtros nuevos. **Los fps reales hay que leerlos con F1** en el equipo del jugador: el navegador de pruebas no tiene GPU |
+| Balance (20 semillas, jugadores paso a paso a 0,8, 1,2 y 2 s) | `scripts/balance.mjs` | T1 experto 20/20; T1 bueno 20/20; T1 lento 20/20; T2 experto 20/20; T2 bueno 19/20; T2 lento 0/20; T3 experto 20/20; T3 bueno 13/20; T3 lento 0/20. Tabla completa en GDD 18.20 |
 
 Notas:
-- En las corridas de `juego-navegador.mjs` algunas teclas llegan tarde (Edge sin GPU dibuja a pocos cuadros por segundo); el script
-  espera y reintenta. Un error "reading 'id'" que aparecía a veces venía de una extensión del navegador (AdBlock), no del juego: se filtra
-  por el contexto de ejecución, igual que en los otros scripts.
-- Capturas de esta ronda: `docs/capturas/juego_*.png`.
-
+- Edge sin GPU dibuja a pocos cuadros por segundo: `juego-navegador.mjs` espera cuadros del juego en vez de milisegundos fijos. Un error
+  "reading 'id'" que aparece a veces viene de una extensión del navegador (AdBlock), no del juego: se filtra por contexto de ejecución.
+- Capturas de esta ronda: `docs/capturas/controles_*.png`.

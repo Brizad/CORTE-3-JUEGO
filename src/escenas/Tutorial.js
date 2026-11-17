@@ -77,28 +77,14 @@ export class Tutorial extends Phaser.Scene {
       const q = this.planta.aPantallaLogica(p.x, p.y);
       return { x: q.x, y: q.y - 4 };
     }
-    if (o.tipo === 'boton') {
-      if (hud.abierto && hud.maquinaId === 'CNC1') {
-        // El botón del paso; si está en la otra pestaña, se señala la pestaña «Acciones».
-        return hud.posicionBoton?.(o.etiqueta, o.alterna) ?? hud.posicionBoton?.('Acciones') ?? null;
-      }
-      // Sin el HUD de la CNC 1 abierto: se señala la máquina para abrirlo.
-      const e = this.planta.entidades.find((q) => q.id === 'CNC1');
-      const p = e.silueta[0];
-      const q = this.planta.aPantallaLogica(p.x, p.y);
-      return { x: q.x, y: q.y - 4 };
-    }
-    if (o.tipo === 'barra') {
-      const b = this.scene.get('HUDGeneral').despacho?.[o.clave];
-      return b ? { x: b.rect.x + b.rect.width / 2, y: b.rect.y } : null;
-    }
+    if (o.tipo === 'barra') return this.scene.get('HUDGeneral').posicionControl?.(o.clave) ?? null; // botón de la barra de control
     return null;
   }
 
   update(tiempo) {
     if (!this.activo) return;
     const hud = this.scene.get('HUDMaquina');
-    const ctx = { hud: hud.abierto ? hud.maquinaId : null, pestana: hud.abierto ? hud._pestana : null };
+    const ctx = { hud: hud.abierto ? hud.maquinaId : null };
     this.guia.avanzar(this.celda, ctx, tiempo);
     const paso = this.guia.paso;
     const n = PASOS.indexOf(paso) + 1;

@@ -1,9 +1,10 @@
-// HUD de máquina: escena superpuesta que se lanza en paralelo a Planta (no pausa la simulación). Tiene dos capas (GDD 18.19):
-//  - Pestaña «Acciones» (la que abre): un botón grande con el verbo de juego de ESA máquina ("Cargar bloque", "Fresar",
-//    "Sacar pieza", "Despachar AGV 1"), la barra de progreso del fresado o la consola de reparación, y el historial de eventos.
-//  - Pestaña «Autómata»: el grafo del autómata con las coordenadas del .jff, el estado actual iluminado, un botón por cada
-//    evento de Γ(q) (verde, gris o rojo) y los últimos 10 eventos. Las CNC tienen además la pestaña «Composición».
-// No cambia ningún estado por su cuenta: cada botón le pide el evento a la Celda (δ y red de Petri).
+// HUD de máquina (guía, p. 20): escena superpuesta que se lanza en paralelo a Planta (no pausa la simulación).
+//  - Pestaña «Autómata» (la que abre): el grafo del autómata con las coordenadas del .jff, el estado actual iluminado, un botón
+//    por cada evento de Γ(q) (verde, gris o rojo, con la razón formal) y los últimos 10 eventos.
+//  - Pestaña «Acciones»: los mismos eventos de ESA máquina como botones grandes con ícono y verbo de juego. Con la CNC en
+//    Falla, aquí va la consola de reparación. Las CNC tienen además la pestaña «Composición».
+// En el panel de una CNC no hay botones del brazo, y en el del brazo no hay botones de las CNC (salvo los eventos compartidos c y d).
+// Cada botón dispara UN solo evento: se lo pide a la Celda (δ, supervisor y red de Petri). Nada cambia de estado aquí.
 
 import { COLORES, TEXTO_HEX } from '../config.js';
 import { aspectoDe } from '../arte/estados.js';
@@ -12,10 +13,11 @@ import { ConsolaReparacion, COMANDOS } from '../sed/consola.js';
 import { EXPRESION_TEXTO } from '../sed/lenguaje.js';
 import { claveDe } from '../sed/composicion.js';
 import { camaraLogica } from './camara.js';
+import { PANEL_MAQUINA } from '../disposicion.js';
 import { resaltable, fijarBorde } from './resaltar.js';
-import { textoEsperaAGV } from '../textos.js';
+import { verbosDe, describir, progresoFresado } from '../sed/controles.js';
 
-const PANEL = { ancho: 460, alto: 392, y: 56, xDerecha: 492, xIzquierda: 8 }; // docs/arte.md, sección 7 y docs/GDD.md, sección 18.2
+const PANEL = PANEL_MAQUINA; // termina en y = 396: no tapa la barra de control (y 400) // docs/arte.md, sección 7 y docs/GDD.md, sección 18.2
 const ANCHO_UTIL = PANEL.ancho - 24; // ancho del contenido del panel
 const GRAFO = { x: 12, y: 26, ancho: ANCHO_UTIL };
 // Márgenes del grafo: sitio para la flecha de entrada, las etiquetas "código · nombre" y los nombres de los estados.
@@ -29,13 +31,14 @@ const PARPADEO = 3; // s (reloj real) que parpadea la última transición: decis
 const PERIODO_PARPADEO = 0.5; // 3 s / 0,5 s = 6 parpadeos
 const DESTELLO_BOTON = 0.45; // s que destella en amarillo el botón pulsado
 const HEX = (c) => `#${c.toString(16).padStart(6, '0')}`;
-const ACCION = { x: 12, y: 70, ancho: ANCHO_UTIL, alto: 80 }; // botón grande de la pestaña «Acciones»
+const ACC = { x: 12, y: 66, alto: 40, hueco: 6 }; // botones grandes de la pestaña «Acciones»
 const NOMBRE_MAQUINA = { CNC1: 'CNC 1', CNC2: 'CNC 2', BRAZO: 'Brazo', AGV1: 'AGV 1', AGV2: 'AGV 2' };
 const QUE_HACE = {
-  CNC: 'Fresa los bloques (10 s). El brazo la carga y la descarga.',
-  BRAZO: 'Carga y descarga las CNC. Se maneja con «Cargar bloque» y «Sacar pieza» de cada CNC.',
-  AGV: 'Trae material. Para descargarlo necesita la MESA y el ROBOT al mismo tiempo.',
+  CNC: 'Fresa los bloques (10 s). El brazo mete el bloque y saca la pieza.',
+  BRAZO: 'Mete los bloques y saca las piezas de las CNC, un paso a la vez.',
+  AGV: 'Trae metal. Para descargarlo necesita la MESA y el ROBOT al mismo tiempo.',
 };
+const COLOR_VERBO = { verde: COLORES.operacion, gris: COLORES.banda, rojo: COLORES.fallo, reparar: COLORES.mantenimiento };
 
 const MODELO_DE = { CNC: MODELOS.cnc, BRAZO: MODELOS.brazo, AGV: MODELOS.agv };
 const tipoDe = (id) => id.replace(/\d$/, '');
@@ -69,24 +72,24 @@ export class HUDMaquina extends Phaser.Scene {
     this.cerrarBoton.on('pointerover', () => this.cerrarBoton.setColor(TEXTO_HEX.espera));
     this.cerrarBoton.on('pointerout', () => this.cerrarBoton.setColor(TEXTO_HEX.texto));
 
-    // Pestañas: Acciones (verbos de juego) y Autómata (grafo y eventos). Las CNC tienen además Composición.
-    this._pestana = 'acciones';
+    // Pestañas: Autómata (grafo y eventos, la que abre) y Acciones (los mismos eventos con verbos de juego). Las CNC tienen además Composición.
+    this._pestana = 'automata';
     this.pestanas = {};
-    for (const [clave, etiqueta, x, ancho] of [['acciones', 'Acciones', 72, 58], ['automata', 'Autómata', 134, 58], ['composicion', 'Composición', 196, 76]]) {
+    for (const [clave, etiqueta, x, ancho] of [['automata', 'Autómata', 72, 58], ['acciones', 'Acciones', 134, 58], ['composicion', 'Composición', 196, 76]]) {
       const rect = resaltable(this.add.rectangle(x, 5, ancho, 18, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true }), [1, COLORES.maquina, 1]);
       const t = this.add.text(x + ancho / 2, 14, etiqueta, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
       rect.on('pointerup', () => { this.planta?.sonidos.clic(); this._cambiarPestana(clave); });
       this.pestanas[clave] = { rect, t, etiqueta };
     }
-    // Capa de la pestaña «Acciones»: estado, botón grande (o barra de progreso) e historial de eventos reales.
+    // Capa de la pestaña «Acciones»: estado, un botón grande por evento de la máquina e historial de eventos.
     this.capaAcciones = this.add.container(0, 0);
     this.accEstado = this.add.text(30, 30, '', { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.texto });
     this.accQueHace = this.add.text(12, 48, '', { fontFamily: 'Arial', fontSize: '10px', color: '#8794a3', wordWrap: { width: ANCHO_UTIL } });
     this.accPunto = this.add.graphics(); // punto con el color del estado
     this.accBoton = this.add.container(0, 0); // botón grande: se rehace cuando cambia la acción
     this.accProgreso = this.add.graphics(); // barra del fresado
-    this.accCabecera = this.add.text(12, 162, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
-    this.accHistorial = this.add.text(12, 178, '', { fontFamily: 'Courier New, monospace', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 3 });
+    this.accCabecera = this.add.text(12, 210, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    this.accHistorial = this.add.text(12, 226, '', { fontFamily: 'Courier New, monospace', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 3 });
     this.capaAcciones.add([this.accPunto, this.accEstado, this.accQueHace, this.accBoton, this.accProgreso, this.accCabecera, this.accHistorial]);
     this._firmaAccion = '';
     this.capaComposicion = this.add.container(0, 0).setVisible(false);
@@ -141,8 +144,8 @@ export class HUDMaquina extends Phaser.Scene {
 
   // ---- Abrir y cerrar ----
 
-  /** Abre el panel para una máquina (CNC1, CNC2, BRAZO, AGV1 o AGV2). */
-  abrir(id, nombre) {
+  /** Abre el panel para una máquina (CNC1, CNC2, BRAZO, AGV1 o AGV2) en la pestaña «Autómata»; con {consola: true}, en «Acciones». */
+  abrir(id, nombre, opciones = {}) {
     const planta = this.scene.get('Planta');
     this._soltarCelda();
     this.celda = planta.celda;
@@ -162,7 +165,7 @@ Sistema supervisado: ${sup ? sup.estados.length : '-'} estados, ${sup ? sup.tran
 Estado prohibido: (Fresando, Mandril_Abierto)
 Regla: ${this.celda.razonSupervisor}`,
     );
-    this._reiniciarPestanas();
+    this._reiniciarPestanas(opciones.consola ? 'acciones' : 'automata'); // «Reparar» abre directo la consola
 
     // El panel se coloca junto a la máquina: a la izquierda si la máquina está en la mitad derecha.
     const entidad = planta.entidades.find((e) => e.id === id);
@@ -194,20 +197,9 @@ Regla: ${this.celda.razonSupervisor}`,
     this._sucia = true;
   }
 
-  /**
-   * Posición en pantalla (centro de arriba) de un botón del panel por su etiqueta, o null. Lo usa la flecha del tutorial.
-   * Busca en la pestaña abierta: el botón grande de «Acciones» o los botones de evento de «Autómata» (`alterna` es la
-   * etiqueta equivalente en esa pestaña). También sirve para señalar una pestaña por su nombre.
-   */
-  posicionBoton(etiqueta, alterna) {
-    if (!this.abierto) return null;
-    const centro = (r) => ({ x: this.panelX + r.x + r.width / 2, y: PANEL.y + r.y });
-    const pestana = Object.values(this.pestanas).find((q) => q.etiqueta === etiqueta && q.rect.visible);
-    if (pestana) return centro(pestana.rect);
-    if (this._pestana === 'acciones') return this._accRect && this._accEtiqueta === etiqueta ? centro(this._accRect) : null;
-    if (this._pestana !== 'automata') return null;
-    const b = this.botones.find((x) => x.d.etiqueta === etiqueta || (alterna && x.d.etiqueta === alterna));
-    return b ? centro(b.rect) : null;
+  /** Verdadero si la consola de reparación está a la vista: entonces C, T, H, R y Enter son de la consola. */
+  get consolaAbierta() {
+    return this.abierto && this._modoConsola && this._pestana === 'acciones';
   }
 
   /** Cierra el panel. */
@@ -250,7 +242,7 @@ Regla: ${this.celda.razonSupervisor}`,
     g.clear();
     this.capaTextos.removeAll(true);
     // Las CNC llevan además la sección del brazo, así que su grafo es más bajo.
-    this._altoGrafo = this.tipo === 'CNC' ? 170 : 228;
+    this._altoGrafo = this.tipo === 'CNC' ? 170 : 184;
     this._yBotones = GRAFO.y + this._altoGrafo + 4;
     this.pos = this._posiciones();
     this.aristas = this._calcularAristas();
@@ -528,7 +520,7 @@ Regla: ${this.celda.razonSupervisor}`,
       this._refrescarComposicion();
     }
     if (this._pestana === 'acciones') this._actualizarAcciones();
-    if (this._modoConsola && this._consolaLista && this._pestana !== 'composicion') this._refrescarConsola();
+    if (this.consolaAbierta && this._consolaLista) this._refrescarConsola();
   }
 
   /** Último evento de esta máquina en la bitácora de la Celda. */
@@ -560,8 +552,8 @@ Regla: ${this.celda.razonSupervisor}`,
     const brazo = c.estado('BRAZO');
     if (c.atendida !== cnc) {
       return c.atendida
-        ? `El brazo atiende a ${c.atendida}, no a esta CNC. Usa "volver" y luego "mover".`
-        : 'El brazo debe estar frente a esta CNC: usa "mover" en "Brazo en esta CNC".';
+        ? `El brazo atiende a ${c.atendida}, no a esta CNC.`
+        : 'El brazo debe estar frente a esta CNC: muévelo con «Ir a CNC» (barra de control).';
     }
     if (brazo !== 'Mandril_Abierto') {
       const extra = brazo === 'Moviendo' ? ' (en camino)' : '';
@@ -571,35 +563,7 @@ Regla: ${this.celda.razonSupervisor}`,
     return `La CNC debe estar en ${necesita} (ahora: ${c.estado(cnc)}).`;
   }
 
-  /** Botones del brazo que sirven para la CNC `cnc`: mover, abrir_mandril, cerrar_mandril y volver. */
-  _botonesBrazoEnCnc(cnc) {
-    const c = this.celda;
-    const brazo = c.estado('BRAZO');
-    const frente = c.atendida === cnc;
-    const gris = (etiqueta, tip) => ({ etiqueta, tipo: 'gris', tip });
-    const ejecutable = (etiqueta, evento, opciones, motivo, faltaSiIndefinido) => {
-      if (motivo === null) return { etiqueta, maquina: 'BRAZO', evento, opciones, tipo: 'verde', tip: 'Ejecutar el evento (δ del brazo)' };
-      if (motivo === 'supervisor') return { etiqueta, maquina: 'BRAZO', evento, opciones, tipo: 'rojo', tip: this._explicar(motivo, cnc) };
-      return gris(etiqueta, motivo === 'indefinido' ? faltaSiIndefinido : this._explicar(motivo, cnc, c.faltaPara('BRAZO', evento, opciones ?? {})));
-    };
-    const ocupado = c.atendida ? `El brazo atiende a ${c.atendida}.` : 'El brazo no está en esta CNC: usa "mover".';
-    const op = { objetivo: cnc };
-    return [
-      ejecutable('m · mover', 'mover', op, c.evaluar('BRAZO', 'mover', op),
-        `El brazo debe estar en Reposo (ahora: ${brazo}${c.atendida ? `, atendiendo a ${c.atendida}` : ''}). Usa "volver" primero.`),
-      frente
-        ? ejecutable('a · abrir', 'abrir_mandril', undefined, c.evaluar('BRAZO', 'abrir_mandril'), `El brazo debe estar en Mandril_Cerrado (ahora: ${brazo}).`)
-        : gris('a · abrir', ocupado),
-      frente
-        ? ejecutable('e · cerrar', 'cerrar_mandril', undefined, c.evaluar('BRAZO', 'cerrar_mandril'), `El brazo debe estar en Mandril_Abierto (ahora: ${brazo}).`)
-        : gris('e · cerrar', ocupado),
-      frente
-        ? ejecutable('m · volver', 'volver', undefined, c.evaluar('BRAZO', 'volver'), `El brazo debe estar en Mandril_Cerrado (ahora: ${brazo}).`)
-        : gris('m · volver', ocupado),
-    ];
-  }
-
-  /** Botones de la máquina: uno por cada evento de Γ(q) y, en las CNC, la sección del brazo. */
+  /** Botones de la máquina: uno por cada evento de Γ(q) de SU autómata (en el panel de una CNC no hay botones del brazo). */
   _describirBotones() {
     const c = this.celda;
     const id = this.maquinaId;
@@ -620,7 +584,7 @@ Regla: ${this.celda.razonSupervisor}`,
         principales.push({ etiqueta, tipo: 'gris', tip: 'No controlable: lo dispara el sistema (solo informativo).' });
       } else if (this.tipo === 'CNC') {
         if (ev === 'reset') {
-          principales.push({ etiqueta, tipo: 'gris', tip: 'Reparar exige la palabra de la consola (H, C, T, R): aún no está disponible.' });
+          principales.push({ etiqueta, tipo: 'gris', consola: true, tip: 'r · reset exige una palabra de L = ^H(CT?)+R$: escríbela en la consola de la pestaña «Acciones» (clic aquí para abrirla).' });
         } else {
           principales.push({ etiqueta, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev) });
         }
@@ -642,13 +606,12 @@ Regla: ${this.celda.razonSupervisor}`,
           principales.push({ etiqueta, maquina: 'BRAZO', evento: ev, ...segun(c.evaluar('BRAZO', ev), c.atendida, ev) });
         }
       } else if (ev === 'reservar') {
-        principales.push({ etiqueta: `v · Despachar ${id}`, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev, c.faltaPara(id, ev)) });
+        principales.push({ etiqueta: `v · reservar`, maquina: id, evento: ev, ...segun(c.evaluar(id, ev), id, ev, c.faltaPara(id, ev)) });
       } else {
         principales.push({ etiqueta, tipo: 'gris', tip: 'Transición automática de la red: se dispara sola cuando hay mesa y brazo.' });
       }
     }
-    const brazo = this.tipo === 'CNC' ? this._botonesBrazoEnCnc(id) : [];
-    return { principales, brazo };
+    return { principales, brazo: [] };
   }
 
   /** Coloca una fila de botones (hasta 4) en la altura y. */
@@ -684,8 +647,10 @@ Regla: ${this.celda.razonSupervisor}`,
       this._firmaBotones = '';
       this.tip.setVisible(false);
     }
-    this.capaConsola.setVisible(enFalla && this._pestana !== 'composicion');
-    if (enFalla) {
+    // La consola de reparación va en la pestaña «Acciones» (en «Autómata» el botón r · reset lleva a ella).
+    const consola = enFalla && this._pestana === 'acciones';
+    this.capaConsola.setVisible(consola);
+    if (consola) {
       this.capaBotones.removeAll(true);
       this.botones = [];
       this.cabeceraBrazo.setVisible(false);
@@ -729,7 +694,7 @@ Regla: ${this.celda.razonSupervisor}`,
   _construirConsola() {
     this.capaConsola.removeAll(true);
     this.consola.limpiar();
-    const y0 = this._pestana === 'acciones' ? 66 : this._yBotones; // en «Acciones» la consola va arriba, sin el grafo
+    const y0 = ACC.y; // la consola ocupa el sitio de los botones de «Acciones»
     const texto = (x, y, t, estilo = {}) => {
       const o = this.add.text(x, y, t, { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, ...estilo });
       this.capaConsola.add(o);
@@ -751,7 +716,7 @@ Regla: ${this.celda.razonSupervisor}`,
       const t = this.add.text(x + ancho / 2, y + BOTON.alto / 2, etiqueta, {
         fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: colorTexto, align: 'center',
       }).setOrigin(0.5);
-      rect.on('pointerup', () => { if (this._pestana !== 'composicion') { this.planta.sonidos.clic(); accion(); this._consolaSucia = true; } });
+      rect.on('pointerup', () => { if (this.consolaAbierta) { this.planta.sonidos.clic(); accion(); this._consolaSucia = true; } });
       rect.on('pointerover', () => this._mostrarTip(tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
       this.capaConsola.add([rect, t]);
@@ -786,7 +751,7 @@ Regla: ${this.celda.razonSupervisor}`,
     // En equipos lentos Phaser puede entregar varias veces el mismo evento de teclado: cada tecla se atiende una sola vez.
     if (this._atendidas.has(evento)) return;
     this._atendidas.add(evento);
-    if (!this.abierto || !this._modoConsola || this._pestana === 'composicion') return;
+    if (!this.consolaAbierta) return;
     const k = evento.key;
     if (k === 'Enter') this._enviar();
     else if (k === 'Backspace') {
@@ -828,9 +793,9 @@ Regla: ${this.celda.razonSupervisor}`,
     this._aplicarPestana();
   }
 
-  /** Tab: pasa de «Acciones» a «Autómata» y al revés. */
+  /** Tab: pasa de «Autómata» a «Acciones» y al revés. */
   alternarPestana() {
-    this._cambiarPestana(this._pestana === 'acciones' ? 'automata' : 'acciones');
+    this._cambiarPestana(this._pestana === 'automata' ? 'acciones' : 'automata');
   }
 
   /** Muestra las capas de la pestaña actual y obliga a rehacer botones, consola, lista e historial. */
@@ -839,10 +804,9 @@ Regla: ${this.celda.razonSupervisor}`,
     for (const o of [this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos, this.capaBotones]) o.setVisible(p === 'automata');
     this.capaAcciones.setVisible(p === 'acciones');
     if (p !== 'acciones') {
-      // El botón grande solo existe en «Acciones» (oculto seguiría recibiendo el puntero).
+      // Los botones grandes solo existen en «Acciones» (ocultos seguirían recibiendo el puntero).
       this.accBoton.removeAll(true);
-      this._accRect = null;
-      this._accEtiqueta = null;
+      this.botonesAcc = [];
     }
     this.capaComposicion.setVisible(p === 'composicion');
     this.tip.setVisible(false);
@@ -850,7 +814,7 @@ Regla: ${this.celda.razonSupervisor}`,
     this._firmaBotones = '';
     this._firmaAccion = '';
     this._firmaHistorial = '';
-    this._consolaLista = false; // la consola cambia de sitio según la pestaña
+    this._consolaLista = false;
     this._claveConsola = '';
     this._claveComp = '';
     this._estilizarPestanas();
@@ -864,79 +828,73 @@ Regla: ${this.celda.razonSupervisor}`,
     }
   }
 
-  /** Al abrir una máquina: pestaña «Acciones»; «Composición» solo existe en las CNC. */
-  _reiniciarPestanas() {
-    this._pestana = 'acciones';
+  /** Al abrir una máquina: pestaña «Autómata» (o la pedida); «Composición» solo existe en las CNC. */
+  _reiniciarPestanas(pestana = 'automata') {
+    this._pestana = pestana;
     this.pestanas.composicion.rect.setVisible(this.tipo === 'CNC');
     this.pestanas.composicion.t.setVisible(this.tipo === 'CNC');
     this._aplicarPestana();
   }
 
-  // ---- Pestaña «Acciones»: verbos de juego ----
+  // ---- Pestaña «Acciones»: los eventos de la máquina como botones grandes con verbo de juego ----
 
-  /** Qué ofrece el botón grande ahora: etiqueta, detalle, si se puede pulsar y qué hace. */
-  _describirAccion() {
-    const acc = this.planta.acciones;
-    const id = this.maquinaId;
-    if (this.tipo === 'CNC') return { ...acc.describir(id), ejecutar: () => acc.ejecutar(id) };
-    if (this.tipo === 'AGV') {
-      const d = acc.describirAGV(id);
-      if (this.celda.estado(id) === 'Esperando') {
-        const espera = textoEsperaAGV(this.celda.faltantes(id === 'AGV1' ? 't1b' : 't2b'));
-        if (espera) d.etiqueta = espera;
-      }
-      return { ...d, ejecutar: () => acc.despachar(id).ok };
-    }
-    const atiende = this.celda.atendida;
-    return { tipo: 'info', etiqueta: atiende ? `Atiende a ${NOMBRE_MAQUINA[atiende]}` : 'En reposo, listo', detalle: 'El brazo no tiene botones propios: usa «Cargar bloque» y «Sacar pieza» en el panel de cada CNC (teclas 1 y 2).', habilitada: false };
-  }
-
-  /** Espacio o clic en el botón grande: la acción principal de la máquina. Dispara eventos reales por δ. */
-  accionPrincipal() {
-    if (!this.abierto || !this.planta) return false;
-    const d = this._describirAccion();
-    if (!d.habilitada) {
-      if (this._pestana === 'acciones') this._mostrarTip(d.detalle || 'Ahora no se puede.');
-      return false;
-    }
-    this.planta.sonidos.clic();
-    if (this._pestana === 'acciones' && this._accRect) this._destello = { x: ACCION.x, y: ACCION.y, ancho: ACCION.ancho, alto: ACCION.alto, inicio: this.time.now };
-    const ok = d.ejecutar();
-    this._sucia = true;
-    return ok;
-  }
-
-  /** Dibuja un ícono sencillo de la máquina (48 px) con centro en (cx, cy). */
-  _iconoMaquina(g, cx, cy, color) {
+  /** Ícono sencillo de cada verbo (24 px) con centro en (cx, cy). */
+  _iconoVerbo(g, id, cx, cy, color) {
     g.lineStyle(3, color, 1);
     g.fillStyle(color, 1);
-    if (this.tipo === 'CNC') {
-      g.strokeRect(cx - 20, cy - 12, 40, 30); // cuerpo
-      g.fillRect(cx - 5, cy - 24, 10, 12); // husillo
-      g.fillRect(cx - 12, cy - 4, 24, 14); // ventana
-    } else if (this.tipo === 'AGV') {
-      g.strokeRect(cx - 22, cy - 8, 44, 16); // plataforma
-      g.fillRect(cx - 10, cy - 20, 20, 12); // carga
-      g.fillCircle(cx - 13, cy + 14, 5);
-      g.fillCircle(cx + 13, cy + 14, 5);
+    const flecha = (dx) => {
+      g.lineBetween(cx - 9 * dx, cy, cx + 7 * dx, cy);
+      g.fillTriangle(cx + 11 * dx, cy, cx + 3 * dx, cy - 6, cx + 3 * dx, cy + 6);
+    };
+    if (id === 'ir1' || id === 'ir2') flecha(1);
+    else if (id === 'volver') flecha(-1);
+    else if (id === 'abrir') {
+      g.lineBetween(cx - 9, cy - 8, cx - 9, cy + 8); // dedos separados
+      g.lineBetween(cx + 9, cy - 8, cx + 9, cy + 8);
+      g.lineBetween(cx - 9, cy - 8, cx + 9, cy - 8);
+    } else if (id === 'cerrar') {
+      g.lineBetween(cx - 3, cy - 8, cx - 3, cy + 8); // dedos juntos
+      g.lineBetween(cx + 3, cy - 8, cx + 3, cy + 8);
+      g.lineBetween(cx - 9, cy - 8, cx + 9, cy - 8);
+    } else if (id === 'meter') {
+      g.fillRect(cx - 6, cy - 2, 12, 10); // bloque que baja
+      g.fillTriangle(cx, cy - 4, cx - 6, cy - 11, cx + 6, cy - 11);
+    } else if (id === 'sacar') {
+      g.fillRect(cx - 6, cy, 12, 10); // pieza que sube
+      g.fillTriangle(cx, cy - 12, cx - 6, cy - 4, cx + 6, cy - 4);
+    } else if (id.startsWith('fresar')) {
+      g.strokeRect(cx - 10, cy - 4, 20, 14); // CNC con husillo
+      g.fillRect(cx - 3, cy - 12, 6, 12);
     } else {
-      g.fillRect(cx - 18, cy + 12, 22, 8); // base
-      g.lineBetween(cx - 7, cy + 12, cx - 2, cy - 10); // segmento 1
-      g.lineBetween(cx - 2, cy - 10, cx + 16, cy - 2); // segmento 2
-      g.fillCircle(cx - 2, cy - 10, 4);
-      g.lineBetween(cx + 16, cy - 8, cx + 22, cy - 8); // pinza
-      g.lineBetween(cx + 16, cy + 4, cx + 22, cy + 4);
+      g.strokeRect(cx - 11, cy - 4, 22, 9); // AGV con su caja de metal
+      g.fillRect(cx - 5, cy - 11, 10, 7);
+      g.fillCircle(cx - 6, cy + 9, 3);
+      g.fillCircle(cx + 6, cy + 9, 3);
     }
   }
 
-  /** Por cuadro en la pestaña «Acciones»: estado, botón grande (solo se rehace si cambió), progreso e historial. */
+  /** Clic en un botón grande: UN evento, por la misma vía que la barra de control. */
+  _pulsarVerbo(d, rect) {
+    if (this._pestana !== 'acciones') return;
+    const r = this.planta.pulsarControl(d.id, this.tipo === 'CNC' ? { cnc: this.maquinaId } : {});
+    if (!r) return;
+    this._destello = { x: rect.x, y: rect.y, ancho: rect.width, alto: rect.height, inicio: this.time.now };
+    this._sucia = true;
+    if (!r.ok && !r.reparar) this._mostrarTip(r.tipo === 'rojo' ? `Bloqueado (−15 puntos). ${r.tip}` : r.tip);
+  }
+
+  /** Por cuadro en la pestaña «Acciones»: estado, botones (solo se rehacen si cambiaron), progreso del fresado e historial. */
   _actualizarAcciones() {
     const c = this.celda;
     const id = this.maquinaId;
     const estado = this.automata.estado;
-    const d = this._describirAccion();
-    const consola = this._modoConsola; // CNC en Falla: la consola ocupa el sitio del botón
-    const firma = [estado, d.tipo, d.etiqueta, d.detalle, d.habilitada, !!d.enCurso, consola].join('|');
+    const consola = this._modoConsola; // CNC en Falla: la consola ocupa el sitio de los botones
+    const contexto = this.tipo === 'CNC' ? { cnc: id } : {};
+    const ds = consola ? [] : verbosDe(id).map((v) => describir(c, v, contexto));
+    const columnas = ds.length > 3 ? 2 : 1;
+    const ancho = (ANCHO_UTIL - (columnas - 1) * 8) / columnas;
+    const lugar = (i) => ({ x: ACC.x + (i % columnas) * (ancho + 8), y: ACC.y + Math.floor(i / columnas) * (ACC.alto + ACC.hueco) });
+    const firma = [estado, consola, ...ds.map((d) => `${d.verbo}|${d.tipo}|${d.tip}`)].join('#');
     if (firma !== this._firmaAccion) {
       this._firmaAccion = firma;
       const color = aspectoDe(this.tipo, estado).color;
@@ -944,57 +902,50 @@ Regla: ${this.celda.razonSupervisor}`,
       this.accEstado.setText(`Estado: ${estado.replace(/_/g, ' ')}`);
       this.accQueHace.setVisible(!consola);
       this.accBoton.removeAll(true);
-      this._accRect = null;
-      this._accEtiqueta = null;
+      this.botonesAcc = [];
       this.tip.setVisible(false);
-      if (!consola && d.tipo !== 'progreso') {
-        const activo = d.habilitada;
-        const fondo = activo ? COLORES.operacion : d.enCurso ? COLORES.mantenimiento : COLORES.banda;
-        const rect = this.add.rectangle(ACCION.x, ACCION.y, ACCION.ancho, ACCION.alto, fondo).setOrigin(0).setInteractive({ useHandCursor: activo });
-        resaltable(rect, [activo ? 3 : 2, COLORES.texto, activo || d.enCurso ? 0.9 : 0.3]);
+      ds.forEach((d, i) => {
+        const { x, y } = lugar(i);
+        const activo = d.tipo !== 'gris';
+        const rect = this.add.rectangle(x, y, ancho, ACC.alto, COLOR_VERBO[d.tipo]).setOrigin(0).setInteractive({ useHandCursor: activo });
+        resaltable(rect, d.tipo === 'rojo' ? [3, COLORES.texto, 1] : [2, COLORES.texto, activo ? 0.9 : 0.25]);
+        const tinta = activo ? COLORES.texto : COLORES.maquina;
         const icono = this.add.graphics();
-        this._iconoMaquina(icono, ACCION.x + 44, ACCION.y + ACCION.alto / 2, activo || d.enCurso ? COLORES.texto : COLORES.maquina);
-        const colorTexto = activo || d.enCurso ? TEXTO_HEX.texto : '#8794a3';
-        const etiqueta = this.add.text(ACCION.x + 92, ACCION.y + 12, d.etiqueta, { fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: colorTexto });
-        const detalle = this.add.text(ACCION.x + 92, ACCION.y + 42, d.detalle + (activo ? '  (Espacio)' : ''), { fontFamily: 'Arial', fontSize: '10px', color: colorTexto, wordWrap: { width: ACCION.ancho - 104 }, lineSpacing: 2 });
-        rect.on('pointerup', () => { if (this._pestana === 'acciones') this.accionPrincipal(); });
-        rect.on('pointerover', () => { if (!activo) this._mostrarTip(d.detalle || 'Ahora no se puede.'); });
+        this._iconoVerbo(icono, d.id, x + 22, y + ACC.alto / 2, tinta);
+        const colorTexto = activo ? TEXTO_HEX.texto : '#8794a3';
+        const verbo = this.add.text(x + 44, y + 5, d.verbo, { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: colorTexto });
+        const evento = this.add.text(x + 44, y + 22, `${d.codigo} · ${d.nombre}`, { fontFamily: 'Arial', fontSize: '9px', color: colorTexto });
+        const tecla = this.add.text(x + ancho - 6, y + 4, d.tecla, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: colorTexto, backgroundColor: 'rgba(22,27,34,0.55)', padding: { x: 4, y: 1 } }).setOrigin(1, 0);
+        rect.on('pointerup', () => this._pulsarVerbo(d, rect));
+        rect.on('pointerover', () => this._mostrarTip(d.tip));
         rect.on('pointerout', () => this.tip.setVisible(false));
-        this.accBoton.add([rect, icono, etiqueta, detalle]);
-        this._accRect = rect;
-        this._accEtiqueta = d.etiqueta;
-      }
+        this.accBoton.add([rect, icono, verbo, evento, tecla]);
+        this.botonesAcc.push({ rect, d });
+      });
     }
 
-    // Fresando: barra de progreso del fresado (sin botones).
+    // CNC fresando: barra de progreso dentro del botón «Fresar» (el fin del fresado no es controlable).
     const g = this.accProgreso;
     g.clear();
-    if (!consola && d.tipo === 'progreso') {
-      const { fraccion, segundos } = this.planta.acciones.progresoFresado(id);
-      const texto = `Fresando… ${Math.floor(segundos)} s`;
-      if (texto !== this._textoProgreso || !this._txtProgreso?.active) {
-        this._textoProgreso = texto;
-        if (!this._txtProgreso?.active) {
-          this._txtProgreso = this.add.text(ACCION.x + ACCION.ancho / 2, ACCION.y + 14, '', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: TEXTO_HEX.operacion }).setOrigin(0.5, 0);
-          this.accBoton.add(this._txtProgreso);
-        }
-        this._txtProgreso.setText(texto);
-      }
-      g.fillStyle(COLORES.banda, 0.8).fillRect(ACCION.x, ACCION.y + 46, ACCION.ancho, 22);
-      g.fillStyle(COLORES.operacion, 1).fillRect(ACCION.x, ACCION.y + 46, ACCION.ancho * fraccion, 22);
-      g.lineStyle(2, COLORES.texto, 0.9).strokeRect(ACCION.x, ACCION.y + 46, ACCION.ancho, 22);
+    const iFresar = ds.findIndex((d) => d.fresando);
+    if (iFresar >= 0) {
+      const { x, y } = lugar(iFresar);
+      const { fraccion } = progresoFresado(c, id);
+      g.fillStyle(COLORES.panel, 0.7).fillRect(x + 4, y + ACC.alto - 6, ancho - 8, 4);
+      g.fillStyle(COLORES.operacion, 1).fillRect(x + 4, y + ACC.alto - 6, (ancho - 8) * fraccion, 4);
     }
 
-    // Historial: los eventos reales de los autómatas, uno por línea (también los del brazo cuando atendía a esta CNC).
-    const filas = this.planta.acciones.eventosDe(id, consola ? 6 : 12);
-    const firmaH = `${consola}|${filas.length}|${filas.length ? filas[filas.length - 1].t : 0}|${c.bitacora.length}`;
+    // Historial: cada evento del autómata de esta máquina, uno por línea (los más nuevos abajo).
+    const yH = consola ? 256 : ACC.y + Math.ceil(ds.length / columnas) * (ACC.alto + ACC.hueco) + 4;
+    const lineas = Math.max(1, Math.floor((PANEL.alto - 26 - (yH + 16)) / 13));
+    const firmaH = `${consola}|${yH}|${c.bitacora.length}`;
     if (firmaH !== this._firmaHistorial) {
       this._firmaHistorial = firmaH;
-      const y = consola ? 262 : 162;
-      this.accCabecera.setPosition(12, y).setText(filas.length ? 'Eventos disparados (los más nuevos abajo)' : 'Todavía no hay eventos en esta máquina');
-      const codigo = (h) => MODELO_DE[tipoDe(h.maquina)].eventos.find((e) => e.id === h.evento)?.codigo ?? '?';
-      this.accHistorial.setPosition(12, y + 16).setText(
-        filas.map((h) => `${h.t.toFixed(1).padStart(6)} s  ${codigo(h)}  ${NOMBRE_MAQUINA[h.maquina].padEnd(5)} ${h.evento.padEnd(15)} ${h.de} → ${h.a}`).join('\n'),
+      const filas = c.bitacora.filter((e) => e.tipo === 'automata' && e.maquina === id).slice(-lineas);
+      const codigo = new Map(this.modelo.eventos.map((e) => [e.id, e.codigo]));
+      this.accCabecera.setPosition(12, yH).setText(filas.length ? `Últimos ${filas.length} eventos de ${NOMBRE_MAQUINA[id]} (los más nuevos abajo)` : 'Todavía no hay eventos en esta máquina');
+      this.accHistorial.setPosition(12, yH + 16).setText(
+        filas.map((h) => `${h.t.toFixed(1).padStart(6)} s  ${codigo.get(h.evento) ?? '?'}  ${h.evento.padEnd(16)} ${h.de} → ${h.a}`).join('\n'),
       );
     }
   }
@@ -1028,7 +979,9 @@ Regla: ${this.celda.razonSupervisor}`,
 
   /** Clic en un botón: pide el evento a la Celda (δ y transición). Gris no hace nada. */
   _pulsar(d, rect) {
-    if (d.tipo === 'gris' || !d.maquina || this._pestana !== 'automata') return;
+    if (this._pestana !== 'automata') return;
+    if (d.consola) return this._cambiarPestana('acciones'); // r · reset: la palabra se escribe en la consola
+    if (d.tipo === 'gris' || !d.maquina || !this.planta.juegoActivo()) return;
     this.planta.sonidos.clic();
     if (rect) this._destello = { x: rect.x, y: rect.y, ancho: rect.width, alto: rect.height, inicio: this.time.now };
     const r = this.celda.solicitar(d.maquina, d.evento, d.opciones);
@@ -1040,9 +993,8 @@ Regla: ${this.celda.razonSupervisor}`,
 
   /** Últimos 10 eventos de la máquina: su palabra observada. */
   _actualizarLista() {
-    // La consola de reparación ocupa el lugar de la lista mientras la CNC está en Falla.
-    this._listaVisible(!this._modoConsola);
-    if (this._modoConsola) return;
+    this._listaVisible(this._pestana === 'automata');
+    if (this._pestana !== 'automata') return;
     const eventos = this.celda.bitacora.filter((e) => e.tipo === 'automata' && e.maquina === this.maquinaId).slice(-10);
     const codigo = new Map(this.modelo.eventos.map((e) => [e.id, e.codigo]));
     const palabra = eventos.map((e) => codigo.get(e.evento)).join(' ');

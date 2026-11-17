@@ -1,6 +1,8 @@
 // Brazo: base cilíndrica y dos segmentos articulados con una pinza. 56 px de alto en reposo.
 // La pinza se abre o se cierra según el estado del autómata, y el brazo se extiende hacia la CNC atendida.
 // Los movimientos se calculan con el reloj de simulación: duran lo mismo a x1, x2 y x4, y se frenan en pausa.
+// Mientras un AGV descarga su metal (tiene la mesa y el robot), el brazo se ve girado hacia la mesa: es solo visual, el autómata
+// del brazo sigue en Reposo (la ficha Robot_libre la tiene el AGV).
 
 import { COLORES, POSICIONES, ALTOS, TIEMPOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
@@ -20,6 +22,15 @@ export class EntidadBrazo extends Entidad {
     this.alcance = { desde: 0, hasta: 0, t0: 0, dur: 0 }; // 0 = en reposo, 1 = extendido
     this.pinza = { desde: 0, hasta: 0, t0: 0, dur: 0 }; // 0 = cerrada, 1 = abierta
     this.objetivo = null; // última CNC atendida
+    this.mesa = { desde: 0, hasta: 0, t0: 0, dur: 0 }; // 0 = normal, 1 = extendido hacia la mesa (un AGV descarga)
+    this._bajaAGV = celda.alCambiar((e) => {
+      if (e.tipo === 'automata' && e.evento === 'iniciar_descarga') this.mesa = { desde: valorAnimado(this.mesa, e.t), hasta: 1, t0: e.t, dur: 1 };
+      else if (e.tipo === 'automata' && e.evento === 'fin_descarga') this.mesa = { desde: valorAnimado(this.mesa, e.t), hasta: 0, t0: e.t, dur: 0.6 };
+      else if (e.tipo === 'restaurado') {
+        const k = ['AGV1', 'AGV2'].some((a) => celda.estado(a) === 'Descargando') ? 1 : 0;
+        this.mesa = { desde: k, hasta: k, t0: celda.reloj.ahora, dur: 0 };
+      }
+    });
     this.fijarProfundidad(this.pos.x + this.pos.y + 0.5);
     this.silueta = this._silueta();
   }
@@ -67,9 +78,16 @@ export class EntidadBrazo extends Entidad {
       );
       muneca = { x: reposo.x + (fin.x - reposo.x) * r, y: reposo.y + (fin.y - reposo.y) * r };
     }
+    // Un AGV descarga: la muñeca va hacia la mesa.
+    const rm = suave(valorAnimado(this.mesa, t));
+    if (rm > 0) {
+      const m = POSICIONES.MESA;
+      const finMesa = aPantalla(centro.x + (m.x + 0.5 - centro.x) * 0.8, centro.y + (m.y + 0.5 - centro.y) * 0.8, 40);
+      muneca = { x: muneca.x + (finMesa.x - muneca.x) * rm, y: muneca.y + (finMesa.y - muneca.y) * rm };
+    }
     const codo = {
       x: (hombro.x + muneca.x) / 2,
-      y: (hombro.y + muneca.y) / 2 - 12 * Math.sin(Math.PI * r),
+      y: (hombro.y + muneca.y) / 2 - 12 * Math.sin(Math.PI * Math.max(r, rm)),
     };
     return { hombro, codo, muneca };
   }
@@ -103,6 +121,11 @@ export class EntidadBrazo extends Entidad {
     this._estadoDibujado = this.automata.estado;
     this.sucia = false;
     this.redibujarIcono(t);
+  }
+
+  destruir() {
+    this._bajaAGV();
+    super.destruir();
   }
 
   /** El ícono queda fijo a un lado de la base, así nunca se encima con el de la CNC que el brazo atiende. */

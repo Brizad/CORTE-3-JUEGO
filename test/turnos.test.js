@@ -41,7 +41,8 @@ function pieza(celda, reloj, cnc = 'CNC1') {
   return celda.solicitar(cnc, 'descargar');
 }
 
-const SIN_FALLAS = { ...TURNOS[0], probFalla: 0 };
+// Las pruebas de reglas usan un turno sin fallas con meta de 3 piezas (la meta real de cada turno se comprueba aparte).
+const SIN_FALLAS = { ...TURNOS[0], probFalla: 0, meta: 3 };
 
 test('puntaje del GDD: pieza +100, ciclo de AGV +40 y las demás acciones', () => {
   const { reloj, celda } = nueva({ ...SIN_FALLAS, meta: 99 });
@@ -58,7 +59,7 @@ test('puntaje del GDD: pieza +100, ciclo de AGV +40 y las demás acciones', () =
   );
 });
 
-test('turno 1: se gana al descargar la pieza 3 (meta) y el turno se detiene', () => {
+test('el turno se gana al descargar la última pieza de la meta (aquí 3) y se detiene', () => {
   const { reloj, celda } = nueva(SIN_FALLAS);
   const fin = [];
   celda.alCambiar((e) => e.tipo === 'finTurno' && fin.push(e));
@@ -96,16 +97,16 @@ test('al terminar el turno se llama desactivarControlador y la red vuelve a la o
   assert.equal(celda.red.lugares.length, 9);
 });
 
-test('los 3 turnos del GDD: metas 3, 5 y 6; fallas 10, 20 y 30 %; pedidos cada 25, 18 y 12 s', () => {
-  assert.deepEqual(TURNOS.map((t) => [t.duracion, t.meta, t.probFalla, t.intervaloPedidos]), [
-    [180, 3, 0.1, 25], [180, 5, 0.2, 18], [180, 6, 0.3, 12],
+test('los 3 turnos (GDD 7 y 18.20): metas 6, 8 y 8; fallas 10, 15 y 20 %; metal cada 25, 20 y 18 s; turno 3 con plazo de 20 s y parejas', () => {
+  assert.deepEqual(TURNOS.map((t) => [t.duracion, t.meta, t.probFalla, t.intervaloPedidos, t.plazoEntrega ?? 30, t.parejas ?? 0]), [
+    [180, 6, 0.1, 25, 30, 0], [180, 8, 0.15, 20, 30, 0], [180, 8, 0.2, 18, 20, 4],
   ]);
   const p = new Partida();
-  assert.equal(p.parametros.meta, 3);
+  assert.equal(p.parametros.meta, 6);
   p.terminarTurno({ puntaje: 420 });
   assert.equal(p.siguienteTurno(), true);
   assert.equal(p.puntaje, 420);
-  assert.equal(p.parametros.meta, 5);
+  assert.equal(p.parametros.meta, 8);
   p.siguienteTurno();
   assert.equal(p.esUltimo, true);
   assert.equal(p.siguienteTurno(), false);
@@ -127,8 +128,8 @@ test('con la demostración se gana el turno 1 y el resumen cuenta lo ocurrido', 
   assert.equal(celda.terminado, true);
   assert.equal(celda.resultado, 'victoria');
   const r = celda.resumen();
-  assert.equal(r.piezas, 3);
-  assert.ok(r.puntajeTurno >= 300);
+  assert.equal(r.piezas, TURNOS[0].meta);
+  assert.ok(r.puntajeTurno >= 100 * TURNOS[0].meta);
   assert.equal(r.deadlocks, 0);
   assert.equal(r.intentosBloqueados, 0);
 });
@@ -284,4 +285,34 @@ test('hay 6 logros y el progreso de cada uno se puede consultar', () => {
   const p = logros.progreso();
   assert.equal(p.length, 6);
   assert.ok(p.every((l) => l.nombre && l.descripcion && typeof l.texto === 'string' && l.ganado === false));
+});
+
+// ---- Entregas de metal: plazo por turno y parejas (GDD 18.20) ----
+
+test('turno 3: la entrega de metal se pierde a los 20 s (−20) y cada 4 entregas llega otra 2 s después', () => {
+  const { reloj, celda } = nueva({ ...TURNOS[2], probFalla: 0, meta: 99 });
+  assert.equal(celda.plazoEntrega, 20);
+  const llegadas = [];
+  celda.alCambiar((e) => e.tipo === 'pedido' && llegadas.push(e.t));
+  reloj.avanzar(18);
+  assert.equal(celda.pedidos.length, 1);
+  reloj.avanzar(19.9); // t = 37,9: la primera entrega (t = 18) todavía no cumple 20 s
+  assert.equal(celda.estadisticas.pedidosVencidos, 0);
+  reloj.avanzar(0.2); // t = 38,1
+  assert.equal(celda.estadisticas.pedidosVencidos, 1);
+  assert.equal(celda.puntaje, -20);
+  reloj.avanzar(40); // t = 78,1
+  assert.deepEqual(llegadas, [18, 36, 54, 72, 74]); // la cuarta (72 s) trae pareja a los 74 s
+});
+
+test('turnos 1 y 2: el plazo de la entrega sigue siendo de 30 s y no hay parejas', () => {
+  for (const i of [0, 1]) {
+    const { reloj, celda } = nueva({ ...TURNOS[i], probFalla: 0, meta: 99 });
+    assert.equal(celda.plazoEntrega, 30);
+    const llegadas = [];
+    celda.alCambiar((e) => e.tipo === 'pedido' && llegadas.push(e.t));
+    reloj.avanzar(179);
+    const intervalo = TURNOS[i].intervaloPedidos;
+    assert.deepEqual(llegadas, Array.from({ length: Math.floor(179 / intervalo) }, (_, n) => (n + 1) * intervalo));
+  }
 });

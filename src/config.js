@@ -19,7 +19,7 @@ export const PLANTA = { columnas: 12, filas: 10 };
 // Vértice superior de la celda (0, 0) en pantalla. La planta queda centrada en x = 480.
 export const ORIGEN = { x: 448, y: 90 };
 
-// Velocidades de simulación permitidas (botones x1, x2 y x4; la tecla V pasa de una a otra).
+// Velocidades de simulación permitidas (teclas 1, 2 y 4 y botones x1, x2 y x4).
 export const VELOCIDADES = [1, 2, 4];
 
 // Semilla del generador pseudoaleatorio (docs/GDD.md, sección 6).
@@ -83,11 +83,14 @@ export const TIEMPOS = {
   pedidoVence: 30, // un pedido sin atender vence a los 30 s
 };
 
-// Turnos del GDD (secciones 6.1 y 7). Tiempos en s; probFalla es una probabilidad (0 a 1).
+// Turnos (GDD, secciones 6.1, 7 y 18.20). Tiempos en s; probFalla es una probabilidad (0 a 1).
+// intervaloPedidos: cada cuánto llega una entrega de metal. plazoEntrega: s para atenderla antes de perderla (por defecto 30).
+// parejas: cada cuántas entregas llega otra 2 s después (tienta a atender los dos AGV a la vez).
+// Calibrado con scripts/balance.mjs (jugadores paso a paso a 0,8, 1,2 y 2 s por decisión, 20 semillas).
 export const TURNOS = [
-  { duracion: 180, meta: 3, probFalla: 0.1, intervaloPedidos: 25 },
-  { duracion: 180, meta: 5, probFalla: 0.2, intervaloPedidos: 18 },
-  { duracion: 180, meta: 6, probFalla: 0.3, intervaloPedidos: 12 },
+  { duracion: 180, meta: 6, probFalla: 0.1, intervaloPedidos: 25 },
+  { duracion: 180, meta: 8, probFalla: 0.15, intervaloPedidos: 20 },
+  { duracion: 180, meta: 8, probFalla: 0.2, intervaloPedidos: 18, plazoEntrega: 20, parejas: 4 },
 ];
 
 // Turno 0 (tutorial, docs/GDD.md sección 18.5): sin límite de tiempo, sin meta, sin fallas y con pedidos que no vencen.

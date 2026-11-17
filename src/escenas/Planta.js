@@ -8,7 +8,8 @@ import { GestorEntrada, ACCIONES } from '../entrada/gestorEntrada.js';
 import { MODELOS } from '../modelos.js';
 import { Celda } from '../sed/celda.js';
 import { Piloto } from '../sed/piloto.js';
-import { Acciones } from '../sed/acciones.js';
+import { ejecutar } from '../sed/controles.js';
+import { Racha } from '../sed/racha.js';
 import { Rotulos } from '../entidades/Rotulos.js';
 import { Escenario } from '../entidades/Escenario.js';
 import { EntidadCNC } from '../entidades/EntidadCNC.js';
@@ -72,7 +73,8 @@ export class Planta extends Phaser.Scene {
       this.scene.launch(clave);
     }
 
-    // Intro corta (5 líneas) antes del turno 1, una sola vez por partida. Con ?intro=0 en la dirección no sale (pruebas automáticas).
+    // Intro «Cómo jugar» (6 líneas) antes del turno 1, una sola vez por partida. Con ?intro=0 en la dirección no salen ni la intro
+    // ni la cuenta 3, 2, 1 (pruebas automáticas).
     const sinIntro = new URLSearchParams(globalThis.location?.search ?? '').get('intro') === '0';
     this.scene.stop('Ayuda');
     if (!this.partida.tutorial && this.partida.turno === 0 && !this.partida.introVista && !sinIntro) {
@@ -90,8 +92,9 @@ export class Planta extends Phaser.Scene {
       this.piezas.destruir();
       this.efectos.destruir();
       this.rotulos.destruir();
-      this.acciones.destruir();
+      this.racha.destruir();
       this.sonidos.zumbido(false);
+      this.sonidos.ambiente(false);
       this._bajaTemblor();
       this.logros.detener();
       this.scene.stop('Resultados');
@@ -113,7 +116,6 @@ export class Planta extends Phaser.Scene {
     const dt = Math.min(delta, 100) / 1000;
     this._vigilarFps(dt);
     this.reloj.avanzar(dt * this.reloj.velocidad);
-    this.acciones.actualizar(); // siguiente evento del brazo si hay una secuencia en marcha
     this._dibujar();
   }
 
@@ -182,7 +184,7 @@ export class Planta extends Phaser.Scene {
     this.logros.vigilar(this.celda);
     this.celda.arrancar(); // programa los pedidos de AGV y el fin del turno en el reloj
     this.piloto = new Piloto(this.celda);
-    this.acciones = new Acciones(this.celda); // verbos de juego: encadenan los eventos reales del autómata (sección 18.19)
+    this.racha = new Racha(this.celda); // piezas seguidas sin errores: solo visual, no cambia el puntaje (sección 18.20)
     this.escenario = new Escenario(this);
     this.entidades = [
       new EntidadCNC(this, this.celda, 'CNC1'),
@@ -275,6 +277,8 @@ export class Planta extends Phaser.Scene {
     this.rotulos.actualizar();
     // Zumbido de fresado mientras alguna CNC fresa y la simulación corre.
     this.sonidos.zumbido(!this.reloj.enPausa && ['CNC1', 'CNC2'].some((id) => this.celda.estado(id) === 'Fresando'));
+    // Zumbido de fábrica de fondo, muy suave, mientras el turno corre.
+    this.sonidos.ambiente(!this.reloj.enPausa && !this.celda.terminado && !this.celda.deadlock);
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
     this.textoPausa.setVisible(false); // la pausa la anuncian el menú de pausa y el HUD ("· pausa")
@@ -304,7 +308,7 @@ export class Planta extends Phaser.Scene {
     // P y el botón de pausa abren o cierran el menú de pausa (que detiene el reloj mientras está abierto).
     e.on(ACCIONES.PAUSA, () => {
       // El Inspector pausa por su cuenta y tras un deadlock o el fin del turno la simulación queda detenida.
-      if (this.celda.deadlock || this.celda.terminado || this.scene.get('Inspector').abierto) return;
+      if (this.celda.deadlock || this.celda.terminado || this.scene.get('Inspector').abierto || this.scene.get('HUDGeneral')?.enCuenta) return;
       const menu = this.scene.get('MenuPausa');
       if (menu.scene.isActive()) menu.cerrar();
       else if (!this.scene.get('Ayuda').scene.isActive()) this.scene.launch('MenuPausa');
@@ -313,27 +317,18 @@ export class Planta extends Phaser.Scene {
     const alternarAyuda = () => {
       const ayuda = this.scene.get('Ayuda');
       if (ayuda.scene.isActive()) ayuda.cerrar();
+      else if (this.scene.get('HUDGeneral')?.enCuenta) return; // durante la cuenta 3, 2, 1 no se abre nada
       else if (!this.scene.get('Inspector').abierto && !this.celda.deadlock && !this.celda.terminado) this.scene.launch('Ayuda', {});
       else if (this.celda.deadlock || this.celda.terminado) this.scene.launch('Ayuda', {}); // la simulación ya está detenida
     };
     e.on(ACCIONES.AYUDA, alternarAyuda);
     this.events.on('ayuda', alternarAyuda);
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
-    e.on(ACCIONES.VELOCIDAD_CICLO, () => this.reloj.cambiarVelocidad(VELOCIDADES[(VELOCIDADES.indexOf(this.reloj.velocidad) + 1) % VELOCIDADES.length]));
-    // Atajos de juego: 1 y 2 eligen la CNC, Espacio hace su acción principal, Q y W despachan los AGV y Tab cambia de pestaña.
-    const libre = () => !this.celda.terminado && !this.celda.deadlock && !['Ayuda', 'MenuPausa', 'Inspector'].some((c) => this.scene.get(c)?.contiene?.(0, 0));
-    e.on(ACCIONES.ELEGIR_CNC, ({ n }) => {
-      if (!libre()) return;
-      const m = this.entidades.find((q) => q.id === `CNC${n}`);
-      if (m) hud().abrir?.(m.id, m.nombre);
-    });
-    e.on(ACCIONES.ACCION_PRINCIPAL, () => {
-      const h = hud();
-      if (!libre() || !h.abierto) return;
-      h.accionPrincipal();
-    });
-    e.on(ACCIONES.DESPACHAR, ({ n }) => {
-      if (libre()) this.scene.get('HUDGeneral')?._despachar?.(`AGV${n}`);
+    // Barra de control: cada tecla (Z, X, A, C, D, E, V, F, G, Q, W) dispara UN evento del autómata, igual que su botón.
+    e.on(ACCIONES.CONTROL, ({ id }) => {
+      // Con la consola de reparación abierta, la C es un símbolo de la palabra (no «Meter bloque»).
+      if (id === 'meter' && hud().consolaAbierta) return;
+      this.scene.get('HUDGeneral')?.pulsarControl?.(id);
     });
     e.on(ACCIONES.PESTANA, () => {
       if (hud().abierto) hud().alternarPestana();
@@ -348,10 +343,10 @@ export class Planta extends Phaser.Scene {
     // Solo en desarrollo (npm run dev): fuerza una falla_husillo para probar la consola de reparación.
     e.on(ACCIONES.FORZAR_FALLA, () => {
       if (!import.meta.env?.DEV) return;
-      if (!this.celda.forzarFalla()) this.scene.get('HUDGeneral').alertas?.avisar('Tecla F: no hay ninguna CNC fresando.', 'espera');
+      if (!this.celda.forzarFalla()) this.scene.get('HUDGeneral').alertas?.avisar('Tecla F3: no hay ninguna CNC fresando.', 'espera');
     });
     e.on(ACCIONES.INSPECTOR, () => {
-      if (!this.celda.terminado) inspector().alternar?.();
+      if (!this.celda.terminado && !this.scene.get('HUDGeneral')?.enCuenta) inspector().alternar?.();
     });
     e.on(ACCIONES.PANTALLA_COMPLETA, () => alternarPantallaCompleta());
     e.on(ACCIONES.SILENCIO, () => {
@@ -361,7 +356,7 @@ export class Planta extends Phaser.Scene {
     e.on(ACCIONES.RED_PETRI, () => {
       // Con la consola de reparación abierta, R es el comando de reset: no abre la vista.
       const h = hud();
-      if (h.abierto && h._modoConsola && h._pestana !== 'composicion') return;
+      if (h.consolaAbierta) return;
       this.vistaRed.alternar();
     });
     e.on(ACCIONES.CERRAR, () => {
@@ -420,6 +415,29 @@ export class Planta extends Phaser.Scene {
       this.vista.zoom = Phaser.Math.Clamp(this.vista.zoom * factor, ZOOM_MIN, ZOOM_MAX);
       this._aplicarVista();
     });
+  }
+
+  /** ¿El juego acepta controles ahora? No durante la cuenta inicial, la pausa, la ayuda, el inspector, el interbloqueo ni tras el fin del turno. */
+  juegoActivo() {
+    const c = this.celda;
+    if (c.terminado || c.deadlock || this.scene.get('HUDGeneral')?.enCuenta) return false;
+    return !['Ayuda', 'MenuPausa'].some((k) => this.scene.get(k).scene.isActive()) && !this.scene.get('Inspector').abierto;
+  }
+
+  /**
+   * Un control de la barra (o de la pestaña «Acciones»): pide a la Celda UN evento del autómata. «Reparar» no dispara nada:
+   * abre el panel de la CNC con la consola H C T C R.
+   * @returns {object|null} resultado de ejecutar el verbo, o null si ahora no se aceptan controles.
+   */
+  pulsarControl(id, contexto = {}) {
+    if (!this.juegoActivo()) return null;
+    const r = ejecutar(this.celda, id, contexto);
+    this.sonidos.clic();
+    if (r.reparar) {
+      const m = this.entidades.find((q) => q.id === r.reparar);
+      this.scene.get('HUDMaquina').abrir(m.id, m.nombre, { consola: true });
+    }
+    return r;
   }
 
   /** Pasa la vista lógica (zoom en torno al centro de 960x540) a la cámara de alta resolución (origen arriba a la izquierda). */

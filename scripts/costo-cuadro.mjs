@@ -19,9 +19,9 @@ for (let i = 0; i < 40; i++) { await sl(500); if (await ev("window.juego.scene.g
 await sl(1500);
 const medir = (nombre) => ev(`(()=>{const J=window.juego;const claves=['Planta','HUDMaquina','HUDGeneral'];const es=claves.map(k=>J.scene.getScene(k));const N=600;const t0=performance.now();for(let i=0;i<N;i++){for(const e of es)e.update(performance.now(),16.7);}const ms=(performance.now()-t0)/N;return '${nombre}: '+ms.toFixed(3)+' ms de JS por cuadro (update de Planta + HUD de máquina + HUD general)';})()`);
 console.log(await medir('planta sin HUD abierto'));
-await ev("(()=>{const P=window.juego.scene.getScene('Planta');window.juego.scene.getScene('HUDMaquina').abrir('CNC1','CNC 1');P.acciones.ejecutar('CNC1');P.acciones.despachar('AGV1');})()");
-console.log(await medir('HUD de CNC 1 en Acciones, brazo en secuencia y AGV en camino (x1, 10 s de simulación)'));
-await ev("(()=>{const P=window.juego.scene.getScene('Planta');P.acciones.ejecutar('CNC1');window.juego.scene.getScene('HUDMaquina').alternarPestana();})()");
-console.log(await medir('HUD de CNC 1 en Autómata, fresando'));
+await ev("(()=>{const P=window.juego.scene.getScene('Planta');window.juego.scene.getScene('HUDMaquina').abrir('CNC1','CNC 1');P.pulsarControl('ir1');P.pulsarControl('agv1');})()");
+console.log(await medir('HUD de CNC 1 abierto, brazo en camino y AGV en camino'));
+await ev("(()=>{const P=window.juego.scene.getScene('Planta');window.juego.scene.getScene('HUDMaquina').alternarPestana();})()");
+console.log(await medir('HUD de CNC 1 en la pestaña «Acciones»'));
 console.log('fps que informa Phaser en este Edge sin GPU (no es el del jugador):', await ev('Math.round(window.juego.loop.actualFps)'));
 edge.kill(); process.exit(0);

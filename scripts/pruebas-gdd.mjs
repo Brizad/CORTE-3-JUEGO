@@ -152,19 +152,27 @@ const evento = (celda, maquina, ev) => celda.bitacora.find((e) => e.tipo === 'au
     }
     res.push(`${(fallas / N * 100).toFixed(1)} %`);
   }
-  fila('CA-13', 'Probabilidad de falla 10 %, 20 % y 30 % por turno', '1000 fresados por turno', `turno 1: ${res[0]}; turno 2: ${res[1]}; turno 3: ${res[2]}`, res.every((r, i) => Math.abs(parseFloat(r) - [10, 20, 30][i]) < 3));
+  fila('CA-13', 'Probabilidad de falla 10 %, 15 % y 20 % por turno (GDD 18.20)', '1000 fresados por turno', `turno 1: ${res[0]}; turno 2: ${res[1]}; turno 3: ${res[2]}`, res.every((r, i) => Math.abs(parseFloat(r) - [10, 15, 20][i]) < 3));
 }
-// CA-14: pedidos
+// CA-14: entregas de metal (los "pedidos" del GDD): cada 25, 20 y 18 s (con parejas en el turno 3) y plazo de 30 s (20 s en el turno 3) con −20
 {
   const tiempos = TURNOS.map((t) => {
     const { reloj, celda } = nueva(t);
     reloj.avanzar(179);
     return celda.bitacora.filter((e) => e.tipo === 'pedido').map((e) => e.t);
   });
-  const ok = tiempos.every((lista, i) => lista.every((t, k) => t === (k + 1) * TURNOS[i].intervaloPedidos)) && tiempos.map((l) => l.length).join() === '7,9,14';
-  const { reloj, celda } = nueva();
-  reloj.avanzar(55);
-  fila('CA-14', 'Pedidos cada 25, 18 y 12 s y un pedido sin atender vence a los 30 s con −20', 'Contar pedidos en 179 s y esperar un vencimiento', `pedidos por turno: ${tiempos.map((l) => l.length).join(', ')}; primer pedido vence a los ${celda.bitacora.find((e) => e.tipo === 'pedidoVencido')?.t} s, puntaje ${celda.puntaje}`, ok && celda.puntaje === -20);
+  const esperado = [
+    [25, 50, 75, 100, 125, 150, 175],
+    [20, 40, 60, 80, 100, 120, 140, 160],
+    [18, 36, 54, 72, 74, 90, 108, 126, 144, 146, 162], // cada 4 entregas llega otra 2 s después
+  ];
+  const ok = esperado.every((lista, i) => JSON.stringify(lista) === JSON.stringify(tiempos[i]));
+  const vence = TURNOS.map((t) => {
+    const { reloj, celda } = nueva({ ...t, parejas: 0 });
+    reloj.avanzar(t.intervaloPedidos + (t.plazoEntrega ?? 30) + 0.5); // justo después de la primera pérdida
+    return { t: celda.bitacora.find((e) => e.tipo === 'pedidoVencido')?.t, puntaje: celda.puntaje };
+  });
+  fila('CA-14', 'Entregas de metal cada 25, 20 y 18 s (turno 3 con parejas); una sin atender se pierde a los 30 s (20 s en el turno 3) con −20', 'Contar entregas en 179 s y esperar un vencimiento por turno', `entregas por turno: ${tiempos.map((l) => l.length).join(', ')}; la primera se pierde a los ${vence.map((v) => v.t).join(', ')} s, puntaje ${vence[0].puntaje}`, ok && vence.map((v) => v.t).join() === '55,50,38' && vence[0].puntaje === -20);
 }
 // CA-16: t1b y t2b solo con mesa y brazo
 {
