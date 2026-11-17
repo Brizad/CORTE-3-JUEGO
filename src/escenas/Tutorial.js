@@ -61,6 +61,12 @@ export class Tutorial extends Phaser.Scene {
     this.tweens.add({ targets: this, _rebote: 8, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 
+  /** Con el Inspector abierto esta escena se oculta y no recibe clics (docs/GDD.md, sección 18.21); vuelve al cerrarlo. */
+  modoInspector(ocultar) {
+    this.scene.setVisible(!ocultar);
+    if (this.input) this.input.enabled = !ocultar;
+  }
+
   /** Verdadero si el punto (x, y) cae sobre la caja o sus botones (el clic no llega a la planta). */
   contiene(x, y) {
     return this.activo && x >= CAJA.x && x <= CAJA.x + CAJA.ancho && y >= CAJA.y && y <= CAJA.y + CAJA.alto + (this.guia?.terminado ? 52 : 0);

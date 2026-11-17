@@ -661,3 +661,39 @@ REGLAS QUE NO SE TOCAN: autómatas, red de Petri, JSON de src/sed/, δ, supervis
 
 Resultado: GDD 18.20, `docs/decisiones_por_confirmar.md` (filas 24 a 30) y `docs/pruebas.md`, literal j. Decisiones que el pedido no definía: las teclas
 de pantalla completa (L), demostración (F2) y forzar falla (F3); a qué AGV se atribuye cada entrega; las estrellas.
+
+## Prompt 32 · Funcionó
+
+*Último pulido: razón de los botones bloqueados, Inspector ordenado, logros que se pueden tocar, jugadores y mejores puntajes, y revisión final de solapes.*
+
+Fecha: 2026-11-17
+
+```text
+Contexto: RoboCell Tycoon 2.5D (Phaser 4 por CDN + Vite). Lee docs/GDD.md (§18 incluido) antes de empezar. Este es el ÚLTIMO pulido del juego.
+REGLAS QUE NO SE TOCAN (lo exige la guía): autómatas, red de Petri, JSON de src/sed/, δ, supervisor, valores de puntaje del GDD §9, radar,
+posiciones del HUD del GDD §12 y los controles paso a paso (un botón o tecla = un evento). Todo en español.
+1. RAZÓN DE LOS BOTONES BLOQUEADOS (guía p. 20, punto 3): con el MOUSE sobre un botón rojo o gris (barra de control y panel de máquina), tooltip
+   en 2 líneas: primero en palabras simples ("No puedes fresar: la pinza está abierta dentro de la CNC") y debajo la razón formal
+   ("¬(CNC = Fresando ∧ Brazo = Mandril_Abierto)"). Con TECLA no sale ningún tooltip ni ventana: solo el temblor, el sonido y el −15 si es rojo.
+   En táctil: mantener presionado 0,5 s muestra el tooltip.
+2. INSPECTOR ORDENADO (tecla I): oculta la barra de control, las fichas, la caja del tutorial y sus flechas (vuelven al cerrar); usa toda la
+   pantalla en 2 zonas sin solapes (arriba Pre, Post y A; abajo a la izquierda la ecuación de estado y a la derecha "Probar disparo"); letra
+   legible a 960×540 (si no cabe, pestañas); si el tutorial pide abrir el Inspector, su texto va como una línea pequeña arriba.
+3. LOGROS QUE SE PUEDEN TOCAR: en el botón "Logros" y en los resultados cada logro abre su ficha: nombre, qué significa, cómo se gana (en
+   palabras simples) y si ya está ganado (con fecha) o bloqueado.
+4. JUGADORES Y MEJORES PUNTAJES (local, sin servidor): nombre al entrar (máx. 16, sin vacío), recordar el último ("Jugador: Ana · Cambiar
+   jugador"), logros y progreso por jugador, tabla "Mejores puntajes" (top 10: nombre, puntaje, turno y fecha) al terminar la partida
+   (victoria, derrota o game over), localStorage con try/catch (si falla, el juego sigue sin guardar y sin errores) y "Borrar puntajes" con
+   confirmación dentro del juego (sin alert ni confirm).
+5. REVISIÓN FINAL DE SOLAPES en todas las escenas, con y sin tutorial, a 960×540 y en celular (360×640 y 844×390); capturas en
+   docs/capturas/final_*.png.
+6. CIERRE: npm test, npm run build, npm run pruebas y scripts/juego-navegador.mjs con los puntos 1 a 4; GDD §18 y PROMPTS.md; ZIP de entrega/;
+   commit "Pulido final: tooltips, inspector, logros y puntajes" y push.
+```
+
+Resultado: GDD 18.21. Archivos nuevos: `src/escenas/ventanas.js` (ficha de logro, confirmación y campo del nombre), `src/escenas/mantener.js`
+(mantener presionado con el reloj real), `scripts/solapes-navegador.mjs` (revisión de solapes con capturas `final_*`). Decisiones que el pedido
+no definía: el Inspector cupo en una sola pestaña «Matrices» (no hizo falta «Ecuación» aparte); una partida ocupa una sola fila de la tabla
+(reintentar la actualiza); «Borrar puntajes» conserva los logros; el guardado viejo (sin jugadores) pasa al jugador «Jugador»; con táctil, soltar
+después de ver el tooltip no pulsa el botón. Arreglo aparte: `test/modelos.test.js` fallaba en Windows por los saltos de línea CRLF de Git (los
+JSON no se tocaron).

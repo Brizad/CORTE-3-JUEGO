@@ -51,3 +51,21 @@ export const BOTON_DE_VERBO = {
 
 // Panel de la máquina seleccionada (HUDMaquina): a la izquierda o a la derecha, de y = 56 a y = 396. No tapa la barra de control.
 export const PANEL_MAQUINA = { y: 56, alto: 340, ancho: 460, xIzquierda: 8, xDerecha: 492 };
+
+// Inspector a pantalla completa (docs/GDD.md, sección 18.21): pestaña «Matrices» en 2 zonas sin solapes.
+// Arriba las tablas Pre, Post y A; abajo a la izquierda la ecuación de estado y abajo a la derecha «Probar disparo».
+export const ZONAS_INSPECTOR = {
+  cabecera: { x: 0, y: 0, ancho: ANCHO_LOGICO, alto: 30 },
+  tutorial: { x: 12, y: 31, ancho: ANCHO_LOGICO - 24, alto: 14 }, // línea pequeña del tutorial (si hay)
+  tablas: { x: 12, y: 46, ancho: ANCHO_LOGICO - 24, alto: 254 },
+  ecuacion: { x: 12, y: 306, ancho: 462, alto: 226 },
+  probar: { x: 486, y: 306, ancho: 462, alto: 226 },
+};
+// Medidas de las tablas del Inspector: con 10 lugares (p10 con el Controlador) y 8 transiciones deben caber en la zona «tablas».
+export const TABLAS_INSPECTOR = { celda: 24, alto: 17, etiqueta: 172, hueco: 14, cabecera: 100 };
+
+// Pantalla de título (18.21): columna izquierda (juego, jugador y botones) y columna derecha (mejores puntajes).
+export const ZONAS_TITULO = {
+  izquierda: { x: 24, y: 16, ancho: 452, alto: 508 },
+  puntajes: { x: 492, y: 16, ancho: 444, alto: 508 },
+};

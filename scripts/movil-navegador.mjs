@@ -45,10 +45,14 @@ async function tamano(ancho, alto) {
   await enviar('Emulation.setDeviceMetricsOverride', { width: ancho, height: alto, deviceScaleFactor: 2, mobile: true, screenOrientation: { type: ancho > alto ? 'landscapePrimary' : 'portraitPrimary', angle: 0 } });
   await enviar('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   await enviar('Page.navigate', { url: `http://localhost:${web}/?efectos=0&intro=0` });
-  for (let i = 0; i < 40; i++) { await dormir(1000); if ((await ev("!!(window.juego && window.juego.scene.getScene('Titulo').scene.isActive())")) === true) break; }
+  for (let i = 0; i < 40; i++) { await dormir(1000); if ((await ev("!!(window.juego && window.juego.scene.getScene('Titulo')?.scene.isActive())")) === true) break; }
   await dormir(1500);
 }
 const toque = async (tipo, puntos) => enviar('Input.dispatchTouchEvent', { type: tipo, touchPoints: puntos.map(([x, y], id) => ({ x, y, id })) });
+
+// La primera vez el título pide el nombre (GDD 18.21): se deja un jugador guardado para ir directo al título.
+await tamano(960, 540);
+await ev(`localStorage.setItem('robocell-tycoon-2.5d', JSON.stringify({ version: 2, ultimo: 'Movil', jugadores: { Movil: { mejorPuntaje: 0, logros: {} } }, puntajes: [] }))`);
 
 for (const [ancho, alto] of [[360, 640], [640, 360], [800, 360], [844, 390]]) {
   await tamano(ancho, alto);
@@ -67,9 +71,9 @@ for (const [ancho, alto] of [[360, 640], [640, 360], [800, 360], [844, 390]]) {
   if (alto > ancho) { comprobar(`${ancho}x${alto} muestra el aviso de girar el teléfono`, info.aviso === 'flex'); continue; }
   comprobar(`${ancho}x${alto} no muestra el aviso en horizontal`, info.aviso === 'none');
   comprobar(`${ancho}x${alto} el juego cabe en la pantalla`, info.canvas[0] <= ancho && info.canvas[1] <= alto, `(${info.canvas[0]}x${info.canvas[1]})`);
-  // Toque en "Jugar" (284, 400 lógicos) y en la CNC1 (480, 220 lógicos).
+  // Toque en "Jugar" (140, 272 lógicos; disposición del título de 18.21) y en la CNC1.
   const aPantalla = (x, y) => [info.canvas[2] + (x / 960) * info.canvas[0], info.canvas[3] + (y / 540) * info.canvas[1]];
-  const [jx, jy] = aPantalla(284, 400);
+  const [jx, jy] = aPantalla(140, 272);
   // Hasta 3 intentos: en Edge sin GPU a veces el primer toque cae mientras el título todavía se acomoda.
   for (let intento = 0; intento < 3 && !(await ev("window.juego.scene.getScene('Planta').scene.isActive()")); intento++) {
     await toque('touchStart', [[jx, jy]]); await toque('touchEnd', []); await dormir(5000);

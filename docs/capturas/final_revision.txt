@@ -1,0 +1,73 @@
+ok    titulo_nombre: ningún texto se sale de la pantalla 
+ok    titulo_nombre: ningún texto se encima con otro 
+ok    la primera vez el título pide el nombre 
+ok    titulo: ningún texto se sale de la pantalla 
+ok    titulo: ningún texto se encima con otro 
+ok    el título muestra «Jugador: Ana · Cambiar jugador» 
+ok    titulo_logros: ningún texto se sale de la pantalla 
+ok    titulo_logros: ningún texto se encima con otro 
+ok    ficha_logro: ningún texto se sale de la pantalla 
+ok    ficha_logro: ningún texto se encima con otro 
+ok    borrar_puntajes: ningún texto se sale de la pantalla 
+ok    borrar_puntajes: ningún texto se encima con otro 
+ok    titulo_controles: ningún texto se sale de la pantalla 
+ok    titulo_controles: ningún texto se encima con otro 
+ok    planta: ningún texto se sale de la pantalla 
+ok    planta: ningún texto se encima con otro 
+ok    tooltip_gris: ningún texto se sale de la pantalla 
+ok    tooltip_gris: ningún texto se encima con otro 
+ok    panel_automata: ningún texto se sale de la pantalla 
+ok    panel_automata: ningún texto se encima con otro 
+ok    panel_acciones: ningún texto se sale de la pantalla 
+ok    panel_acciones: ningún texto se encima con otro 
+ok    panel_composicion: ningún texto se sale de la pantalla 
+ok    panel_composicion: ningún texto se encima con otro 
+ok    panel_brazo: ningún texto se sale de la pantalla 
+ok    panel_brazo: ningún texto se encima con otro 
+ok    tooltip_rojo: ningún texto se sale de la pantalla 
+ok    tooltip_rojo: ningún texto se encima con otro 
+ok    tooltip rojo: 2 líneas (simple y formal) 
+ok    inspector: ningún texto se sale de la pantalla 
+ok    inspector: ningún texto se encima con otro 
+ok    con el Inspector abierto la barra, las fichas y el HUD no se ven 
+ok    inspector_arbol: ningún texto se sale de la pantalla 
+ok    inspector_arbol: ningún texto se encima con otro 
+ok    inspector_logros: ningún texto se sale de la pantalla 
+ok    inspector_logros: ningún texto se encima con otro 
+ok    al cerrar el Inspector vuelve el HUD 
+ok    pausa: ningún texto se sale de la pantalla 
+ok    pausa: ningún texto se encima con otro 
+ok    ayuda: ningún texto se sale de la pantalla 
+ok    ayuda: ningún texto se encima con otro 
+ok    ayuda_controles: ningún texto se sale de la pantalla 
+ok    ayuda_controles: ningún texto se encima con otro 
+ok    game_over: ningún texto se sale de la pantalla 
+ok    game_over: ningún texto se encima con otro 
+ok    resultados: ningún texto se sale de la pantalla 
+ok    resultados: ningún texto se encima con otro 
+ok    resultados_ficha: ningún texto se sale de la pantalla 
+ok    resultados_ficha: ningún texto se encima con otro 
+ok    tutorial_planta: ningún texto se sale de la pantalla 
+ok    tutorial_planta: ningún texto se encima con otro 
+ok    tutorial_panel: ningún texto se sale de la pantalla 
+ok    tutorial_panel: ningún texto se encima con otro 
+ok    tutorial_inspector: ningún texto se sale de la pantalla 
+ok    tutorial_inspector: ningún texto se encima con otro 
+ok    con el tutorial, el Inspector oculta la caja y la flecha 
+ok    al cerrar el Inspector vuelve la caja del tutorial 
+ok    tutorial_pausa: ningún texto se sale de la pantalla 
+ok    tutorial_pausa: ningún texto se encima con otro 
+ok    movil_844x390_titulo: ningún texto se sale de la pantalla 
+ok    movil_844x390_titulo: ningún texto se encima con otro 
+ok    movil_844x390_planta: ningún texto se sale de la pantalla 
+ok    movil_844x390_planta: ningún texto se encima con otro 
+ok    táctil: mantener 0,5 s muestra el tooltip de 2 líneas 
+ok    movil_844x390_tooltip: ningún texto se sale de la pantalla 
+ok    movil_844x390_tooltip: ningún texto se encima con otro 
+ok    táctil: al soltar tras mantener no se pulsa el botón 
+ok    movil_844x390_panel: ningún texto se sale de la pantalla 
+ok    movil_844x390_panel: ningún texto se encima con otro 
+ok    movil_844x390_inspector: ningún texto se sale de la pantalla 
+ok    movil_844x390_inspector: ningún texto se encima con otro 
+ok    360 x 640 (vertical): se pide girar el teléfono 
+errores de página: 0

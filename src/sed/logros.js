@@ -2,12 +2,36 @@
 // Sin motor gráfico ni DOM. El estado que dura toda la partida (logros ganados y racha de reparaciones) vive en `persistente`.
 
 export const LOGROS = [
-  { id: 'primera_pieza', nombre: 'Primera pieza', descripcion: 'Descarga tu primera pieza (evento d de una CNC).' },
-  { id: 'mecanico_fino', nombre: 'Mecánico fino', descripcion: '3 reparaciones válidas seguidas, sin ninguna palabra inválida entre ellas.' },
-  { id: 'manos_seguras', nombre: 'Manos seguras', descripcion: 'Termina un turno ganado con 0 intentos bloqueados por el supervisor.' },
-  { id: 'ojo_de_radar', nombre: 'Ojo de radar', descripcion: '3 cambios del radar de amarillo a verde dentro de un mismo turno.' },
-  { id: 'sin_red_de_seguridad', nombre: 'Sin red de seguridad', descripcion: 'Gana el turno 3 sin comprar el Controlador de celda y sin deadlock.' },
-  { id: 'doble_husillo', nombre: 'Doble husillo', descripcion: 'Las 2 CNC en Fresando a la vez, 30 s acumulados en un turno.' },
+  {
+    id: 'primera_pieza', nombre: 'Primera pieza', descripcion: 'Descarga tu primera pieza (evento d de una CNC).',
+    significa: 'Completaste el ciclo de una CNC: meter el bloque, fresar y sacar la pieza terminada.',
+    comoSeGana: 'Saca una pieza terminada de cualquier CNC (botón «Sacar pieza», tecla D).',
+  },
+  {
+    id: 'mecanico_fino', nombre: 'Mecánico fino', descripcion: '3 reparaciones válidas seguidas, sin ninguna palabra inválida entre ellas.',
+    significa: 'Sabes reparar una CNC en Falla escribiendo una palabra del lenguaje de reparación.',
+    comoSeGana: 'Repara 3 fallas seguidas con palabras válidas (por ejemplo H C T C R) sin equivocarte entre una y otra.',
+  },
+  {
+    id: 'manos_seguras', nombre: 'Manos seguras', descripcion: 'Termina un turno ganado con 0 intentos bloqueados por el supervisor.',
+    significa: 'Jugaste un turno entero sin pedirle al supervisor nada prohibido.',
+    comoSeGana: 'Gana un turno sin pulsar ni una vez un botón rojo.',
+  },
+  {
+    id: 'ojo_de_radar', nombre: 'Ojo de radar', descripcion: '3 cambios del radar de amarillo a verde dentro de un mismo turno.',
+    significa: 'Viste el peligro de interbloqueo a tiempo y lo evitaste.',
+    comoSeGana: 'En un mismo turno, haz que el radar pase de amarillo a verde 3 veces (sin llegar a rojo).',
+  },
+  {
+    id: 'sin_red_de_seguridad', nombre: 'Sin red de seguridad', descripcion: 'Gana el turno 3 sin comprar el Controlador de celda y sin deadlock.',
+    significa: 'Terminaste la partida evitando el interbloqueo solo con tu cabeza.',
+    comoSeGana: 'Gana el turno 3 sin comprar el Controlador de celda y sin que la celda se trabe.',
+  },
+  {
+    id: 'doble_husillo', nombre: 'Doble husillo', descripcion: 'Las 2 CNC en Fresando a la vez, 30 s acumulados en un turno.',
+    significa: 'Mantuviste las dos máquinas trabajando en paralelo.',
+    comoSeGana: 'Ten las 2 CNC fresando al mismo tiempo durante 30 s en total (en un mismo turno).',
+  },
 ];
 
 const SEGUNDOS_DOBLE_HUSILLO = 30;

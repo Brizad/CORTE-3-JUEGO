@@ -16,9 +16,10 @@ import { ACCIONES } from '../entrada/gestorEntrada.js';
 import { Alertas } from '../entidades/Alertas.js';
 import { camaraLogica } from './camara.js';
 import { avisoTurno, tarjetaTurno, TIP_RADAR, etiquetasEntregas, cuentaEntrega } from '../textos.js';
-import { VERBOS, describir, progresoFresado } from '../sed/controles.js';
+import { VERBOS, describir, progresoFresado, textoTooltip } from '../sed/controles.js';
 import { aspectoDe } from '../arte/estados.js';
 import { resaltable, fijarBorde } from './resaltar.js';
+import { alMantener } from './mantener.js';
 import { ZONAS, BOTONES, BOTON_TACTIL, BOTON_DE_VERBO } from '../disposicion.js';
 
 const NIVELES = { verde: COLORES.operacion, amarillo: COLORES.espera, rojo: COLORES.fallo };
@@ -59,6 +60,14 @@ export class HUDGeneral extends Phaser.Scene {
       this.planta.events.off('logro', this._bajaLogro);
       this.alertas.destruir();
     });
+  }
+
+  /** Con el Inspector abierto esta escena se oculta y no recibe clics (docs/GDD.md, sección 18.21); vuelve al cerrarlo. */
+  modoInspector(ocultar) {
+    this.scene.setVisible(!ocultar);
+    if (this.input) this.input.enabled = !ocultar;
+    if (ocultar) this._sobre = null;
+    this.scene.get('HUDMaquina')?.input && (this.scene.get('HUDMaquina').input.enabled = !ocultar);
   }
 
   /** Verdadero si el punto cae sobre el HUD (el clic no llega a la planta). */
@@ -283,7 +292,7 @@ export class HUDGeneral extends Phaser.Scene {
     this.botonAyuda = this._boton(BOTONES.ayuda.x, BOTONES.ayuda.y, BOTON_TACTIL, BOTON_TACTIL, '?', emitir(ACCIONES.AYUDA), 'Ayuda: cómo se juega, atajos, controles y colores (?)', { fuente: '22px' });
     this.botonSilencio = this._boton(BOTONES.silencio.x, BOTONES.silencio.y, BOTON_TACTIL, BOTON_TACTIL, '', emitir(ACCIONES.SILENCIO), () => (this.planta.sonidos.silenciado ? 'Activar el sonido (M)' : 'Silenciar el sonido (M)'));
     this.iconoSilencio = this.add.graphics();
-    this.botonPantalla = this._boton(BOTONES.pantalla.x, BOTONES.pantalla.y, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (G)', { fuente: '22px' });
+    this.botonPantalla = this._boton(BOTONES.pantalla.x, BOTONES.pantalla.y, BOTON_TACTIL, BOTON_TACTIL, '⛶', emitir(ACCIONES.PANTALLA_COMPLETA), 'Pantalla completa (L)', { fuente: '22px' });
   }
 
   _dibujarTactiles() {
@@ -358,10 +367,27 @@ export class HUDGeneral extends Phaser.Scene {
       const extra = this.add.graphics(); // CNC: luz de estado y barra de progreso del fresado
       caja.add([rect, extra, texto, tecla]);
       const b = { id: v.id, caja, rect, texto, tecla, extra, x, y, ancho, alto, cnc, firma: '' };
-      rect.on('pointerdown', () => this._hundir(b, true));
-      rect.on('pointerup', () => { this._hundir(b, false); this.pulsarControl(v.id); });
-      rect.on('pointerout', () => { this._hundir(b, false); this._sobre = null; });
-      rect.on('pointerover', (p) => { this._sobre = { texto: describir(this.celda, v.id).tip, hasta: p?.wasTouch ? this.time.now + 3000 : undefined }; });
+      // Mouse: al pasar por encima sale el tooltip (en rojo o gris, la razón en 2 líneas: simple y formal).
+      // Táctil: mantener presionado 0,5 s muestra el tooltip y al soltar no dispara el evento.
+      rect.on('pointerdown', (p) => {
+        this._hundir(b, true);
+        b.largo?.remove();
+        b.tipLargo = false;
+        if (p?.wasTouch) {
+          b.largo = alMantener(this, () => {
+            b.tipLargo = true;
+            this._sobre = { texto: textoTooltip(describir(this.celda, v.id)), hasta: this.time.now + 3500 };
+          });
+        }
+      });
+      rect.on('pointerup', () => {
+        this._hundir(b, false);
+        b.largo?.remove();
+        if (b.tipLargo) { b.tipLargo = false; return; }
+        this.pulsarControl(v.id, 'puntero');
+      });
+      rect.on('pointerout', () => { this._hundir(b, false); b.largo?.remove(); if (!b.tipLargo) this._sobre = null; });
+      rect.on('pointerover', (p) => { if (!p?.wasTouch) this._sobre = { texto: textoTooltip(describir(this.celda, v.id)) }; });
       this._zona({ x, y, ancho, alto });
       this.controles[v.id] = b;
     }
@@ -380,13 +406,15 @@ export class HUDGeneral extends Phaser.Scene {
    * Pulsa un control (clic, toque o tecla): pide SU evento a la Celda por medio de la planta y da la respuesta visual.
    * @returns {object|null} resultado de ejecutar el verbo, o null si el juego no acepta controles ahora.
    */
-  pulsarControl(id) {
+  pulsarControl(id, origen = 'tecla') {
     const b = this.controles[id];
     const r = this.planta.pulsarControl(id);
     if (!b || !r) return r;
     this._hundir(b, true);
     this.time.delayedCall(110, () => this._hundir(b, false));
-    if (!r.ok && !r.reparar) this._sobre = { texto: r.tipo === 'rojo' ? `Bloqueado por el supervisor (−15 puntos). ${r.tip}` : r.tip, hasta: this.time.now + 3000 };
+    // Con TECLA no sale ningún tooltip (no se frena el ritmo): solo el temblor, el sonido y el −15 si es rojo.
+    // Con el mouse, el tooltip de 2 líneas sigue a la vista.
+    if (origen !== 'tecla' && !r.ok && !r.reparar) this._sobre = { texto: textoTooltip(r), hasta: this.time.now + 3000 };
     return r;
   }
 
@@ -467,7 +495,7 @@ export class HUDGeneral extends Phaser.Scene {
 
   _tooltip() {
     this.tip = this.add
-      .text(8, 394, '', {
+      .text(8, 386, '', {
         fontFamily: 'Arial', fontSize: '11px', color: TEXTO_HEX.texto, backgroundColor: '#161b22', padding: { x: 8, y: 5 }, wordWrap: { width: 560 },
       })
       .setOrigin(0, 1)
@@ -531,7 +559,7 @@ export class HUDGeneral extends Phaser.Scene {
   // ---- Aviso animado de logro (tween) ----
 
   _avisoLogro() {
-    this.avisoL = this.add.container(480, -80).setDepth(60);
+    this.avisoL = this.add.container(480, -80).setDepth(60).setVisible(false); // fuera de la pantalla y oculto hasta que se gana un logro
     const fondo = this.add.graphics();
     fondo.fillStyle(COLORES.panel, 0.96);
     fondo.fillRoundedRect(-210, 0, 420, 62, 8);
@@ -560,7 +588,7 @@ export class HUDGeneral extends Phaser.Scene {
     this._mostrando = true;
     this.avisoNombre.setText(logro.nombre);
     this.avisoDesc.setText(logro.descripcion);
-    this.avisoL.setPosition(480, -80).setScale(0.7).setAlpha(1);
+    this.avisoL.setPosition(480, -80).setScale(0.7).setAlpha(1).setVisible(true);
     this.tweens.add({
       targets: this.avisoL,
       y: 58,
@@ -577,6 +605,7 @@ export class HUDGeneral extends Phaser.Scene {
           ease: 'Sine.easeIn',
           onComplete: () => {
             this._mostrando = false;
+            this.avisoL.setVisible(false);
           },
         });
       },

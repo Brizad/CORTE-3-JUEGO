@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Celda } from '../src/sed/celda.js';
-import { VERBOS, describir, ejecutar, verbosDe, progresoFresado } from '../src/sed/controles.js';
+import { VERBOS, describir, ejecutar, verbosDe, progresoFresado, textoTooltip } from '../src/sed/controles.js';
 import { Racha } from '../src/sed/racha.js';
 import { Reloj } from '../src/sed/reloj.js';
 import { crearAleatorio } from '../src/sed/aleatorio.js';
@@ -161,4 +161,37 @@ test('la racha cuenta piezas seguidas sin errores, se reinicia con un error y NO
   assert.equal(racha.n, 0);
   assert.equal(racha.mejor, 3);
   assert.equal(celda.puntaje, antes + PUNTOS.intentoBloqueado);
+});
+
+test('botón rojo o gris: tooltip en 2 líneas, primero en palabras simples y debajo la razón formal (guía p. 20, punto 3)', () => {
+  const { reloj, celda } = nueva();
+  // Gris al empezar: palabras simples + δ.
+  const abrir = describir(celda, 'abrir');
+  assert.match(abrir.razon.simple, /^No puedes abrir la pinza: primero lleva el brazo a una CNC\.$/);
+  assert.match(abrir.razon.formal, /^δ_Brazo\(Reposo, a\) no está definida\.$/);
+  assert.equal(textoTooltip(abrir).split('\n').length, 2);
+  assert.match(describir(celda, 'meter').razon.simple, /primero lleva el brazo a la CNC/);
+  assert.match(describir(celda, 'fresar1').razon.simple, /No puedes fresar: la CNC 1 está vacía/);
+  // Rojo: el ejemplo de la guía.
+  ejecutar(celda, 'ir1'); reloj.avanzar(2); ejecutar(celda, 'abrir'); ejecutar(celda, 'meter');
+  const rojo = describir(celda, 'fresar1');
+  assert.equal(rojo.tipo, 'rojo');
+  assert.equal(rojo.razon.simple, 'No puedes fresar: la pinza está abierta dentro de la CNC 1.');
+  assert.match(rojo.razon.formal, /^¬\(CNC = Fresando ∧ Brazo = Mandril_Abierto\)/);
+  assert.equal(textoTooltip(rojo), `${rojo.razon.simple}\n${rojo.razon.formal}`);
+  // Verde: sin razón, el tooltip es el de siempre.
+  const ir = describir(celda, 'cerrar');
+  assert.equal(ir.tipo, 'verde');
+  assert.equal(ir.razon, null);
+  assert.equal(textoTooltip(ir), ir.tip);
+  // Recurso de la red (AGV 2 sin robot: el brazo está en la CNC).
+  const agv2 = describir(celda, 'agv2');
+  assert.equal(agv2.tipo, 'gris');
+  assert.match(agv2.razon.simple, /el robot está ocupado/);
+  assert.match(agv2.razon.formal, /M < Pre en Robot_libre/);
+  // Todos los verbos grises o rojos tienen las 2 líneas.
+  for (const v of VERBOS) {
+    const d = describir(celda, v.id);
+    if (d.tipo === 'gris' || d.tipo === 'rojo') assert.ok(d.razon?.simple && d.razon?.formal, v.id);
+  }
 });

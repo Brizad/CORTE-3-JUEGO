@@ -323,7 +323,7 @@ Aparece como escena superpuesta al hacer clic en una máquina:
 
 ### 14.3 Inspector (tecla I)
 
-Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba en pausa antes). Dos pestañas:
+Pausa la simulación mientras está abierto y la reanuda al cerrar (si no estaba en pausa antes). Desde 18.21 ocupa toda la pantalla y oculta la barra, las fichas y el tutorial. Pestañas (más «Logros», 18.21):
 
 - **Matrices:** Pre, Post y A = Post − Pre con los nombres de lugares y transiciones; las transiciones habilitadas se resaltan en verde.
   Debajo, la ecuación de estado con números: k, u_k y M_k = M_{k−1} + Aᵀ·u_k. **Probar disparo:** se elige una fila y se ve el
@@ -610,7 +610,7 @@ Sin cambios al modelo ni a las reglas. Todo el texto está en español y usa los
 - **Menú de pausa** (P o el botón de pausa; Esc lo cierra): Continuar, Reiniciar turno (mismo turno y misma semilla; el puntaje de antes del
   turno se conserva), Ayuda, Silenciar o Activar sonido y Volver al título. Detiene el reloj de simulación mientras está abierto y no hace
   nada si la partida ya terminó o el Inspector está abierto. El texto "PAUSA" suelto de la planta ya no se dibuja.
-- **Guardado en `localStorage`** (clave `robocell-tycoon-2.5d`, `src/guardado.js`): el mejor puntaje y los logros ganados se guardan al
+- **Guardado en `localStorage`** (clave `robocell-tycoon-2.5d`, `src/guardado.js`; ampliado en 18.21 con jugadores, logros por jugador y «Mejores puntajes»): el mejor puntaje y los logros ganados se guardan al
   terminar cada turno (no en el tutorial) y se muestran en el título ("Mejor puntaje: 1315 · Logros: 2 de 6"). Todo va dentro de `try/catch`:
   si el almacenamiento falla o está bloqueado, el juego funciona igual y el título muestra 0.
 
@@ -798,3 +798,63 @@ fueron: más entregas (25 → 20 → 18 s), plazo de 20 s y parejas de entregas 
 con el radar en amarillo), más fallas (10, 15 y 20 %) y metas de 6, 8 y 8 piezas. Límite de la medición: el piloto no comete errores ni
 paraleliza las dos CNC como un humano, así que es una cota para quien juega sin errores a ese ritmo.
 
+
+### 18.21 Pulido final: tooltips, inspector, logros y puntajes
+Último pulido. **No cambian** los autómatas, la red de Petri, los JSON de `src/sed/modelos/`, δ, el supervisor, los puntajes de la sección 8,
+el radar, las zonas del HUD de la sección 14 ni los controles paso a paso (un botón o una tecla = un evento).
+
+**1. Razón de los botones bloqueados (guía p. 20, punto 3).** Con el **mouse** encima de un botón rojo o gris (barra de control y panel de
+máquina, pestañas «Autómata» y «Acciones») sale un tooltip de 2 líneas: primero en palabras simples y debajo la razón formal. Ejemplos:
+
+| Caso | Línea 1 (simple) | Línea 2 (formal) |
+|---|---|---|
+| Rojo: fresar con la pinza dentro | No puedes fresar: la pinza está abierta dentro de la CNC 1. | ¬(CNC = Fresando ∧ Brazo = Mandril_Abierto) · estado (Cargado, Mandril_Abierto) |
+| Gris: abrir la pinza en reposo | No puedes abrir la pinza: primero lleva el brazo a una CNC. | δ_Brazo(Reposo, a) no está definida. |
+| Gris: AGV 2 sin robot | No puedes atender este AGV: el robot está ocupado. | Red de Petri: M < Pre en Robot_libre (la transición no está habilitada). |
+| Gris: Controlador activo | No puedes atender este AGV: el otro AGV está en la celda y el Controlador deja pasar a uno solo. | Pre pide 1 ficha en Celda_libre (p10) y M(p10) = 0. |
+
+Las 2 líneas salen de `razones()` en `src/sed/controles.js` (sin Phaser, con pruebas). Con **tecla** no sale ningún tooltip ni ventana: solo
+el temblor, el sonido y el −15 si es rojo (no se frena el ritmo). En **táctil**, mantener presionado 0,5 s muestra el tooltip y al soltar no
+se pulsa el botón; un toque corto pulsa como siempre.
+
+**2. Inspector ordenado (tecla I).** Ocupa toda la pantalla (fondo opaco, encima de todo) y al abrirse oculta la barra de control, las fichas,
+las tarjetas, la caja del tutorial y su flecha; todo vuelve al cerrar. Pestaña «Matrices» en 2 zonas sin solapes (`ZONAS_INSPECTOR` en
+`src/disposicion.js`, comprobadas por `test/disposicion.test.js`): arriba Pre, Post y A = Post − Pre (celdas de 24 × 17 px, números de 12 px,
+nombres de lugar de 10 px; caben con 10 lugares); abajo a la izquierda la ecuación de estado con números y abajo a la derecha «Probar
+disparo» con su resultado. Cabe todo a 960 × 540, así que no hizo falta una pestaña «Ecuación» aparte: quedan «Matrices», «Árbol» y «Logros».
+Si hay tutorial, su paso va como una línea pequeña arriba («Tutorial · …») que no tapa nada.
+
+**3. Logros que se pueden tocar.** En el botón «Logros» del título (tecla L), en la pestaña «Logros» del Inspector y en la pantalla de
+resultados cada logro es clicable y abre su ficha: nombre, qué significa, cómo se gana (la condición de la sección 12 en palabras simples, por
+ejemplo «Doble husillo: ten las 2 CNC fresando al mismo tiempo durante 30 s en total (en un mismo turno)») y si está **ganado (con la fecha)**
+o **bloqueado** (con el progreso del turno si se abre durante la partida). Los textos están en `LOGROS` (`src/sed/logros.js`, campos
+`significa` y `comoSeGana`); las condiciones no cambiaron.
+
+**4. Jugadores y mejores puntajes (local, sin servidor; `src/guardado.js`).**
+- Al entrar por primera vez el título pide el nombre en una ventana del juego con un campo de texto real (sale el teclado del celular):
+  de 1 a 16 caracteres, sin vacío. Recuerda el último y el título muestra «Jugador: Ana · Cambiar jugador».
+- Los logros se guardan **por jugador** y con la fecha en que se ganaron, en el momento de ganarlos.
+- Tabla «Mejores puntajes» (top 10) a la derecha del título: nombre, puntaje, turno alcanzado y fecha. Se guarda al terminar la partida o
+  un turno (victoria, derrota o game over). Cada partida ocupa **una** fila: reintentar un turno o seguir jugando la actualiza (no duplica).
+- `localStorage` siempre dentro de `try/catch`: si falla (incógnito, ZIP en el aula virtual con bloqueo) el juego funciona igual, lo de la
+  sesión queda en memoria y no se muestra ningún error. El guardado de la versión anterior (sin jugadores) pasa al jugador «Jugador».
+- «Borrar puntajes» (botón pequeño bajo la tabla) pide confirmación en una ventana del juego (no se usan `alert` ni `confirm`). Borra la
+  tabla y los mejores puntajes; los logros se conservan.
+
+**5. Revisión final de solapes** (`scripts/solapes-navegador.mjs`). Recorre Título (con la ventana del nombre, los logros, una ficha, la
+confirmación de borrar y los controles), Planta, tooltips gris y rojo, panel de máquina (Autómata, Acciones, Composición y el del brazo),
+Inspector (Matrices, Árbol y Logros), Pausa, Ayuda (2 páginas), Game over y Resultados (y su ficha), con y sin el tutorial, a 960 × 540 y en
+celular (844 × 390 horizontal y 360 × 640 vertical). En cada pantalla mide los textos visibles: ninguno debe salirse ni encimarse con otro.
+Capturas en `docs/capturas/final_*.png` y el resultado en `docs/capturas/final_revision.txt`. Lo que se encontró y se corrigió:
+
+| Hallazgo | Arreglo |
+|---|---|
+| La caja del tutorial tapaba el título y las pestañas del Inspector; la barra y las fichas tapaban la ecuación y «Probar disparo» | Inspector a pantalla completa, encima de todo, que oculta lo de abajo (punto 2) |
+| En el grafo del brazo, «d · descargar» quedaba encima de «Mandril_Cerrado»; en el de la CNC, «x · falla_husillo» encima de «Fresando» | Paso final que corre cada etiqueta de flecha al hueco libre más cercano dentro del grafo |
+| El panel de máquina era 92 % opaco: la planta (rótulos y fichas) se veía a través del grafo | Panel 100 % opaco |
+| El aviso «Logro desbloqueado» esperaba fuera de la pantalla (y = −80) aunque no hubiera logro | Oculto hasta que se gana un logro |
+| El tooltip de la barra tapaba la etiqueta «BRAZO» | El tooltip termina en y = 386, sobre la etiqueta |
+| El tooltip del botón de pantalla completa decía «(G)» | Dice «(L)», la tecla real desde 18.20 |
+| `test/modelos.test.js` fallaba en Windows porque Git deja los JSON con CRLF | La prueba compara el contenido sin importar el tipo de salto de línea (los JSON no se tocaron) |
+
+En 360 × 640 (vertical) se muestra el aviso «Gira el teléfono» (18.15); en 844 × 390 todo se ve igual que a 960 × 540, escalado.

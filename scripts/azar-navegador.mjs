@@ -70,6 +70,10 @@ await enviar('Emulation.setFocusEmulationEnabled', { enabled: true });
 await enviar('Page.bringToFront');
 await enviar('Page.navigate', { url: `http://localhost:${web}/${process.env.AZAR_EFECTOS === '1' ? '?intro=0' : '?efectos=0&intro=0'}` });
 await dormir(10000);
+// La primera vez el título pide el nombre (GDD 18.21): se guarda un jugador y se vuelve a cargar el título.
+await enviar('Runtime.evaluate', { expression: `localStorage.setItem('robocell-tycoon-2.5d', JSON.stringify({ version: 2, ultimo: 'Azar', jugadores: { Azar: { mejorPuntaje: 1315, logros: { primera_pieza: '2026-11-17T10:00:00.000Z', manos_seguras: '2026-11-17T10:00:00.000Z' } } }, puntajes: [] }))` });
+await enviar('Page.reload');
+await dormir(8000);
 
 const escala = Math.min(Number(ancho) / 960, Number(alto) / 540);
 const ox = (Number(ancho) - 960 * escala) / 2;
@@ -91,8 +95,9 @@ const azar = () => ((semilla = (semilla * 1664525 + 1013904223) % 4294967296) / 
 const estado = () =>
   ev(`(()=>{const j=window.juego;const P=j.scene.getScene('Planta');const c=P&&P.celda;return JSON.stringify({escenas:j.scene.scenes.filter(s=>s.scene.isActive()).map(s=>s.scene.key),t:c?c.reloj.ahora:null,pausa:c?c.reloj.enPausa:null,dl:c?c.deadlock:null,fin:c?c.terminado:null,turno:P&&P.partida?P.partida.turno:null,puntaje:c?c.puntaje:null,vel:c?c.reloj.velocidad:null,tutorial:P&&P.partida?P.partida.tutorial:null})})()`).then((s) => JSON.parse(s));
 
-if (modo === 'tutorial') await clic(480, 400);
-else await clic(284, 400);
+// Botones del título (disposición de 18.21): Jugar en (140, 272) y Tutorial en (360, 272).
+if (modo === 'tutorial') await clic(360, 272);
+else await clic(140, 272);
 await dormir(5000);
 console.log('inicio', JSON.stringify(await estado()));
 await tecla(velocidad, 'Digit' + velocidad);
@@ -183,7 +188,7 @@ if (modo === 'flujos') {
   for (let i = 0; i < 30 && !(await activa('Titulo')); i++) await dormir(500);
   await dormir(2500);
   comprobar('Volver al título', (await activa('Titulo')) && !(await activa('Planta')) && !(await activa('HUDGeneral')));
-  await clic(284, 400); await dormir(5000);
+  await clic(140, 272); await dormir(5000);
   comprobar('Jugar otra vez desde el título', (await activa('Planta')) && (await activa('HUDGeneral')) && !(await activa('MenuPausa')), await ev("window.juego.scene.scenes.filter(s=>s.scene.isActive()).map(s=>s.scene.key).join()"));
   // 10) Guardado.
   const g = await ev("localStorage.getItem('robocell-tycoon-2.5d')");
@@ -196,11 +201,11 @@ if (modo === 'flujos') {
 if (modo === 'galeria') {
   const P = "window.juego.scene.getScene('Planta')";
   const foto = async (n) => { const r = await enviar('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(`tmp-capturas/g_${n}.png`, Buffer.from(r.data, 'base64')); };
-  await ev("localStorage.setItem('robocell-tycoon-2.5d', JSON.stringify({ mejorPuntaje: 1315, logros: ['primera_pieza', 'manos_seguras'] }))");
+  await ev("localStorage.setItem('robocell-tycoon-2.5d', JSON.stringify({ version: 2, ultimo: 'Azar', jugadores: { Azar: { mejorPuntaje: 1315, logros: { primera_pieza: '2026-11-17T10:00:00.000Z', manos_seguras: '2026-11-17T10:00:00.000Z' } } }, puntajes: [] }))");
   await ev("window.juego.scene.start('Titulo')"); await dormir(2500);
   await foto('titulo');
   await tecla('c', 'KeyC'); await dormir(900); await foto('titulo_controles'); await tecla('Escape', 'Escape'); await dormir(400);
-  await clic(284, 400); await dormir(5000);
+  await clic(140, 272); await dormir(5000);
   await foto('planta_inicio');
   await dormir(3000);
   await tecla('?', 'Slash'); await dormir(900); await foto('ayuda'); await tecla('Escape', 'Escape'); await dormir(500);

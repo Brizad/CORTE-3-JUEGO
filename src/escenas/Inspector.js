@@ -1,21 +1,25 @@
 // Inspector: escena superpuesta que se abre con la tecla I y PAUSA la simulación mientras está abierta.
-// Pestaña "Matrices": Pre, Post y A = Post − Pre con los nombres de lugares y transiciones, las transiciones habilitadas
-// resaltadas, la ecuación de estado M_k = M_{k−1} + Aᵀ·u_k con números y el botón "Probar disparo".
-// Pestaña "Árbol": árbol de cobertura desde M0 y desde el marcado actual (profundidad 4).
+// Ocupa TODA la pantalla (docs/GDD.md, sección 18.21): al abrirse oculta la barra de control, las fichas, la caja del tutorial y
+// sus flechas (vuelven al cerrar). Pestaña "Matrices" en 2 zonas sin solapes: arriba Pre, Post y A = Post − Pre (con las
+// transiciones habilitadas resaltadas); abajo a la izquierda la ecuación de estado M_k = M_{k−1} + Aᵀ·u_k con números y abajo
+// a la derecha "Probar disparo" con su resultado. Pestañas "Árbol" (árbol de cobertura) y "Logros" (cada logro abre su ficha).
 // Solo muestra y calcula: no cambia el estado del juego.
 
-import { COLORES, TEXTO_HEX } from '../config.js';
+import { COLORES, TEXTO_HEX, ANCHO, ALTO } from '../config.js';
 import { arbolCobertura, nombreMarcado } from '../sed/cobertura.js';
 import { camaraLogica } from './camara.js';
 import { resaltable, fijarBorde } from './resaltar.js';
+import { fichaLogro } from './ventanas.js';
+import { datosJugador } from '../guardado.js';
+import { ZONAS_INSPECTOR, TABLAS_INSPECTOR } from '../disposicion.js';
 
-const PANEL = { x: 8, y: 58, ancho: 944, alto: 390 };
-const CW = 24; // ancho de celda de las tablas
-const CH = 15; // alto de celda
-const ETIQUETA = 150; // ancho de la columna con los nombres de transición
-const GAP = 18; // hueco entre tablas
-const Y_CABECERA = 120; // las filas de las tablas empiezan aquí
-const TEXTO = (extra = {}) => ({ fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, ...extra });
+const PANEL = { x: 0, y: 0, ancho: ANCHO, alto: ALTO };
+const CW = TABLAS_INSPECTOR.celda; // ancho de celda de las tablas
+const CH = TABLAS_INSPECTOR.alto; // alto de celda
+const ETIQUETA = TABLAS_INSPECTOR.etiqueta; // ancho de la columna con los nombres de transición
+const GAP = TABLAS_INSPECTOR.hueco; // hueco entre tablas
+const Y_CABECERA = ZONAS_INSPECTOR.tablas.y + TABLAS_INSPECTOR.cabecera; // las filas empiezan aquí (encima, los nombres de lugar)
+const TEXTO = (extra = {}) => ({ fontFamily: 'Arial', fontSize: '12px', color: TEXTO_HEX.texto, ...extra });
 
 export class Inspector extends Phaser.Scene {
   constructor() {
@@ -34,28 +38,33 @@ export class Inspector extends Phaser.Scene {
     this._sucia = false;
     this.contenedor = this.add.container(PANEL.x, PANEL.y).setVisible(false);
 
+    // Fondo opaco a pantalla completa: atrapa todos los clics (nada de abajo se ve ni se pulsa).
+    const fondo = this.add.rectangle(0, 0, PANEL.ancho, PANEL.alto, COLORES.panel, 1).setOrigin(0).setInteractive();
     const marco = this.add.graphics();
-    marco.fillStyle(COLORES.panel, 0.96);
-    marco.fillRect(0, 0, PANEL.ancho, PANEL.alto);
+    marco.fillStyle(0x0d1117, 1);
+    marco.fillRect(0, 0, PANEL.ancho, ZONAS_INSPECTOR.cabecera.alto);
     marco.lineStyle(2, COLORES.banda, 1);
-    marco.strokeRect(0, 0, PANEL.ancho, PANEL.alto);
-    this.titulo = this.add.text(12, 6, 'Inspector · simulación en pausa', TEXTO({ fontSize: '14px', fontStyle: 'bold' }));
+    marco.strokeRect(1, 1, PANEL.ancho - 2, PANEL.alto - 2);
+    marco.lineBetween(0, ZONAS_INSPECTOR.cabecera.alto, PANEL.ancho, ZONAS_INSPECTOR.cabecera.alto);
+    this.titulo = this.add.text(12, 7, 'Inspector · simulación en pausa', TEXTO({ fontSize: '14px', fontStyle: 'bold' }));
+    // Línea pequeña del tutorial (solo si hay tutorial): arriba, sin tapar nada.
+    this.lineaTutorial = this.add.text(ZONAS_INSPECTOR.tutorial.x, ZONAS_INSPECTOR.tutorial.y, '', TEXTO({ fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera }));
     const cerrar = this.add
-      .text(PANEL.ancho - 10, 4, 'X', TEXTO({ fontSize: '16px', fontStyle: 'bold', padding: { x: 8, y: 4 } }))
+      .text(PANEL.ancho - 6, 0, 'X  Cerrar (I)', TEXTO({ fontSize: '13px', fontStyle: 'bold', padding: { x: 10, y: 7 } }))
       .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
     cerrar.on('pointerup', () => this.cerrar());
     cerrar.on('pointerover', () => cerrar.setColor(TEXTO_HEX.espera));
     cerrar.on('pointerout', () => cerrar.setColor(TEXTO_HEX.texto));
     this.pestanas = {};
-    [['matrices', 'Matrices', 250, 80], ['arbol', 'Árbol', 334, 60], ['logros', 'Logros', 398, 64]].forEach(([clave, etiqueta, x, ancho]) => {
-      const rect = resaltable(this.add.rectangle(x, 5, ancho, 20, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true }), [1, COLORES.maquina, 1]);
-      const t = this.add.text(x + ancho / 2, 15, etiqueta, TEXTO({ fontStyle: 'bold' })).setOrigin(0.5);
+    [['matrices', 'Matrices', 262, 96], ['arbol', 'Árbol', 362, 80], ['logros', 'Logros', 446, 80]].forEach(([clave, etiqueta, x, ancho]) => {
+      const rect = resaltable(this.add.rectangle(x, 3, ancho, 24, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true }), [1, COLORES.maquina, 1]);
+      const t = this.add.text(x + ancho / 2, 15, etiqueta, TEXTO({ fontStyle: 'bold', fontSize: '13px' })).setOrigin(0.5);
       rect.on('pointerup', () => this._cambiarPestana(clave));
       this.pestanas[clave] = { rect, t };
     });
     this.dinamico = this.add.container(0, 0);
-    this.contenedor.add([marco, this.titulo, cerrar, ...Object.values(this.pestanas).flatMap((p) => [p.rect, p.t]), this.dinamico]);
+    this.contenedor.add([fondo, marco, this.titulo, this.lineaTutorial, cerrar, ...Object.values(this.pestanas).flatMap((p) => [p.rect, p.t]), this.dinamico]);
     this._estilizarPestanas();
     this.events.on('shutdown', () => this._soltar());
   }
@@ -79,14 +88,41 @@ export class Inspector extends Phaser.Scene {
     });
     this.contenedor.setVisible(true);
     this.abierto = true;
+    // Encima de todo: oculta la barra de control, las fichas, el tutorial y sus flechas (vuelven al cerrar).
+    this.scene.bringToTop();
+    this._ocultarDebajo(true);
+    this._lineaTutorial();
     this._reconstruir();
+  }
+
+  /** Oculta (o devuelve) lo que el Inspector taparía: HUD general (barra, fichas, tarjetas, tooltip) y el tutorial. */
+  _ocultarDebajo(ocultar) {
+    this.scene.get('HUDGeneral')?.modoInspector?.(ocultar);
+    this.scene.get('Tutorial')?.modoInspector?.(ocultar);
+  }
+
+  /** Si hay tutorial, su paso va como una línea pequeña arriba (no tapa nada). */
+  _lineaTutorial() {
+    const tut = this.scene.get('Tutorial');
+    const activo = tut?.scene.isActive() && tut.activo && tut.guia;
+    this.lineaTutorial.setText(activo ? `Tutorial · ${tut.guia.paso.mensaje.replace(/\s+/g, ' ')}` : '').setVisible(!!activo);
+  }
+
+  /** Cierra la ficha de logro abierta (Esc). Devuelve true si había una. */
+  cerrarFicha() {
+    if (!this._ficha) return false;
+    this._ficha.cerrar();
+    return true;
   }
 
   cerrar() {
     if (!this.abierto) return;
     this._soltar();
+    this.cerrarFicha();
     this.contenedor.setVisible(false);
     this.abierto = false;
+    this._ocultarDebajo(false);
+    this.scene.moveBelow('HUDGeneral'); // vuelve a su lugar (debajo del HUD general, como al empezar)
     // Reanuda solo si no estaba en pausa antes y la partida no terminó por deadlock.
     if (!this._pausaPrevia && !this.celda.deadlock && !this.celda.terminado) this.reloj.reanudar();
   }
@@ -137,7 +173,7 @@ export class Inspector extends Phaser.Scene {
     else this._logros();
   }
 
-  /** Pestaña Matrices: Pre, Post, A, la ecuación de estado y la prueba de disparo. */
+  /** Pestaña Matrices: arriba Pre, Post y A; abajo a la izquierda la ecuación de estado y a la derecha "Probar disparo". */
   _matrices() {
     const c = this.celda;
     const red = c.red;
@@ -146,10 +182,12 @@ export class Inspector extends Phaser.Scene {
     const habilitadas = new Set(red.habilitadas());
     const g = this.add.graphics();
     this.dinamico.add(g);
+    const Z = ZONAS_INSPECTOR;
 
-    const xTabla = (n) => 12 + ETIQUETA + n * (nP * CW + GAP); // 0 = Pre, 1 = Post, 2 = A
+    const xTabla = (n) => Z.tablas.x + ETIQUETA + n * (nP * CW + GAP); // 0 = Pre, 1 = Post, 2 = A
     const yFila = (i) => Y_CABECERA + i * CH;
     const colX = (n, j) => xTabla(n) + j * CW;
+    const finTablas = xTabla(2) + nP * CW;
     const idx = this.seleccion ? red.indiceT(this.seleccion) : -1;
 
     // Marcado actual y último disparo (M_{k−1} = M_k − Aᵀ·u_k).
@@ -159,35 +197,34 @@ export class Inspector extends Phaser.Scene {
     const filaU = ultima ? red.A[red.indiceT(ultima)] : null;
     const Mprev = filaU ? M.map((v, j) => v - filaU[j]) : null;
 
+    // ---- Zona de arriba: Pre, Post y A ----
     // Fila resaltada: transiciones habilitadas (verde) y la elegida para probar (borde amarillo).
     red.transiciones.forEach((t, i) => {
       const y = yFila(i);
       if (habilitadas.has(t.id)) {
         g.fillStyle(COLORES.operacion, 0.25);
-        g.fillRect(12, y, xTabla(2) + nP * CW - 12, CH);
+        g.fillRect(Z.tablas.x, y, finTablas - Z.tablas.x, CH);
       }
       if (i === idx) {
         g.lineStyle(2, COLORES.espera, 1);
-        g.strokeRect(12, y, xTabla(2) + nP * CW - 12, CH);
+        g.strokeRect(Z.tablas.x, y, finTablas - Z.tablas.x, CH);
       }
     });
-
-    // Títulos de las tablas y nombres de lugar (rotados).
-    ['Pre', 'Post', 'A = Post − Pre'].forEach((nombre, n) => this._texto(xTabla(n), 34, nombre, { fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.espera }));
-    this._texto(12, 34, 'Transición', { fontStyle: 'bold' });
+    ['Pre', 'Post', 'A = Post − Pre'].forEach((nombre, n) => this._texto(xTabla(n), Z.tablas.y, nombre, { fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.espera }));
+    this._texto(Z.tablas.x, Z.tablas.y, 'Transición (clic = elegir)', { fontStyle: 'bold' });
+    this._texto(Z.tablas.x, Z.tablas.y + 18, 'Verde: habilitada ahora', { fontSize: '10px', color: TEXTO_HEX.operacion });
     for (let n = 0; n < 3; n++) {
       red.lugares.forEach((l, j) => {
         // Rotado: se lee de abajo hacia arriba y termina justo encima de la columna.
-        const t = this._texto(colX(n, j) + CW / 2, Y_CABECERA - 3, l.nombre, { fontSize: '8px' });
+        const t = this._texto(colX(n, j) + CW / 2, Y_CABECERA - 3, l.nombre, { fontSize: '10px' });
         t.setOrigin(0, 0.5).setAngle(-90);
       });
     }
-    // Filas: nombre de la transición y los números de cada tabla.
     red.transiciones.forEach((t, i) => {
       const y = yFila(i);
       const color = habilitadas.has(t.id) ? TEXTO_HEX.operacion : TEXTO_HEX.texto;
-      this._texto(14, y + 3, `${t.id}  ${t.nombre}`, { fontStyle: habilitadas.has(t.id) ? 'bold' : 'normal', color });
-      const zona = this.add.rectangle(12, y, xTabla(2) + nP * CW - 12, CH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
+      this._texto(Z.tablas.x + 2, y + 2, `${t.id}  ${t.nombre}`, { fontSize: '11px', fontStyle: habilitadas.has(t.id) ? 'bold' : 'normal', color });
+      const zona = this.add.rectangle(Z.tablas.x, y, finTablas - Z.tablas.x, CH, 0xffffff, 0).setOrigin(0).setInteractive({ useHandCursor: true });
       zona.on('pointerup', () => {
         this.seleccion = t.id;
         this._reconstruir();
@@ -197,97 +234,90 @@ export class Inspector extends Phaser.Scene {
         const pre = red.pre[i][j];
         const post = red.post[i][j];
         const a = red.A[i][j];
-        const celda = (n, v, color) => this._texto(colX(n, j) + CW / 2, y + 3, String(v), { color: v === 0 ? '#566170' : color }).setOrigin(0.5, 0);
+        const celda = (n, v, color) => this._texto(colX(n, j) + CW / 2, y + 2, String(v), { color: v === 0 ? '#566170' : color, fontStyle: v === 0 ? 'normal' : 'bold' }).setOrigin(0.5, 0);
         celda(0, pre, TEXTO_HEX.texto);
         celda(1, post, TEXTO_HEX.texto);
         celda(2, a > 0 ? `+${a}` : a, a > 0 ? TEXTO_HEX.operacion : TEXTO_HEX.fallo);
       }
     });
-    // Rejillas.
     g.lineStyle(1, COLORES.banda, 0.6);
     for (let n = 0; n < 3; n++) {
       g.strokeRect(xTabla(n), Y_CABECERA, nP * CW, nT * CH);
       for (let j = 1; j < nP; j++) g.lineBetween(colX(n, j), Y_CABECERA, colX(n, j), Y_CABECERA + nT * CH);
     }
-    for (let i = 1; i < nT; i++) g.lineBetween(12, yFila(i), xTabla(2) + nP * CW, yFila(i));
+    for (let i = 1; i < nT; i++) g.lineBetween(Z.tablas.x, yFila(i), finTablas, yFila(i));
+    // Separadores de las 2 zonas.
+    g.lineStyle(1, COLORES.banda, 1);
+    g.lineBetween(Z.tablas.x, Z.ecuacion.y - 4, ANCHO - 12, Z.ecuacion.y - 4);
+    g.lineBetween(Z.probar.x - 6, Z.ecuacion.y - 4, Z.probar.x - 6, ALTO - 8);
 
-    // ---- Ecuación de estado con números ----
-    const y0 = Y_CABECERA + nT * CH + 12;
-    this._texto(12, y0, 'Ecuación de estado', { fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    // ---- Abajo a la izquierda: ecuación de estado con números ----
+    const E = Z.ecuacion;
+    this._texto(E.x, E.y, 'Ecuación de estado', { fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.espera });
     const u = red.transiciones.map((t) => (t.id === ultima ? 1 : 0));
     this._texto(
-      12,
-      y0 + 16,
+      E.x,
+      E.y + 20,
       ultima
         ? `k = ${k}   u_k = [${u.join(', ')}]ᵀ  (dispara ${ultima})\nM_k = M_{k−1} + Aᵀ·u_k`
         : 'k = 0: todavía no hubo disparos.\nM_0 es el marcado inicial.',
-      { lineSpacing: 3 },
+      { lineSpacing: 3, wordWrap: { width: E.ancho } },
     );
-    const filas = [
+    this._vector(g, E.x, E.y + 70, [
       ['M_{k−1}', Mprev, false],
       ['+ Aᵀ·u_k', filaU, true],
       ['= M_k', M, false],
-    ];
-    const xN = (j) => 12 + ETIQUETA + j * CW + CW / 2;
-    const yE = y0 + 50;
-    red.lugares.forEach((l, j) => this._texto(xN(j), yE - 12, l.id, { fontSize: '9px', color: '#8794a3' }).setOrigin(0.5, 0));
-    filas.forEach(([nombre, v, esSuma], n) => {
-      const y = yE + n * CH;
-      this._texto(14, y + 3, nombre, { fontStyle: 'bold' });
-      red.lugares.forEach((l, j) => {
-        const val = v ? v[j] : '·';
-        const t = this._texto(xN(j), y + 3, esSuma && v && v[j] > 0 ? `+${v[j]}` : String(val), {
-          color: !v ? '#566170' : esSuma ? (v[j] > 0 ? TEXTO_HEX.operacion : v[j] < 0 ? TEXTO_HEX.fallo : '#566170') : TEXTO_HEX.texto,
-          fontStyle: n === 2 ? 'bold' : 'normal',
-        });
-        t.setOrigin(0.5, 0);
-      });
-    });
-    g.lineStyle(1, COLORES.banda, 0.6);
-    g.strokeRect(12 + ETIQUETA, yE, nP * CW, 3 * CH);
-    g.lineBetween(12 + ETIQUETA, yE + 2 * CH, 12 + ETIQUETA + nP * CW, yE + 2 * CH);
+    ], red, new Set());
+    this._texto(E.x, E.y + 70 + 16 + 3 * CH + 10, 'Verde suma fichas, rojo las quita. M_k es el marcado de ahora.', { fontSize: '10px', color: '#8794a3' });
 
-    // ---- Probar disparo ----
-    const xP = 12 + ETIQUETA + nP * CW + 30;
-    this._boton(xP, y0, 190, 26, this.probar ? 'Probar disparo: activado' : 'Probar disparo', this.probar ? COLORES.mantenimiento : COLORES.banda, () => {
+    // ---- Abajo a la derecha: Probar disparo ----
+    const P = Z.probar;
+    this._boton(P.x, P.y - 2, 176, 28, this.probar ? 'Probar disparo: activado' : 'Probar disparo', this.probar ? COLORES.mantenimiento : COLORES.banda, () => {
       this.probar = !this.probar;
       this._reconstruir();
     });
-    this._texto(xP + 198, y0 + 6, this.seleccion ? `Transición elegida: ${this.seleccion}` : 'Elige una transición', { color: TEXTO_HEX.espera });
-    if (this.probar && idx >= 0) this._prueba(g, xP, y0 + 34, idx, M, red, colX, yFila);
-    else this._texto(xP, y0 + 34, 'Pulsa una fila de la tabla para elegir una transición y\n"Probar disparo" para ver el marcado que resultaría sin aplicarlo.', { color: '#8794a3', lineSpacing: 3 });
+    this._texto(P.x + 186, P.y + 5, this.seleccion ? `Transición elegida: ${this.seleccion}` : 'Elige una transición', { fontStyle: 'bold', color: TEXTO_HEX.espera });
+    if (this.probar && idx >= 0) this._prueba(g, P, idx, M, red, colX, yFila);
+    else this._texto(P.x, P.y + 40, 'Pulsa una fila de las tablas para elegir una transición y\n«Probar disparo» para ver el marcado que resultaría sin aplicarlo.', { color: '#8794a3', lineSpacing: 4, wordWrap: { width: P.ancho } });
+  }
+
+  /** Tabla pequeña de vectores (una fila por vector, una columna por lugar). `malos` = columnas en rojo. */
+  _vector(g, x, y, filas, red, malos) {
+    const nP = red.lugares.length;
+    const x0 = x + 70;
+    red.lugares.forEach((l, j) => this._texto(x0 + j * CW + CW / 2, y, l.id, { fontSize: '10px', color: '#8794a3' }).setOrigin(0.5, 0));
+    filas.forEach(([nombre, v, esSuma], n) => {
+      const yy = y + 16 + n * CH;
+      this._texto(x, yy + 2, nombre, { fontStyle: 'bold' });
+      red.lugares.forEach((_l, j) => {
+        if (malos.has(j)) {
+          g.fillStyle(COLORES.fallo, 0.35);
+          g.fillRect(x0 + j * CW, yy, CW, CH);
+        }
+        const val = v ? v[j] : '·';
+        const color = !v ? '#566170' : esSuma ? (v[j] > 0 ? TEXTO_HEX.operacion : v[j] < 0 ? TEXTO_HEX.fallo : '#566170') : v[j] < 0 ? TEXTO_HEX.fallo : TEXTO_HEX.texto;
+        this._texto(x0 + j * CW + CW / 2, yy + 2, esSuma && v && v[j] > 0 ? `+${v[j]}` : String(val), { color, fontStyle: n === 2 || malos.has(j) ? 'bold' : 'normal' }).setOrigin(0.5, 0);
+      });
+    });
+    g.lineStyle(1, COLORES.banda, 0.6);
+    g.strokeRect(x0, y + 16, nP * CW, filas.length * CH);
+    g.lineBetween(x0, y + 16 + (filas.length - 1) * CH, x0 + nP * CW, y + 16 + (filas.length - 1) * CH);
   }
 
   /** Marcado que resultaría de disparar la transición elegida; señala los lugares que no alcanzan. */
-  _prueba(g, xP, y, idx, M, red, colX, yFila) {
+  _prueba(g, P, idx, M, red, colX, yFila) {
     const t = red.transiciones[idx];
     const fila = red.A[idx];
     const resultado = M.map((v, j) => v + fila[j]);
     const habilitada = red.habilitada(idx);
     const falta = red.faltantes(M, t.id); // nombres de lugar (con " (llena)")
     const malos = new Set(falta.map((n) => red.indiceP(n.replace(' (llena)', ''))));
-    const nP = red.lugares.length;
-    const w = 15; // ancho de celda de la prueba
-    this._texto(xP, y, `${t.id} ${t.nombre}: ${habilitada ? 'habilitada (M ≥ Pre y cabe en k)' : 'NO habilitada'}`, {
+    const y = P.y + 36;
+    this._texto(P.x, y, `${t.id} ${t.nombre}: ${habilitada ? 'habilitada (M ≥ Pre y cabe en k)' : 'NO habilitada'}`, {
       fontStyle: 'bold',
       color: habilitada ? TEXTO_HEX.operacion : TEXTO_HEX.fallo,
     });
-    const filas = [['M', M], ['+ Aᵀ·u', fila], ["= M'", resultado]];
-    const x0 = xP + 56;
-    red.lugares.forEach((l, j) => this._texto(x0 + j * (w + 2) + w / 2, y + 16, l.id, { fontSize: '8px', color: '#8794a3' }).setOrigin(0.5, 0));
-    filas.forEach(([nombre, v], n) => {
-      const yy = y + 28 + n * CH;
-      this._texto(xP, yy + 3, nombre, { fontStyle: 'bold' });
-      v.forEach((val, j) => {
-        const mal = malos.has(j);
-        if (mal) {
-          g.fillStyle(COLORES.fallo, 0.35);
-          g.fillRect(x0 + j * (w + 2), yy, w + 2, CH);
-        }
-        const txt = n === 1 && val > 0 ? `+${val}` : String(val);
-        this._texto(x0 + j * (w + 2) + w / 2, yy + 3, txt, { color: val < 0 ? TEXTO_HEX.fallo : TEXTO_HEX.texto, fontStyle: mal ? 'bold' : 'normal' }).setOrigin(0.5, 0);
-      });
-    });
+    this._vector(g, P.x, y + 20, [['M', M, false], ['+ Aᵀ·u', fila, true], ["= M'", resultado, false]], red, malos);
     // El lugar que no alcanza también se marca en la tabla Pre de arriba.
     for (const j of malos) {
       g.lineStyle(2, COLORES.fallo, 1);
@@ -301,10 +331,10 @@ export class Inspector extends Phaser.Scene {
         : `${red.lugares[j].nombre} tiene ${M[j]} y Pre pide ${red.pre[idx][j]}`;
     });
     this._texto(
-      xP,
-      y + 28 + 3 * CH + 6,
+      P.x,
+      y + 20 + 16 + 3 * CH + 8,
       habilitada ? 'Es el marcado que resultaría. No se aplicó nada.' : `No alcanza: ${detalle.join('; ')}.\nEl marcado de arriba es solo el cálculo, no es alcanzable.`,
-      { color: habilitada ? TEXTO_HEX.texto : TEXTO_HEX.fallo, wordWrap: { width: 470 }, lineSpacing: 3 },
+      { color: habilitada ? TEXTO_HEX.texto : TEXTO_HEX.fallo, wordWrap: { width: P.ancho }, lineSpacing: 3 },
     );
   }
 
@@ -318,13 +348,23 @@ export class Inspector extends Phaser.Scene {
   // ---- Logros (GDD, sección 12) ----
 
   _logros() {
-    const progreso = this.scene.get('Planta').logros.progreso();
-    this._texto(12, 36, 'Progreso de los logros', { fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    const planta = this.scene.get('Planta');
+    const progreso = planta.logros.progreso();
+    const guardados = datosJugador(planta.jugador).logros;
+    this._texto(12, 48, `Logros de ${planta.jugador}: progreso en esta partida`, { fontSize: '14px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    this._texto(PANEL.ancho - 12, 50, 'Toca un logro para ver qué significa y cómo se gana', { fontSize: '11px', color: '#8794a3' }).setOrigin(1, 0);
     progreso.forEach((l, i) => {
-      const y = 66 + i * 52;
-      this._texto(12, y, `${l.ganado ? '★' : '☆'}  ${l.nombre}`, { fontSize: '14px', fontStyle: 'bold', color: l.ganado ? '#d4af37' : TEXTO_HEX.texto });
-      this._texto(36, y + 20, l.descripcion, { color: '#8794a3' });
-      this._texto(PANEL.ancho - 24, y + 2, l.ganado ? 'conseguido' : l.texto, { color: l.ganado ? TEXTO_HEX.operacion : TEXTO_HEX.texto }).setOrigin(1, 0);
+      const y = 76 + i * 74;
+      const ganado = l.ganado || l.id in guardados;
+      const rect = resaltable(this.add.rectangle(12, y, PANEL.ancho - 24, 66, ganado ? 0x3a2f10 : 0x0d1117).setOrigin(0).setInteractive({ useHandCursor: true }), [1, ganado ? 0xd4af37 : COLORES.banda, 1]);
+      rect.on('pointerup', () => {
+        if (this._ficha) return;
+        this._ficha = fichaLogro(this, l, { ganado, fecha: guardados[l.id], progreso: l.texto, alCerrar: () => { this._ficha = null; }, esc: false });
+      });
+      this.dinamico.add(rect);
+      this._texto(26, y + 8, `${ganado ? '★' : '☆'}  ${l.nombre}`, { fontSize: '16px', fontStyle: 'bold', color: ganado ? '#d4af37' : TEXTO_HEX.texto });
+      this._texto(52, y + 34, l.comoSeGana, { fontSize: '12px', color: '#8794a3' });
+      this._texto(PANEL.ancho - 26, y + 10, ganado ? 'conseguido' : l.texto, { fontSize: '12px', fontStyle: 'bold', color: ganado ? TEXTO_HEX.operacion : TEXTO_HEX.texto }).setOrigin(1, 0);
     });
   }
 
@@ -337,12 +377,12 @@ export class Inspector extends Phaser.Scene {
     const raiz = desdeActual ? red.marcado() : red.m0;
     const arbol = arbolCobertura(red, raiz, 2000, desdeActual ? 4 : Infinity);
 
-    this._boton(12, 32, 150, 24, 'Desde M0', this.arbolDesde === 'm0' ? COLORES.mantenimiento : COLORES.banda, () => { this.arbolDesde = 'm0'; this._reconstruir(); });
-    this._boton(168, 32, 230, 24, 'Desde el marcado actual (prof. 4)', desdeActual ? COLORES.mantenimiento : COLORES.banda, () => { this.arbolDesde = 'actual'; this._reconstruir(); });
+    this._boton(12, 46, 150, 26, 'Desde M0', this.arbolDesde === 'm0' ? COLORES.mantenimiento : COLORES.banda, () => { this.arbolDesde = 'm0'; this._reconstruir(); });
+    this._boton(168, 46, 230, 26, 'Desde el marcado actual (prof. 4)', desdeActual ? COLORES.mantenimiento : COLORES.banda, () => { this.arbolDesde = 'actual'; this._reconstruir(); });
     const muertos = arbol.nodos.filter((n) => n.tipo === 'muerto').length;
     this._texto(
       410,
-      38,
+      52,
       `Nodos: ${arbol.nodos.length}   ·   marcados distintos: ${arbol.marcadosDistintos}   ·   muertos: ${muertos}   ·   ${arbol.acotada ? 'acotada' : 'no acotada (ω)'}${arbol.truncado ? '   (truncado)' : ''}`,
       { fontSize: '12px', fontStyle: 'bold', color: muertos > 0 ? TEXTO_HEX.fallo : TEXTO_HEX.operacion },
     );
@@ -351,7 +391,7 @@ export class Inspector extends Phaser.Scene {
     const niveles = [];
     for (const n of arbol.nodos) (niveles[n.nivel] ??= []).push(n);
     const ancho = PANEL.ancho - 24;
-    const yNivel = (l) => 84 + l * Math.min(56, 290 / Math.max(1, niveles.length - 1));
+    const yNivel = (l) => 104 + l * Math.min(70, 384 / Math.max(1, niveles.length - 1));
     const pos = new Map();
     niveles.forEach((lista, l) => lista.forEach((n, i) => pos.set(n.id, { x: 12 + ((i + 0.5) * ancho) / lista.length, y: yNivel(l) })));
     const g = this.add.graphics();
@@ -379,7 +419,7 @@ export class Inspector extends Phaser.Scene {
     }
     this._texto(
       12,
-      PANEL.alto - 18,
+      PANEL.alto - 22,
       'Rojo: marcado muerto (ninguna transición habilitada). Gris: marcado repetido (no se expande). Borde amarillo: el marcado actual.',
       { color: '#8794a3' },
     );

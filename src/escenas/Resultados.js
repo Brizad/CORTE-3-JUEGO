@@ -8,8 +8,10 @@ import { Partida } from '../sed/partida.js';
 import { camaraLogica } from './camara.js';
 import { fraseJefe, estrellas } from '../textos.js';
 import { resaltable } from './resaltar.js';
+import { fichaLogro } from './ventanas.js';
+import { datosJugador } from '../guardado.js';
 
-const PANEL = { ancho: 620, alto: 456 };
+const PANEL = { ancho: 620, alto: 460 };
 
 export class Resultados extends Phaser.Scene {
   constructor() {
@@ -28,7 +30,7 @@ export class Resultados extends Phaser.Scene {
     const victoria = r.resultado === 'victoria';
     const final = victoria && partida.esUltimo;
     const x0 = (ANCHO - PANEL.ancho) / 2;
-    const y0 = 50;
+    const y0 = 40;
 
     const velo = this.add.rectangle(0, 0, ANCHO, 540, 0x000000, 0.6).setOrigin(0).setInteractive();
     velo.on('pointerup', () => {});
@@ -90,23 +92,31 @@ export class Resultados extends Phaser.Scene {
       texto(PANEL.ancho - 24, y, valor, { fontStyle: 'bold', fontSize: destacado ? '15px' : '13px' }).setOrigin(1, 0);
     });
 
-    // Logros: los 6, con los ganados en este turno resaltados.
+    // Logros: los 6, con los ganados en este turno resaltados. Cada uno es clicable y abre su ficha.
     const nuevos = planta.logrosDelTurno ?? [];
-    texto(24, 290, `Logros (${partida.logros.ganados.size} de ${LOGROS.length})`, { fontStyle: 'bold', color: TEXTO_HEX.espera });
+    const progreso = Object.fromEntries((planta.logros?.progreso?.() ?? []).map((p) => [p.id, p.texto]));
+    const guardados = datosJugador(planta.jugador).logros;
+    const tieneLogro = (id) => partida.logros.ganados.has(id) || id in guardados;
+    texto(24, 286, `Logros de ${planta.jugador} (${LOGROS.filter((l) => tieneLogro(l.id)).length} de ${LOGROS.length}) · toca uno para ver su ficha`, { fontStyle: 'bold', color: TEXTO_HEX.espera });
     LOGROS.forEach((l, i) => {
-      const ganado = partida.logros.ganados.has(l.id);
+      const ganado = tieneLogro(l.id);
       const nuevo = nuevos.includes(l.id);
-      const x = 24 + (i % 2) * 300;
-      const y = 312 + Math.floor(i / 2) * 20;
-      texto(x, y, `${ganado ? '★' : '☆'} ${l.nombre}${nuevo ? '  (nuevo)' : ''}`, {
-        fontSize: '12px', color: ganado ? '#d4af37' : '#566170', fontStyle: nuevo ? 'bold' : 'normal',
+      const x = 20 + (i % 2) * 292;
+      const y = 306 + Math.floor(i / 2) * 26;
+      const zona = resaltable(this.add.rectangle(x0 + x, y0 + y, 286, 24, ganado ? 0x3a2f10 : 0x0d1117).setOrigin(0).setInteractive({ useHandCursor: true }), [1, ganado ? 0xd4af37 : COLORES.banda, 0.8]);
+      zona.on('pointerup', () => {
+        if (this._ficha) return;
+        this._ficha = fichaLogro(this, l, { ganado, fecha: guardados[l.id], progreso: progreso[l.id], alCerrar: () => { this._ficha = null; } });
+      });
+      texto(x + 8, y + 5, `${ganado ? '★' : '☆'} ${l.nombre}${nuevo ? '  (nuevo)' : ''}`, {
+        fontSize: '12px', color: ganado ? '#d4af37' : '#8794a3', fontStyle: nuevo ? 'bold' : 'normal',
       });
     });
 
     // Botones.
     const boton = (x, ancho, etiqueta, color, accion) => {
-      const rect = resaltable(this.add.rectangle(x0 + x, y0 + 390, ancho, 46, color).setOrigin(0).setInteractive({ useHandCursor: true }));
-      this.add.text(x0 + x + ancho / 2, y0 + 413, etiqueta, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
+      const rect = resaltable(this.add.rectangle(x0 + x, y0 + 394, ancho, 46, color).setOrigin(0).setInteractive({ useHandCursor: true }));
+      this.add.text(x0 + x + ancho / 2, y0 + 417, etiqueta, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
       rect.on('pointerup', accion);
     };
     if (final) boton(20, 270, 'Jugar de nuevo', COLORES.operacion, () => this._reiniciar(true));

@@ -8,7 +8,8 @@ import { cargarModelo } from './ayudas.js';
 test('los JSON exportados coinciden con los archivos de modelos/ (.jff y .pnml)', () => {
   for (const [archivo, datos] of Object.entries(generarModelos())) {
     const url = new URL(`../src/sed/modelos/${archivo}`, import.meta.url);
-    assert.equal(fs.readFileSync(url, 'utf8'), aTexto(datos), `${archivo} está desactualizado: ejecuta npm run modelos`);
+    // Git en Windows (core.autocrlf) puede dejar los JSON con CRLF: se compara el contenido, no el tipo de salto de línea.
+    assert.equal(fs.readFileSync(url, 'utf8').replace(/\r\n/g, '\n'), aTexto(datos), `${archivo} está desactualizado: ejecuta npm run modelos`);
   }
 });
 

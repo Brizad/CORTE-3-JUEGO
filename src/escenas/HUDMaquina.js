@@ -15,7 +15,8 @@ import { claveDe } from '../sed/composicion.js';
 import { camaraLogica } from './camara.js';
 import { PANEL_MAQUINA } from '../disposicion.js';
 import { resaltable, fijarBorde } from './resaltar.js';
-import { verbosDe, describir, progresoFresado } from '../sed/controles.js';
+import { alMantener } from './mantener.js';
+import { verbosDe, describir, progresoFresado, razones, textoTooltip } from '../sed/controles.js';
 
 const PANEL = PANEL_MAQUINA; // termina en y = 396: no tapa la barra de control (y 400) // docs/arte.md, sección 7 y docs/GDD.md, sección 18.2
 const ANCHO_UTIL = PANEL.ancho - 24; // ancho del contenido del panel
@@ -41,6 +42,8 @@ const QUE_HACE = {
 const COLOR_VERBO = { verde: COLORES.operacion, gris: COLORES.banda, rojo: COLORES.fallo, reparar: COLORES.mantenimiento };
 
 const MODELO_DE = { CNC: MODELOS.cnc, BRAZO: MODELOS.brazo, AGV: MODELOS.agv };
+// Rectángulo de un texto en las coordenadas del panel (para la revisión de solapes del grafo).
+const cajaLocal = (t) => ({ x: t.x - t.displayWidth * t.originX, y: t.y - t.displayHeight * t.originY, w: t.displayWidth, h: t.displayHeight });
 const tipoDe = (id) => id.replace(/\d$/, '');
 
 export class HUDMaquina extends Phaser.Scene {
@@ -58,7 +61,7 @@ export class HUDMaquina extends Phaser.Scene {
     this.contenedor = this.add.container(PANEL.xDerecha, PANEL.y).setVisible(false);
 
     const marco = this.add.graphics();
-    marco.fillStyle(COLORES.panel, 0.92);
+    marco.fillStyle(COLORES.panel, 1); // opaco: la planta no se ve a través del panel (18.21)
     marco.fillRect(0, 0, PANEL.ancho, PANEL.alto);
     marco.lineStyle(2, COLORES.banda, 1);
     marco.strokeRect(0, 0, PANEL.ancho, PANEL.alto);
@@ -266,6 +269,7 @@ Regla: ${this.celda.razonSupervisor}`,
     g.fillPoints(entrada, true);
 
     // Nodos: círculo con su nombre debajo; los marcados llevan doble círculo.
+    const fijos = [];
     for (const estado of this.modelo.estados) {
       const p = this.pos[estado];
       g.fillStyle(COLORES.panel, 1);
@@ -273,7 +277,39 @@ Regla: ${this.celda.razonSupervisor}`,
       g.lineStyle(2, COLORES.maquina, 1);
       g.strokeCircle(p.x, p.y, RADIO);
       if (this.modelo.marcados.includes(estado)) g.strokeCircle(p.x, p.y, RADIO - 5);
-      this._texto(p.x, p.y + RADIO + 2, estado, { fontSize: '10px' }).setOrigin(0.5, 0);
+      const nombre = this._texto(p.x, p.y + RADIO + 2, estado, { fontSize: '10px' }).setOrigin(0.5, 0);
+      fijos.push({ x: p.x - RADIO, y: p.y - RADIO, w: 2 * RADIO, h: 2 * RADIO }, cajaLocal(nombre));
+    }
+    this._separarRotulos(this.aristas.map((a) => a.texto), fijos);
+  }
+
+  /**
+   * Revisión de solapes (18.21): si la etiqueta de una flecha choca con un nodo, con el nombre de un estado o con otra etiqueta,
+   * se corre unos píxeles (arriba, abajo o a los lados) hasta quedar libre y dentro del área del grafo.
+   */
+  _separarRotulos(rotulos, fijos) {
+    const cruza = (a, b) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
+    const area = { x: GRAFO.x, y: GRAFO.y - 4, x2: GRAFO.x + GRAFO.ancho, y2: GRAFO.y + this._altoGrafo };
+    const ocupados = [...fijos];
+    // Posiciones candidatas en una rejilla alrededor del sitio original, de la más cercana a la más lejana.
+    const pruebas = [];
+    for (let dx = -96; dx <= 96; dx += 6) for (let dy = -42; dy <= 42; dy += 6) pruebas.push([dx, dy]);
+    pruebas.sort((a, b) => Math.hypot(a[0] / 1.6, a[1]) - Math.hypot(b[0] / 1.6, b[1]));
+    for (const t of rotulos) {
+      const x0 = t.x;
+      const y0 = t.y;
+      let libre = null;
+      for (const [dx, dy] of pruebas) {
+        t.setPosition(x0 + dx, y0 + dy);
+        const c = cajaLocal(t);
+        const dentro = c.x >= area.x && c.x + c.w <= area.x2 && c.y >= area.y && c.y + c.h <= area.y2;
+        if (dentro && !ocupados.some((o) => cruza(c, o))) {
+          libre = c;
+          break;
+        }
+      }
+      if (!libre) t.setPosition(x0, y0);
+      ocupados.push(cajaLocal(t));
     }
   }
 
@@ -611,7 +647,44 @@ Regla: ${this.celda.razonSupervisor}`,
         principales.push({ etiqueta, tipo: 'gris', tip: 'Transición automática de la red: se dispara sola cuando hay mesa y brazo.' });
       }
     }
+    // Botones rojos y grises: la razón en 2 líneas (simple y formal) para el tooltip (guía p. 20, punto 3).
+    for (const d of principales) {
+      if (d.tipo === 'verde' || d.consola || d.razon) continue;
+      if (!d.maquina) {
+        const ev = d.etiqueta.split(' · ')[1];
+        const info = this.automata.eventos.get(ev);
+        if (info && !info.controlable) d.razon = razones(c, { evento: ev, motivo: 'no_controlable', codigo: info.codigo });
+        else if (ev === 'cargar' || ev === 'descargar') d.razon = razones(c, { evento: ev, motivo: 'sin_cnc' });
+        else d.razon = { simple: 'Esto ocurre solo cuando la mesa y el robot están libres; no se pulsa.', formal: 'Transición automática de la red de Petri: no es controlable.' };
+        continue;
+      }
+      let motivo = c.evaluar(d.maquina, d.evento, d.opciones);
+      if ((d.evento === 'cargar' || d.evento === 'descargar') && c.atendida !== d.maquina) motivo = c.atendida ? 'otra_cnc' : 'sin_cnc';
+      const cnc = d.maquina.startsWith('CNC') ? d.maquina : d.opciones?.objetivo ?? c.atendida;
+      d.razon = razones(c, { maquina: d.maquina, evento: d.evento, opciones: d.opciones, motivo, cnc });
+    }
     return { principales, brazo: [] };
+  }
+
+  /**
+   * Tooltip de un botón del panel. Mouse: al pasar por encima. Táctil: mantener presionado 0,5 s (y al soltar no se pulsa).
+   * Rojo o gris: la razón en 2 líneas, primero en palabras simples y debajo la formal.
+   */
+  _conTooltip(rect, d, accion) {
+    let largo = null;
+    let mostrado = false;
+    rect.on('pointerover', (p) => { if (!p?.wasTouch) this._mostrarTip(textoTooltip(d)); });
+    rect.on('pointerout', () => { largo?.remove(); if (!mostrado) this.tip.setVisible(false); });
+    rect.on('pointerdown', (p) => {
+      largo?.remove();
+      mostrado = false;
+      if (p?.wasTouch) largo = alMantener(this, () => { mostrado = true; this._mostrarTip(textoTooltip(d)); });
+    });
+    rect.on('pointerup', () => {
+      largo?.remove();
+      if (mostrado) { mostrado = false; return; }
+      accion();
+    });
   }
 
   /** Coloca una fila de botones (hasta 4) en la altura y. */
@@ -631,9 +704,7 @@ Regla: ${this.celda.razonSupervisor}`,
         })
         .setOrigin(0.5);
       const boton = { rect, texto, d };
-      rect.on('pointerover', () => this._mostrarTip(d.tip));
-      rect.on('pointerout', () => this.tip.setVisible(false));
-      rect.on('pointerup', () => this._pulsar(d, rect));
+      this._conTooltip(rect, d, () => this._pulsar(d, rect));
       this.capaBotones.add([rect, texto]);
       this.botones.push(boton);
     });
@@ -880,7 +951,7 @@ Regla: ${this.celda.razonSupervisor}`,
     if (!r) return;
     this._destello = { x: rect.x, y: rect.y, ancho: rect.width, alto: rect.height, inicio: this.time.now };
     this._sucia = true;
-    if (!r.ok && !r.reparar) this._mostrarTip(r.tipo === 'rojo' ? `Bloqueado (−15 puntos). ${r.tip}` : r.tip);
+    if (!r.ok && !r.reparar) this._mostrarTip(textoTooltip(r));
   }
 
   /** Por cuadro en la pestaña «Acciones»: estado, botones (solo se rehacen si cambiaron), progreso del fresado e historial. */
@@ -916,9 +987,7 @@ Regla: ${this.celda.razonSupervisor}`,
         const verbo = this.add.text(x + 44, y + 5, d.verbo, { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: colorTexto });
         const evento = this.add.text(x + 44, y + 22, `${d.codigo} · ${d.nombre}`, { fontFamily: 'Arial', fontSize: '9px', color: colorTexto });
         const tecla = this.add.text(x + ancho - 6, y + 4, d.tecla, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: colorTexto, backgroundColor: 'rgba(22,27,34,0.55)', padding: { x: 4, y: 1 } }).setOrigin(1, 0);
-        rect.on('pointerup', () => this._pulsarVerbo(d, rect));
-        rect.on('pointerover', () => this._mostrarTip(d.tip));
-        rect.on('pointerout', () => this.tip.setVisible(false));
+        this._conTooltip(rect, d, () => this._pulsarVerbo(d, rect));
         this.accBoton.add([rect, icono, verbo, evento, tecla]);
         this.botonesAcc.push({ rect, d });
       });
@@ -986,7 +1055,7 @@ Regla: ${this.celda.razonSupervisor}`,
     if (rect) this._destello = { x: rect.x, y: rect.y, ancho: rect.width, alto: rect.height, inicio: this.time.now };
     const r = this.celda.solicitar(d.maquina, d.evento, d.opciones);
     this._sucia = true;
-    if (!r.ok) this._mostrarTip(`Rechazado (${r.motivo}). ${d.tip}`);
+    if (!r.ok) this._mostrarTip(textoTooltip(d));
   }
 
   // ---- Lista de eventos ----

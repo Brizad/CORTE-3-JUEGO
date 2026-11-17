@@ -24,7 +24,7 @@ import { Efectos } from '../entidades/Efectos.js';
 import { Logros } from '../sed/logros.js';
 import { camaraLogica } from './camara.js';
 import { alternarPantallaCompleta } from '../pantalla.js';
-import { guardarResultado } from '../guardado.js';
+import { guardarLogros, registrarPuntaje, jugadorActual } from '../guardado.js';
 import { DESCRIPCION_MAQUINA } from '../textos.js';
 
 const ALTO_MURO = ALTOS.MURO; // px (docs/arte.md, sección 3)
@@ -46,6 +46,7 @@ export class Planta extends Phaser.Scene {
     this.reloj.reiniciar();
     this.aleatorio = this.registry.get('aleatorio');
     this.partida = this.registry.get('partida'); // turno actual, puntaje acumulado y logros
+    this.jugador = jugadorActual() ?? 'Jugador'; // jugador que eligió en el título (GDD 18.21)
     this.sonidos = this.registry.get('sonidos');
     if (this.partida.rngInicio !== null) {
       // Reintento del turno: la misma semilla y el estado del generador del inicio del turno (GDD, sección 17).
@@ -177,6 +178,7 @@ export class Planta extends Phaser.Scene {
     this.logros = new Logros(this.partida.logros, this.partida.turno, (logro) => {
       if (this.partida.tutorial) return; // el tutorial no guarda logros
       this.logrosDelTurno.push(logro.id);
+      guardarLogros(this.jugador, [logro.id]); // logros POR jugador, con la fecha en que se ganaron
       this.events.emit('logro', logro);
       this.sonidos.logro();
       this.cameras.main.flash(320, 212, 175, 55); // destello dorado al ganar un logro
@@ -219,7 +221,10 @@ export class Planta extends Phaser.Scene {
           this.scene.get('HUDMaquina').cerrar?.(); // el panel taparía la vista de la red
           this.vistaRed.activar();
         }
-        else this.scene.launch('GameOver');
+        else {
+          this._guardarPuntaje(this.celda.puntaje); // game over: también cuenta para "Mejores puntajes"
+          this.scene.launch('GameOver');
+        }
       }
       // Controlador de celda: la red tiene un lugar más, se rehacen las fichas.
       if (e.tipo === 'controlador') {
@@ -233,11 +238,18 @@ export class Planta extends Phaser.Scene {
         this.scene.get('Inspector').cerrar?.();
         this.scene.stop('GameOver');
         this.partida.terminarTurno(e.resumen);
-        if (!this.partida.tutorial) guardarResultado({ puntaje: e.resumen.puntaje, logros: [...this.partida.logros.ganados] }); // mejor puntaje y logros
+        this._guardarPuntaje(e.resumen.puntaje); // victoria o derrota: "Mejores puntajes"
         this.scene.launch('Resultados');
       }
       this._sonar(e);
     });
+  }
+
+  /** Guarda el resultado de la partida en "Mejores puntajes" (una fila por partida: reintentar la actualiza). Nunca en el tutorial. */
+  _guardarPuntaje(puntaje) {
+    if (this.partida.tutorial) return;
+    this.partida.idGuardado ??= `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+    registrarPuntaje({ id: this.partida.idGuardado, nombre: this.jugador, puntaje, turno: this.partida.turno + 1 });
   }
 
   // ---- Textos de depuración ----
@@ -365,6 +377,7 @@ export class Planta extends Phaser.Scene {
       const menu = this.scene.get('MenuPausa');
       if (ayuda.scene.isActive()) return ayuda.cerrar();
       if (menu.scene.isActive()) return menu.cerrar();
+      if (inspector().cerrarFicha?.()) return; // Esc con la ficha de un logro abierta: cierra solo la ficha
       hud().cerrar?.();
       inspector().cerrar?.();
     });
