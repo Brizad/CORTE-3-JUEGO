@@ -115,3 +115,61 @@ test('un jugador rápido no se salta pasos: la guía consume la bitácora en ord
 test('los textos del tutorial no usan las palabras "pedido" ni "cliente"', () => {
   for (const p of PASOS) assert.ok(!/pedido|cliente/i.test(p.mensaje), p.id);
 });
+
+test('game over en el tutorial: tras reintentar, si el paso pedía el deadlock la guía sigue con el siguiente (fin)', () => {
+  const { reloj, celda } = nueva();
+  const guia = new GuiaTutorial();
+  let ms = 0;
+  const avanzar = () => { ms += 100; guia.avanzar(celda, { hud: null }, ms); };
+  // Ir directo a los pasos del deadlock y provocarlo como pide la guía.
+  guia.irA('deadlock1', celda, ms);
+  ejecutar(celda, 'agv1'); avanzar();
+  assert.equal(PASOS[guia.indice].id, 'deadlock2');
+  ejecutar(celda, 'agv2'); avanzar();
+  assert.equal(celda.deadlock, true);
+  assert.equal(guia.terminado, true);
+  const tVerde = celda.ultimoVerde.t;
+  assert.equal(celda.reintentarDesdeVerde(), true);
+  assert.equal(guia.trasReintentar(tVerde, celda, ms), 'fin'); // no vuelve a pedir el deadlock
+  assert.equal(celda.deadlock, false);
+  reloj.avanzar(1);
+});
+
+test('game over sin querer en el tutorial: tras reintentar la guía vuelve al paso que corresponde al marcado verde', () => {
+  const { reloj, celda } = nueva();
+  const guia = new GuiaTutorial();
+  let ms = 0;
+  const avanzar = () => { ms += 100; guia.avanzar(celda, { hud: null }, ms); };
+  avanzar();
+  assert.equal(PASOS[guia.indice].id, 'ir');
+  reloj.avanzar(3);
+  // El jugador pulsa Q y W en el primer paso: la celda se traba.
+  ejecutar(celda, 'agv1'); ejecutar(celda, 'agv2'); avanzar();
+  assert.equal(celda.deadlock, true);
+  const tVerde = celda.ultimoVerde.t;
+  celda.reintentarDesdeVerde();
+  assert.equal(guia.trasReintentar(tVerde, celda, ms), 'ir');
+  // Y la guía sigue funcionando desde ahí.
+  ejecutar(celda, 'ir1'); avanzar();
+  assert.equal(PASOS[guia.indice].id, 'llegar');
+});
+
+test('trasReintentar vuelve al paso activo cuando se guardó el último marcado verde (y la guía sigue desde ahí)', () => {
+  const { reloj, celda } = nueva();
+  const guia = new GuiaTutorial();
+  let ms = 0;
+  const avanzar = () => { ms += 100; guia.avanzar(celda, { hud: null }, ms); };
+  avanzar();
+  reloj.avanzar(1);
+  ejecutar(celda, 'ir1'); avanzar(); // → llegar
+  reloj.avanzar(2); avanzar(); // → abrir
+  assert.equal(PASOS[guia.indice].id, 'abrir');
+  // El último marcado verde se guardó al disparar tr_ir (t = 1): al restaurarlo el brazo vuelve a ir en camino,
+  // así que la guía vuelve al paso «llegar», que coincide con ese estado.
+  const tVerde = celda.ultimoVerde.t;
+  celda.reintentarDesdeVerde();
+  assert.equal(celda.estado('BRAZO'), 'Moviendo');
+  assert.equal(guia.trasReintentar(tVerde, celda, ms), 'llegar');
+  reloj.avanzar(2); avanzar();
+  assert.equal(PASOS[guia.indice].id, 'abrir');
+});

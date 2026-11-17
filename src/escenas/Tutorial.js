@@ -9,6 +9,7 @@ import { camaraLogica } from './camara.js';
 import { resaltable } from './resaltar.js';
 
 const CAJA = { x: 8, y: 56, ancho: 410, alto: 70 };
+const FIN_SUPERADO = 'Celda destrabada. Atiende un AGV a la vez o usa el Controlador. ¡Listo para el turno 1!';
 
 export class Tutorial extends Phaser.Scene {
   constructor() {
@@ -94,10 +95,12 @@ export class Tutorial extends Phaser.Scene {
     this.guia.avanzar(this.celda, ctx, tiempo);
     const paso = this.guia.paso;
     const n = PASOS.indexOf(paso) + 1;
-    if (paso.mensaje !== this._mensaje) {
-      this._mensaje = paso.mensaje;
+    // Tras reintentar el deadlock pedido, el último paso ya no dice «celda trabada».
+    const mensaje = this._superado && this.guia.terminado ? FIN_SUPERADO : paso.mensaje;
+    if (mensaje !== this._mensaje) {
+      this._mensaje = mensaje;
       this.titulo.setText(`TURNO 0 · PASO ${n} DE ${PASOS.length}`);
-      this.texto.setText(paso.mensaje);
+      this.texto.setText(mensaje);
       this.texto.setAlpha(0.3);
       this.tweens.add({ targets: this.texto, alpha: 1, duration: 300 });
     }
@@ -110,8 +113,21 @@ export class Tutorial extends Phaser.Scene {
     if (objetivo) this.flecha.setPosition(objetivo.x, objetivo.y - this._rebote);
   }
 
+  /**
+   * Después de reintentar desde el game over: se cierra la vista de la red y la guía sigue con el paso que corresponde
+   * (si el paso pedía provocar el deadlock, el siguiente: el final del tutorial, con un mensaje de celda destrabada).
+   */
+  trasReintentar(tVerde) {
+    if (this.planta.vistaRed.activa) this.planta.vistaRed.alternar();
+    const id = this.guia.trasReintentar(tVerde, this.celda, this.time.now);
+    this._superado = id === 'fin';
+    this._mensaje = '';
+  }
+
   /** Reintentar el final: vuelve al último marcado verde y la guía al paso del deadlock. */
   _reintentarFinal() {
+    this.scene.stop('GameOver');
+    this._superado = false;
     if (!this.celda.reintentarDesdeVerde()) return;
     this.planta.vistaRed.activa && this.planta.vistaRed.alternar();
     this.guia.irA('deadlock1', this.celda, this.time.now);

@@ -35,6 +35,7 @@ export class GuiaTutorial {
     this.indice = 0;
     this._desde = null; // ms en que se mostró el paso actual
     this._cursor = 0; // posición de la bitácora ya consumida
+    this._inicios = [{ indice: 0, t: 0 }]; // segundo de simulación en que empezó cada paso (para retomar tras un reintento)
   }
 
   get paso() {
@@ -74,9 +75,29 @@ export class GuiaTutorial {
       this._cursor = Math.max(this._cursor, donde + 1);
       this.indice++;
       this._desde = ahoraMs;
+      this._inicios.push({ indice: this.indice, t: celda.reloj?.ahora ?? 0 });
       n++;
     }
     return n;
+  }
+
+  /**
+   * Retoma la guía después de «Reintentar desde el último marcado verde» (game over por interbloqueo).
+   * Si el paso pedía provocar el deadlock (la guía ya está en «fin»), sigue con el paso siguiente: se queda en «fin».
+   * Si el deadlock fue sin querer, vuelve al paso que estaba activo en el segundo `tVerde` del marcado restaurado.
+   * Lo ocurrido antes del reintento no cuenta para los pasos.
+   * @returns {string} id del paso en que queda la guía.
+   */
+  trasReintentar(tVerde, celda, ahoraMs = 0) {
+    if (!this.terminado) {
+      const previos = this._inicios.filter((x) => x.t <= tVerde);
+      const destino = previos.length ? previos[previos.length - 1].indice : 0;
+      this._inicios = this._inicios.filter((x) => x.t <= tVerde);
+      this.indice = destino;
+    }
+    this._desde = ahoraMs;
+    this._cursor = celda.bitacora.length;
+    return this.paso.id;
   }
 
   /** Vuelve a un paso por su id (por ejemplo, para reintentar el final); lo ya ocurrido no cuenta. */

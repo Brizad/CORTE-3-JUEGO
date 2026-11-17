@@ -66,8 +66,21 @@ export class GameOver extends Phaser.Scene {
       this.add.text(x0 + x + ancho / 2, y0 + y + 22, etiqueta, { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.texto, align: 'center' }).setOrigin(0.5);
       rect.on('pointerup', accion);
     };
+    if (planta.partida.tutorial) {
+      // Tutorial: los mismos dos botones de los turnos y «Saltar al Turno 1» (antes no había forma de seguir sin recargar).
+      boton(16, 298, 170, 'Reintentar desde el\núltimo marcado verde', COLORES.operacion, () => this._reintentar(false));
+      boton(194, 298, 182, `Reintentar y comprar el\nControlador (${PUNTOS.controlador})`, COLORES.mantenimiento, () => this._reintentar(true));
+      boton(384, 298, 160, 'Saltar al Turno 1', COLORES.banda, () => this._saltarATurno1());
+      return;
+    }
     boton(16, 298, 250, 'Reintentar desde el último\nmarcado verde', COLORES.operacion, () => this._reintentar(false));
     boton(278, 298, 266, `Reintentar y comprar el\nControlador de celda (${PUNTOS.controlador})`, COLORES.mantenimiento, () => this._reintentar(true));
+  }
+
+  /** Tutorial: termina el Turno 0 y empieza el turno 1 (la planta se vuelve a crear y esta pantalla se cierra con ella). */
+  _saltarATurno1() {
+    this.abierto = false;
+    this.scene.get('Tutorial')?._empezarTurno1?.();
   }
 
   /** Verdadero mientras la pantalla está abierta: bloquea todos los clics de abajo. */
@@ -77,9 +90,11 @@ export class GameOver extends Phaser.Scene {
 
   _reintentar(conControlador) {
     const c = this.celda;
+    const tVerde = c.ultimoVerde?.t ?? 0;
     if (!c.reintentarDesdeVerde()) return;
     if (conControlador) c.comprarControlador();
     this.planta.piloto.reprogramar();
+    if (this.planta.partida.tutorial) this.scene.get('Tutorial')?.trasReintentar?.(tVerde); // la guía sigue donde corresponde
     this.abierto = false;
     this.scene.stop('GameOver');
   }

@@ -220,6 +220,7 @@ export class Planta extends Phaser.Scene {
         if (this.partida.tutorial) {
           this.scene.get('HUDMaquina').cerrar?.(); // el panel taparía la vista de la red
           this.vistaRed.activar();
+          this.scene.launch('GameOver'); // mismos botones que en los turnos, más «Saltar al Turno 1»
         }
         else {
           this._guardarPuntaje(this.celda.puntaje); // game over: también cuenta para "Mejores puntajes"
