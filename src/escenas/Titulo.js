@@ -3,6 +3,7 @@
 
 import { COLORES, TEXTO_HEX, ANCHO, ALTO } from '../config.js';
 import { Partida } from '../sed/partida.js';
+import { resaltable } from './resaltar.js';
 import { LOGROS } from '../sed/logros.js';
 import { CONTROLES } from '../textos.js';
 import { leerGuardado } from '../guardado.js';
@@ -77,8 +78,8 @@ export class Titulo extends Phaser.Scene {
     const estilo = (extra = {}) => ({ fontFamily: 'Arial', fontSize: '13px', color: TEXTO_HEX.texto, ...extra });
     const objetos = [fondo, marco, this.add.text(x0 + 16, y0 + 12, 'Controles', estilo({ fontSize: '20px', fontStyle: 'bold' }))];
     ['Acción', 'Mouse y teclado', 'Táctil'].forEach((c, i) => objetos.push(this.add.text(x0 + 16 + [0, 300, 530][i], y0 + 48, c, estilo({ fontStyle: 'bold', color: TEXTO_HEX.espera }))));
-    CONTROLES.forEach((fila, r) => fila.forEach((c, i) => objetos.push(this.add.text(x0 + 16 + [0, 300, 530][i], y0 + 76 + r * 26, c, estilo()))));
-    const cerrar = this.add.rectangle(x0 + ancho / 2, y0 + 442, 140, 34, COLORES.banda).setStrokeStyle(2, COLORES.texto, 0.9).setInteractive({ useHandCursor: true });
+    CONTROLES.forEach((fila, r) => fila.forEach((c, i) => objetos.push(this.add.text(x0 + 16 + [0, 300, 530][i], y0 + 72 + r * 20, c, estilo({ fontSize: '12px' })))));
+    const cerrar = resaltable(this.add.rectangle(x0 + ancho / 2, y0 + 442, 140, 34, COLORES.banda).setInteractive({ useHandCursor: true }));
     cerrar.on('pointerup', () => this._controles(false));
     objetos.push(cerrar, this.add.text(x0 + ancho / 2, y0 + 442, 'Cerrar', estilo({ fontStyle: 'bold' })).setOrigin(0.5));
     this.panel.add(objetos);

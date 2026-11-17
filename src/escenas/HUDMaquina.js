@@ -1,6 +1,8 @@
-// HUD de máquina: escena superpuesta que se lanza en paralelo a Planta (no pausa la simulación).
-// Dibuja el grafo del autómata de la máquina elegida con las coordenadas del .jff, ilumina el estado actual,
-// ofrece un botón por cada evento de Γ(q) y lista los últimos 10 eventos de la máquina.
+// HUD de máquina: escena superpuesta que se lanza en paralelo a Planta (no pausa la simulación). Tiene dos capas (GDD 18.19):
+//  - Pestaña «Acciones» (la que abre): un botón grande con el verbo de juego de ESA máquina ("Cargar bloque", "Fresar",
+//    "Sacar pieza", "Despachar AGV 1"), la barra de progreso del fresado o la consola de reparación, y el historial de eventos.
+//  - Pestaña «Autómata»: el grafo del autómata con las coordenadas del .jff, el estado actual iluminado, un botón por cada
+//    evento de Γ(q) (verde, gris o rojo) y los últimos 10 eventos. Las CNC tienen además la pestaña «Composición».
 // No cambia ningún estado por su cuenta: cada botón le pide el evento a la Celda (δ y red de Petri).
 
 import { COLORES, TEXTO_HEX } from '../config.js';
@@ -10,6 +12,8 @@ import { ConsolaReparacion, COMANDOS } from '../sed/consola.js';
 import { EXPRESION_TEXTO } from '../sed/lenguaje.js';
 import { claveDe } from '../sed/composicion.js';
 import { camaraLogica } from './camara.js';
+import { resaltable, fijarBorde } from './resaltar.js';
+import { textoEsperaAGV } from '../textos.js';
 
 const PANEL = { ancho: 460, alto: 392, y: 56, xDerecha: 492, xIzquierda: 8 }; // docs/arte.md, sección 7 y docs/GDD.md, sección 18.2
 const ANCHO_UTIL = PANEL.ancho - 24; // ancho del contenido del panel
@@ -25,6 +29,13 @@ const PARPADEO = 3; // s (reloj real) que parpadea la última transición: decis
 const PERIODO_PARPADEO = 0.5; // 3 s / 0,5 s = 6 parpadeos
 const DESTELLO_BOTON = 0.45; // s que destella en amarillo el botón pulsado
 const HEX = (c) => `#${c.toString(16).padStart(6, '0')}`;
+const ACCION = { x: 12, y: 70, ancho: ANCHO_UTIL, alto: 80 }; // botón grande de la pestaña «Acciones»
+const NOMBRE_MAQUINA = { CNC1: 'CNC 1', CNC2: 'CNC 2', BRAZO: 'Brazo', AGV1: 'AGV 1', AGV2: 'AGV 2' };
+const QUE_HACE = {
+  CNC: 'Fresa los bloques (10 s). El brazo la carga y la descarga.',
+  BRAZO: 'Carga y descarga las CNC. Se maneja con «Cargar bloque» y «Sacar pieza» de cada CNC.',
+  AGV: 'Trae material. Para descargarlo necesita la MESA y el ROBOT al mismo tiempo.',
+};
 
 const MODELO_DE = { CNC: MODELOS.cnc, BRAZO: MODELOS.brazo, AGV: MODELOS.agv };
 const tipoDe = (id) => id.replace(/\d$/, '');
@@ -55,16 +66,29 @@ export class HUDMaquina extends Phaser.Scene {
       .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
     this.cerrarBoton.on('pointerup', () => this.cerrar());
+    this.cerrarBoton.on('pointerover', () => this.cerrarBoton.setColor(TEXTO_HEX.espera));
+    this.cerrarBoton.on('pointerout', () => this.cerrarBoton.setColor(TEXTO_HEX.texto));
 
-    // Pestañas del HUD de las CNC: Autómata y Composición.
-    this._pestana = 'automata';
+    // Pestañas: Acciones (verbos de juego) y Autómata (grafo y eventos). Las CNC tienen además Composición.
+    this._pestana = 'acciones';
     this.pestanas = {};
-    for (const [clave, etiqueta, x, ancho] of [['automata', 'Autómata', 70, 56], ['composicion', 'Composición', 130, 74]]) {
-      const rect = this.add.rectangle(x, 5, ancho, 18, COLORES.panel).setOrigin(0).setStrokeStyle(1, COLORES.maquina).setInteractive({ useHandCursor: true });
+    for (const [clave, etiqueta, x, ancho] of [['acciones', 'Acciones', 72, 58], ['automata', 'Autómata', 134, 58], ['composicion', 'Composición', 196, 76]]) {
+      const rect = resaltable(this.add.rectangle(x, 5, ancho, 18, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true }), [1, COLORES.maquina, 1]);
       const t = this.add.text(x + ancho / 2, 14, etiqueta, { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
-      rect.on('pointerup', () => this._cambiarPestana(clave));
-      this.pestanas[clave] = { rect, t };
+      rect.on('pointerup', () => { this.planta?.sonidos.clic(); this._cambiarPestana(clave); });
+      this.pestanas[clave] = { rect, t, etiqueta };
     }
+    // Capa de la pestaña «Acciones»: estado, botón grande (o barra de progreso) e historial de eventos reales.
+    this.capaAcciones = this.add.container(0, 0);
+    this.accEstado = this.add.text(30, 30, '', { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.texto });
+    this.accQueHace = this.add.text(12, 48, '', { fontFamily: 'Arial', fontSize: '10px', color: '#8794a3', wordWrap: { width: ANCHO_UTIL } });
+    this.accPunto = this.add.graphics(); // punto con el color del estado
+    this.accBoton = this.add.container(0, 0); // botón grande: se rehace cuando cambia la acción
+    this.accProgreso = this.add.graphics(); // barra del fresado
+    this.accCabecera = this.add.text(12, 162, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    this.accHistorial = this.add.text(12, 178, '', { fontFamily: 'Courier New, monospace', fontSize: '10px', color: TEXTO_HEX.texto, lineSpacing: 3 });
+    this.capaAcciones.add([this.accPunto, this.accEstado, this.accQueHace, this.accBoton, this.accProgreso, this.accCabecera, this.accHistorial]);
+    this._firmaAccion = '';
     this.capaComposicion = this.add.container(0, 0).setVisible(false);
     const fuente = { fontFamily: 'Arial', fontSize: '11px', color: TEXTO_HEX.texto, lineSpacing: 5, wordWrap: { width: ANCHO_UTIL } };
     this.capaComposicion.add([
@@ -99,7 +123,7 @@ export class HUDMaquina extends Phaser.Scene {
 
     this.contenedor.add([
       marco, this.titulo, this.cerrarBoton, this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos,
-      this.capaBotones, this.gfxDestello, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, ...this.columnas.flatMap((c) => [c.t, c.c, c.f]), this.tip,
+      this.capaBotones, this.capaAcciones, this.gfxDestello, this.capaConsola, this.capaComposicion, ...Object.values(this.pestanas).flatMap((q) => [q.rect, q.t]), this.cabeceraBrazo, this.aviso, this.cabeceraLista, ...this.columnas.flatMap((c) => [c.t, c.c, c.f]), this.tip,
     ]);
     this.botones = [];
     this._firmaBotones = '';
@@ -127,7 +151,9 @@ export class HUDMaquina extends Phaser.Scene {
     this.tipo = tipoDe(id);
     this.modelo = MODELO_DE[this.tipo];
     this.automata = this.celda.automatas[id];
-    this.titulo.setText(this.tipo === 'CNC' ? `${nombre ?? id}` : `${nombre ?? id}   (${this.modelo.nombre})`);
+    this.titulo.setText(NOMBRE_MAQUINA[id] ?? nombre ?? id);
+    this.accQueHace.setText(QUE_HACE[this.tipo]);
+    this._firmaAccion = '';
     // Cifras de la pestaña Composición (CNC ‖ Brazo y sistema supervisado).
     const sup = this.celda.supervisores[id];
     this.txtCompFijo?.setText(
@@ -168,12 +194,20 @@ Regla: ${this.celda.razonSupervisor}`,
     this._sucia = true;
   }
 
-  /** Posición en pantalla (centro de arriba) de un botón del panel por su etiqueta, o null. Lo usa la flecha del tutorial. */
-  posicionBoton(etiqueta) {
-    if (!this.abierto || this._pestana !== 'automata') return null;
-    const b = this.botones.find((x) => x.d.etiqueta === etiqueta);
-    if (!b) return null;
-    return { x: this.panelX + b.rect.x + b.rect.width / 2, y: PANEL.y + b.rect.y };
+  /**
+   * Posición en pantalla (centro de arriba) de un botón del panel por su etiqueta, o null. Lo usa la flecha del tutorial.
+   * Busca en la pestaña abierta: el botón grande de «Acciones» o los botones de evento de «Autómata» (`alterna` es la
+   * etiqueta equivalente en esa pestaña). También sirve para señalar una pestaña por su nombre.
+   */
+  posicionBoton(etiqueta, alterna) {
+    if (!this.abierto) return null;
+    const centro = (r) => ({ x: this.panelX + r.x + r.width / 2, y: PANEL.y + r.y });
+    const pestana = Object.values(this.pestanas).find((q) => q.etiqueta === etiqueta && q.rect.visible);
+    if (pestana) return centro(pestana.rect);
+    if (this._pestana === 'acciones') return this._accRect && this._accEtiqueta === etiqueta ? centro(this._accRect) : null;
+    if (this._pestana !== 'automata') return null;
+    const b = this.botones.find((x) => x.d.etiqueta === etiqueta || (alterna && x.d.etiqueta === alterna));
+    return b ? centro(b.rect) : null;
   }
 
   /** Cierra el panel. */
@@ -482,14 +516,19 @@ Regla: ${this.celda.razonSupervisor}`,
       this._sucia = false;
       this._actualizarBotones();
       this._actualizarLista();
+      this._firmaHistorial = '';
+    }
+    if (this._pestana !== 'automata') {
+      // Fuera de la pestaña Autómata, nada del grafo se ve ni recibe clics.
+      for (const o of [this.cabeceraBrazo, this.cabeceraLista]) o.setVisible(false);
+      this._listaVisible(false);
     }
     if (this._pestana === 'composicion') {
-      // Pestaña Composición: nada de lo del autómata se ve ni recibe clics.
-      for (const o of [this.capaConsola, this.cabeceraBrazo, this.cabeceraLista]) o.setVisible(false);
-      this._listaVisible(false);
+      this.capaConsola.setVisible(false);
       this._refrescarComposicion();
     }
-    if (this._modoConsola && this._consolaLista && this._pestana === 'automata') this._refrescarConsola();
+    if (this._pestana === 'acciones') this._actualizarAcciones();
+    if (this._modoConsola && this._consolaLista && this._pestana !== 'composicion') this._refrescarConsola();
   }
 
   /** Último evento de esta máquina en la bitácora de la Celda. */
@@ -619,15 +658,16 @@ Regla: ${this.celda.razonSupervisor}`,
     const colores = { verde: COLORES.operacion, gris: COLORES.banda, rojo: COLORES.fallo };
     lista.forEach((d, i) => {
       const x = GRAFO.x + i * (ancho + BOTON.hueco);
-      const rect = this.add.rectangle(x, y, ancho, BOTON.alto, colores[d.tipo]).setOrigin(0).setStrokeStyle(2, COLORES.texto, d.tipo === 'gris' ? 0.25 : 0.9);
+      const rect = this.add.rectangle(x, y, ancho, BOTON.alto, colores[d.tipo]).setOrigin(0);
       rect.setInteractive({ useHandCursor: d.tipo !== 'gris' });
+      // Rojo relleno con borde claro grueso; todo lo clicable se resalta con el puntero encima.
+      resaltable(rect, d.tipo === 'rojo' ? [3, COLORES.texto, 1] : [2, COLORES.texto, d.tipo === 'gris' ? 0.25 : 0.9]);
       const texto = this.add
         .text(x + ancho / 2, y + BOTON.alto / 2, d.etiqueta, {
           fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: d.tipo === 'gris' ? '#8794a3' : TEXTO_HEX.texto, align: 'center', wordWrap: { width: ancho - 8 },
         })
         .setOrigin(0.5);
       const boton = { rect, texto, d };
-      if (d.tipo === 'rojo') rect.setStrokeStyle(3, 0xffffff, 1); // rojo relleno, borde blanco y texto blanco: se ve sin filtros
       rect.on('pointerover', () => this._mostrarTip(d.tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
       rect.on('pointerup', () => this._pulsar(d, rect));
@@ -644,7 +684,7 @@ Regla: ${this.celda.razonSupervisor}`,
       this._firmaBotones = '';
       this.tip.setVisible(false);
     }
-    this.capaConsola.setVisible(enFalla);
+    this.capaConsola.setVisible(enFalla && this._pestana !== 'composicion');
     if (enFalla) {
       this.capaBotones.removeAll(true);
       this.botones = [];
@@ -655,6 +695,14 @@ Regla: ${this.celda.razonSupervisor}`,
       return;
     }
     this._consolaLista = false;
+    if (this._pestana !== 'automata') {
+      // Los botones de evento solo existen en la pestaña Autómata (en las otras no se ven ni reciben clics).
+      this.capaBotones.removeAll(true);
+      this.botones = [];
+      this._firmaBotones = '';
+      this.cabeceraBrazo.setVisible(false);
+      return;
+    }
     const { principales, brazo } = this._describirBotones();
     const firma = JSON.stringify([principales, brazo].map((l) => l.map((d) => [d.etiqueta, d.tipo, d.tip])));
     if (firma === this._firmaBotones) return;
@@ -681,7 +729,7 @@ Regla: ${this.celda.razonSupervisor}`,
   _construirConsola() {
     this.capaConsola.removeAll(true);
     this.consola.limpiar();
-    const y0 = this._yBotones;
+    const y0 = this._pestana === 'acciones' ? 66 : this._yBotones; // en «Acciones» la consola va arriba, sin el grafo
     const texto = (x, y, t, estilo = {}) => {
       const o = this.add.text(x, y, t, { fontFamily: 'Arial', fontSize: '10px', color: TEXTO_HEX.texto, ...estilo });
       this.capaConsola.add(o);
@@ -699,12 +747,11 @@ Regla: ${this.celda.razonSupervisor}`,
     this._claveConsola = '';
 
     const boton = (x, y, ancho, etiqueta, color, accion, tip, colorTexto = TEXTO_HEX.texto) => {
-      const rect = this.add.rectangle(x, y, ancho, BOTON.alto, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9);
-      rect.setInteractive({ useHandCursor: true });
+      const rect = resaltable(this.add.rectangle(x, y, ancho, BOTON.alto, color).setOrigin(0).setInteractive({ useHandCursor: true }));
       const t = this.add.text(x + ancho / 2, y + BOTON.alto / 2, etiqueta, {
         fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: colorTexto, align: 'center',
       }).setOrigin(0.5);
-      rect.on('pointerup', () => { if (this._pestana === 'automata') { accion(); this._consolaSucia = true; } });
+      rect.on('pointerup', () => { if (this._pestana !== 'composicion') { this.planta.sonidos.clic(); accion(); this._consolaSucia = true; } });
       rect.on('pointerover', () => this._mostrarTip(tip));
       rect.on('pointerout', () => this.tip.setVisible(false));
       this.capaConsola.add([rect, t]);
@@ -739,7 +786,7 @@ Regla: ${this.celda.razonSupervisor}`,
     // En equipos lentos Phaser puede entregar varias veces el mismo evento de teclado: cada tecla se atiende una sola vez.
     if (this._atendidas.has(evento)) return;
     this._atendidas.add(evento);
-    if (!this.abierto || !this._modoConsola || this._pestana !== 'automata') return;
+    if (!this.abierto || !this._modoConsola || this._pestana === 'composicion') return;
     const k = evento.key;
     if (k === 'Enter') this._enviar();
     else if (k === 'Backspace') {
@@ -776,13 +823,34 @@ Regla: ${this.celda.razonSupervisor}`,
   // ---- Pestañas: Autómata y Composición (solo en el HUD de las CNC) ----
 
   _cambiarPestana(pestana) {
-    if (this.tipo !== 'CNC' || pestana === this._pestana) return;
+    if (pestana === this._pestana || (pestana === 'composicion' && this.tipo !== 'CNC')) return;
     this._pestana = pestana;
-    const automata = pestana === 'automata';
-    for (const o of [this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos, this.capaBotones]) o.setVisible(automata);
-    this.capaComposicion.setVisible(!automata);
-    this._sucia = true; // al volver, los botones, la consola y la lista se rehacen
+    this._aplicarPestana();
+  }
+
+  /** Tab: pasa de «Acciones» a «Autómata» y al revés. */
+  alternarPestana() {
+    this._cambiarPestana(this._pestana === 'acciones' ? 'automata' : 'acciones');
+  }
+
+  /** Muestra las capas de la pestaña actual y obliga a rehacer botones, consola, lista e historial. */
+  _aplicarPestana() {
+    const p = this._pestana;
+    for (const o of [this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos, this.capaBotones]) o.setVisible(p === 'automata');
+    this.capaAcciones.setVisible(p === 'acciones');
+    if (p !== 'acciones') {
+      // El botón grande solo existe en «Acciones» (oculto seguiría recibiendo el puntero).
+      this.accBoton.removeAll(true);
+      this._accRect = null;
+      this._accEtiqueta = null;
+    }
+    this.capaComposicion.setVisible(p === 'composicion');
+    this.tip.setVisible(false);
+    this._sucia = true;
     this._firmaBotones = '';
+    this._firmaAccion = '';
+    this._firmaHistorial = '';
+    this._consolaLista = false; // la consola cambia de sitio según la pestaña
     this._claveConsola = '';
     this._claveComp = '';
     this._estilizarPestanas();
@@ -791,21 +859,144 @@ Regla: ${this.celda.razonSupervisor}`,
   _estilizarPestanas() {
     for (const [clave, p] of Object.entries(this.pestanas)) {
       const activa = clave === this._pestana;
-      p.rect.setFillStyle(activa ? COLORES.banda : COLORES.panel).setStrokeStyle(activa ? 2 : 1, activa ? COLORES.texto : COLORES.maquina);
+      p.rect.setFillStyle(activa ? COLORES.banda : COLORES.panel);
+      fijarBorde(p.rect, activa ? 2 : 1, activa ? COLORES.texto : COLORES.maquina, 1);
     }
   }
 
-  /** Restaura la pestaña Autómata y muestra las pestañas solo si la máquina es una CNC. */
+  /** Al abrir una máquina: pestaña «Acciones»; «Composición» solo existe en las CNC. */
   _reiniciarPestanas() {
-    this._pestana = 'automata';
-    for (const o of [this.gfxFijo, this.gfxNodo, this.gfxParpadeo, this.capaTextos, this.capaBotones]) o.setVisible(true);
-    this.capaComposicion.setVisible(false);
-    for (const p of Object.values(this.pestanas)) {
-      p.rect.setVisible(this.tipo === 'CNC');
-      p.t.setVisible(this.tipo === 'CNC');
+    this._pestana = 'acciones';
+    this.pestanas.composicion.rect.setVisible(this.tipo === 'CNC');
+    this.pestanas.composicion.t.setVisible(this.tipo === 'CNC');
+    this._aplicarPestana();
+  }
+
+  // ---- Pestaña «Acciones»: verbos de juego ----
+
+  /** Qué ofrece el botón grande ahora: etiqueta, detalle, si se puede pulsar y qué hace. */
+  _describirAccion() {
+    const acc = this.planta.acciones;
+    const id = this.maquinaId;
+    if (this.tipo === 'CNC') return { ...acc.describir(id), ejecutar: () => acc.ejecutar(id) };
+    if (this.tipo === 'AGV') {
+      const d = acc.describirAGV(id);
+      if (this.celda.estado(id) === 'Esperando') {
+        const espera = textoEsperaAGV(this.celda.faltantes(id === 'AGV1' ? 't1b' : 't2b'));
+        if (espera) d.etiqueta = espera;
+      }
+      return { ...d, ejecutar: () => acc.despachar(id).ok };
     }
-    this._claveComp = '';
-    this._estilizarPestanas();
+    const atiende = this.celda.atendida;
+    return { tipo: 'info', etiqueta: atiende ? `Atiende a ${NOMBRE_MAQUINA[atiende]}` : 'En reposo, listo', detalle: 'El brazo no tiene botones propios: usa «Cargar bloque» y «Sacar pieza» en el panel de cada CNC (teclas 1 y 2).', habilitada: false };
+  }
+
+  /** Espacio o clic en el botón grande: la acción principal de la máquina. Dispara eventos reales por δ. */
+  accionPrincipal() {
+    if (!this.abierto || !this.planta) return false;
+    const d = this._describirAccion();
+    if (!d.habilitada) {
+      if (this._pestana === 'acciones') this._mostrarTip(d.detalle || 'Ahora no se puede.');
+      return false;
+    }
+    this.planta.sonidos.clic();
+    if (this._pestana === 'acciones' && this._accRect) this._destello = { x: ACCION.x, y: ACCION.y, ancho: ACCION.ancho, alto: ACCION.alto, inicio: this.time.now };
+    const ok = d.ejecutar();
+    this._sucia = true;
+    return ok;
+  }
+
+  /** Dibuja un ícono sencillo de la máquina (48 px) con centro en (cx, cy). */
+  _iconoMaquina(g, cx, cy, color) {
+    g.lineStyle(3, color, 1);
+    g.fillStyle(color, 1);
+    if (this.tipo === 'CNC') {
+      g.strokeRect(cx - 20, cy - 12, 40, 30); // cuerpo
+      g.fillRect(cx - 5, cy - 24, 10, 12); // husillo
+      g.fillRect(cx - 12, cy - 4, 24, 14); // ventana
+    } else if (this.tipo === 'AGV') {
+      g.strokeRect(cx - 22, cy - 8, 44, 16); // plataforma
+      g.fillRect(cx - 10, cy - 20, 20, 12); // carga
+      g.fillCircle(cx - 13, cy + 14, 5);
+      g.fillCircle(cx + 13, cy + 14, 5);
+    } else {
+      g.fillRect(cx - 18, cy + 12, 22, 8); // base
+      g.lineBetween(cx - 7, cy + 12, cx - 2, cy - 10); // segmento 1
+      g.lineBetween(cx - 2, cy - 10, cx + 16, cy - 2); // segmento 2
+      g.fillCircle(cx - 2, cy - 10, 4);
+      g.lineBetween(cx + 16, cy - 8, cx + 22, cy - 8); // pinza
+      g.lineBetween(cx + 16, cy + 4, cx + 22, cy + 4);
+    }
+  }
+
+  /** Por cuadro en la pestaña «Acciones»: estado, botón grande (solo se rehace si cambió), progreso e historial. */
+  _actualizarAcciones() {
+    const c = this.celda;
+    const id = this.maquinaId;
+    const estado = this.automata.estado;
+    const d = this._describirAccion();
+    const consola = this._modoConsola; // CNC en Falla: la consola ocupa el sitio del botón
+    const firma = [estado, d.tipo, d.etiqueta, d.detalle, d.habilitada, !!d.enCurso, consola].join('|');
+    if (firma !== this._firmaAccion) {
+      this._firmaAccion = firma;
+      const color = aspectoDe(this.tipo, estado).color;
+      this.accPunto.clear().fillStyle(color, 1).fillCircle(19, 38, 6).lineStyle(1.5, COLORES.texto, 0.9).strokeCircle(19, 38, 6);
+      this.accEstado.setText(`Estado: ${estado.replace(/_/g, ' ')}`);
+      this.accQueHace.setVisible(!consola);
+      this.accBoton.removeAll(true);
+      this._accRect = null;
+      this._accEtiqueta = null;
+      this.tip.setVisible(false);
+      if (!consola && d.tipo !== 'progreso') {
+        const activo = d.habilitada;
+        const fondo = activo ? COLORES.operacion : d.enCurso ? COLORES.mantenimiento : COLORES.banda;
+        const rect = this.add.rectangle(ACCION.x, ACCION.y, ACCION.ancho, ACCION.alto, fondo).setOrigin(0).setInteractive({ useHandCursor: activo });
+        resaltable(rect, [activo ? 3 : 2, COLORES.texto, activo || d.enCurso ? 0.9 : 0.3]);
+        const icono = this.add.graphics();
+        this._iconoMaquina(icono, ACCION.x + 44, ACCION.y + ACCION.alto / 2, activo || d.enCurso ? COLORES.texto : COLORES.maquina);
+        const colorTexto = activo || d.enCurso ? TEXTO_HEX.texto : '#8794a3';
+        const etiqueta = this.add.text(ACCION.x + 92, ACCION.y + 12, d.etiqueta, { fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: colorTexto });
+        const detalle = this.add.text(ACCION.x + 92, ACCION.y + 42, d.detalle + (activo ? '  (Espacio)' : ''), { fontFamily: 'Arial', fontSize: '10px', color: colorTexto, wordWrap: { width: ACCION.ancho - 104 }, lineSpacing: 2 });
+        rect.on('pointerup', () => { if (this._pestana === 'acciones') this.accionPrincipal(); });
+        rect.on('pointerover', () => { if (!activo) this._mostrarTip(d.detalle || 'Ahora no se puede.'); });
+        rect.on('pointerout', () => this.tip.setVisible(false));
+        this.accBoton.add([rect, icono, etiqueta, detalle]);
+        this._accRect = rect;
+        this._accEtiqueta = d.etiqueta;
+      }
+    }
+
+    // Fresando: barra de progreso del fresado (sin botones).
+    const g = this.accProgreso;
+    g.clear();
+    if (!consola && d.tipo === 'progreso') {
+      const { fraccion, segundos } = this.planta.acciones.progresoFresado(id);
+      const texto = `Fresando… ${Math.floor(segundos)} s`;
+      if (texto !== this._textoProgreso || !this._txtProgreso?.active) {
+        this._textoProgreso = texto;
+        if (!this._txtProgreso?.active) {
+          this._txtProgreso = this.add.text(ACCION.x + ACCION.ancho / 2, ACCION.y + 14, '', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: TEXTO_HEX.operacion }).setOrigin(0.5, 0);
+          this.accBoton.add(this._txtProgreso);
+        }
+        this._txtProgreso.setText(texto);
+      }
+      g.fillStyle(COLORES.banda, 0.8).fillRect(ACCION.x, ACCION.y + 46, ACCION.ancho, 22);
+      g.fillStyle(COLORES.operacion, 1).fillRect(ACCION.x, ACCION.y + 46, ACCION.ancho * fraccion, 22);
+      g.lineStyle(2, COLORES.texto, 0.9).strokeRect(ACCION.x, ACCION.y + 46, ACCION.ancho, 22);
+    }
+
+    // Historial: los eventos reales de los autómatas, uno por línea (también los del brazo cuando atendía a esta CNC).
+    const filas = this.planta.acciones.eventosDe(id, consola ? 6 : 12);
+    const firmaH = `${consola}|${filas.length}|${filas.length ? filas[filas.length - 1].t : 0}|${c.bitacora.length}`;
+    if (firmaH !== this._firmaHistorial) {
+      this._firmaHistorial = firmaH;
+      const y = consola ? 262 : 162;
+      this.accCabecera.setPosition(12, y).setText(filas.length ? 'Eventos disparados (los más nuevos abajo)' : 'Todavía no hay eventos en esta máquina');
+      const codigo = (h) => MODELO_DE[tipoDe(h.maquina)].eventos.find((e) => e.id === h.evento)?.codigo ?? '?';
+      this.accHistorial.setPosition(12, y + 16).setText(
+        filas.map((h) => `${h.t.toFixed(1).padStart(6)} s  ${codigo(h)}  ${NOMBRE_MAQUINA[h.maquina].padEnd(5)} ${h.evento.padEnd(15)} ${h.de} → ${h.a}`).join('\n'),
+      );
+    }
   }
 
   /** Pestaña Composición: tamaños de CNC ‖ Brazo y del sistema supervisado, y el estado compuesto actual. */
@@ -838,6 +1029,7 @@ Regla: ${this.celda.razonSupervisor}`,
   /** Clic en un botón: pide el evento a la Celda (δ y transición). Gris no hace nada. */
   _pulsar(d, rect) {
     if (d.tipo === 'gris' || !d.maquina || this._pestana !== 'automata') return;
+    this.planta.sonidos.clic();
     if (rect) this._destello = { x: rect.x, y: rect.y, ancho: rect.width, alto: rect.height, inicio: this.time.now };
     const r = this.celda.solicitar(d.maquina, d.evento, d.opciones);
     this._sucia = true;

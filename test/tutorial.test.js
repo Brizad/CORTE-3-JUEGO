@@ -5,6 +5,7 @@ import { Celda } from '../src/sed/celda.js';
 import { Reloj } from '../src/sed/reloj.js';
 import { Partida } from '../src/sed/partida.js';
 import { GuiaTutorial, PASOS } from '../src/sed/tutorial.js';
+import { Acciones } from '../src/sed/acciones.js';
 import { crearAleatorio } from '../src/sed/aleatorio.js';
 import { SEMILLA, TURNO_0 } from '../src/config.js';
 import { cargarModelo } from './ayudas.js';
@@ -40,47 +41,47 @@ test('en el tutorial los pedidos llegan pero no vencen ni restan puntos', () => 
   assert.equal(celda.terminado, false); // no hay límite de tiempo
 });
 
-test('la guía recorre los 17 pasos con el estado real del modelo y termina en el deadlock', () => {
+test('la guía recorre los 12 pasos con los botones de «Acciones» y el estado real del modelo, y termina en el deadlock', () => {
   const { reloj, celda } = nueva();
+  const acciones = new Acciones(celda);
   const guia = new GuiaTutorial();
-  const ctx = { hud: null };
+  const ctx = { hud: null, pestana: null };
   let ms = 0;
   const paso = () => PASOS[guia.indice].id;
   const avanzar = () => { ms += 100; return guia.avanzar(celda, ctx, ms) > 0; };
+  // Como la planta: el reloj avanza de a 0,1 s y la secuencia del brazo lanza su siguiente evento.
+  const correr = (s) => { for (let t = 0; t < s; t += 0.1) { reloj.avanzar(0.1); acciones.actualizar(); } };
   const accion = (maquina, evento, opciones) => assert.deepEqual(celda.solicitar(maquina, evento, opciones), { ok: true }, `${maquina}.${evento} en el paso ${paso()}`);
 
   assert.equal(paso(), 'abrir_hud');
   assert.equal(avanzar(), false); // todavía no hay HUD abierto
   ctx.hud = 'CNC1';
-  avanzar(); assert.equal(paso(), 'mover');
-  accion('BRAZO', 'mover', { objetivo: 'CNC1' });
-  avanzar(); assert.equal(paso(), 'llegar');
-  reloj.avanzar(2);
-  avanzar(); assert.equal(paso(), 'abrir');
-  accion('BRAZO', 'abrir_mandril');
+  ctx.pestana = 'acciones';
   avanzar(); assert.equal(paso(), 'cargar');
-  accion('CNC1', 'cargar');
-  avanzar(); assert.equal(paso(), 'cerrar');
-  accion('BRAZO', 'cerrar_mandril'); // el brazo vuelve solo (tr_volver)
+  assert.equal(acciones.ejecutar('CNC1'), true); // «Cargar bloque»: m, l, a, c, e y la vuelta
+  correr(1); assert.equal(avanzar(), false); // el brazo todavía va en camino
+  correr(8);
+  assert.equal(celda.estado('CNC1'), 'Cargado');
   avanzar(); assert.equal(paso(), 'volver');
   assert.equal(avanzar(), false); // el paso informativo se queda un mínimo de tiempo
   ms += 4000;
+  avanzar(); assert.equal(paso(), 'automata');
+  assert.equal(avanzar(), false); // hasta que se abre la pestaña «Autómata»
+  ctx.pestana = 'automata';
   avanzar(); assert.equal(paso(), 'fresar');
-  accion('CNC1', 'iniciar_fresado');
+  assert.equal(acciones.ejecutar('CNC1'), true); // «Fresar» = i · iniciar_fresado
   avanzar(); assert.equal(paso(), 'esperar');
-  reloj.avanzar(10);
-  avanzar(); assert.equal(paso(), 'mover2');
-  accion('BRAZO', 'mover', { objetivo: 'CNC1' });
-  reloj.avanzar(2);
-  avanzar(); assert.equal(paso(), 'abrir2');
-  accion('BRAZO', 'abrir_mandril');
-  avanzar(); assert.equal(paso(), 'descargar');
-  accion('CNC1', 'descargar');
+  correr(10.2);
+  avanzar(); assert.equal(paso(), 'sacar');
+  ctx.pestana = 'acciones';
+  assert.equal(acciones.ejecutar('CNC1'), true); // «Sacar pieza»: m, l, a, d
+  correr(8);
+  assert.equal(celda.estadisticas.piezas, 1);
   avanzar(); assert.equal(paso(), 'agv');
   accion('AGV1', 'reservar');
   avanzar(); assert.equal(paso(), 'ciclo');
   assert.equal(celda.radar.nivel, 'amarillo');
-  reloj.avanzar(9);
+  correr(9.2);
   assert.equal(celda.radar.nivel, 'verde');
   avanzar(); assert.equal(paso(), 'deadlock1');
   accion('AGV1', 'reservar');
@@ -90,12 +91,32 @@ test('la guía recorre los 17 pasos con el estado real del modelo y termina en e
   assert.equal(celda.deadlock, true);
   assert.deepEqual(celda.red.marcado(), [0, 0, 0, 0, 1, 1, 0, 0, 0]);
   assert.equal(guia.terminado, true);
-  assert.equal(PASOS.length, 17);
+  assert.equal(PASOS.length, 12);
   // Reintentar el final: vuelve al último verde y la guía regresa al paso del deadlock.
   celda.reintentarDesdeVerde();
   guia.irA('deadlock1', celda, ms);
   assert.equal(celda.deadlock, false);
   assert.equal(paso(), 'deadlock1');
+});
+
+test('el tutorial también avanza con los botones de evento de la pestaña «Autómata» (misma δ)', () => {
+  const { reloj, celda } = nueva();
+  const guia = new GuiaTutorial();
+  const ctx = { hud: 'CNC1', pestana: 'automata' };
+  let ms = 0;
+  const paso = () => PASOS[guia.indice].id;
+  const avanzar = () => { ms += 5000; guia.avanzar(celda, ctx, ms); };
+  celda.solicitar('BRAZO', 'mover', { objetivo: 'CNC1' });
+  reloj.avanzar(2);
+  celda.solicitar('BRAZO', 'abrir_mandril');
+  celda.solicitar('CNC1', 'cargar');
+  celda.solicitar('BRAZO', 'cerrar_mandril'); // el brazo vuelve solo (tr_volver)
+  avanzar(); avanzar(); avanzar();
+  assert.equal(paso(), 'fresar');
+  celda.solicitar('CNC1', 'iniciar_fresado');
+  reloj.avanzar(10);
+  avanzar(); avanzar();
+  assert.equal(paso(), 'sacar');
 });
 
 test('cada paso señala algo: una máquina, un botón del HUD, un botón de la barra o nada', () => {
@@ -112,7 +133,14 @@ test('un jugador rápido no se salta pasos: la guía consume la bitácora en ord
   celda.solicitar('BRAZO', 'abrir_mandril');
   celda.solicitar('CNC1', 'cargar');
   celda.solicitar('BRAZO', 'cerrar_mandril');
-  const n = guia.avanzar(celda, { hud: 'CNC1' }, 0);
-  assert.ok(n >= 6, 'avanzó ' + n);
+  const n = guia.avanzar(celda, { hud: 'CNC1', pestana: 'acciones' }, 0);
+  assert.equal(n, 2, 'avanzó ' + n);
   assert.equal(PASOS[guia.indice].id, 'volver'); // se detiene en el paso informativo
+});
+
+test('los pasos nombran los botones de juego y los atajos (Cargar bloque, Fresar, Sacar pieza, Espacio, Tab, Q y W)', () => {
+  const texto = PASOS.map((p) => p.mensaje).join(' ');
+  for (const palabra of ['Cargar bloque', 'Fresar', 'Sacar pieza', 'Espacio', 'Tab', '(Q)', '(W)', 'Autómata']) assert.ok(texto.includes(palabra), palabra);
+  const botones = PASOS.filter((p) => p.objetivo.tipo === 'boton').map((p) => p.objetivo.etiqueta);
+  assert.deepEqual(botones, ['Cargar bloque', 'Autómata', 'Fresar', 'Sacar pieza']);
 });

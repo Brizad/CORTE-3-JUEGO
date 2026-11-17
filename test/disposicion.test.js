@@ -31,7 +31,7 @@ test('todos los botones miden al menos 44 px (mínimo táctil) en cada lado', ()
 });
 
 test('los botones de la barra superior no tapan los paneles que se abren debajo (que empiezan en y = 52)', () => {
-  for (const nombre of ['pantalla', 'ayuda', 'vel1', 'vel2', 'vel4', 'pausa', 'inspector', 'red']) {
+  for (const nombre of ['pantalla', 'ayuda', 'silencio', 'vel1', 'vel2', 'vel4', 'pausa', 'inspector', 'red']) {
     assert.ok(BOTONES[nombre].y + BOTONES[nombre].alto <= 52, `${nombre} baja de la barra superior`);
   }
 });

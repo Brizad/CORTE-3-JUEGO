@@ -249,12 +249,16 @@ El inspector (tecla I) muestra el progreso de cada logro.
 | Mandar el brazo (tr_ir) o despachar AGV (t1a, t2a) | Clic en el botón del HUD | — | Toque en el botón |
 | Pausa | Botón de pausa | **P** | Botón de pausa |
 | Inspector | Botón del inspector | **I** | Botón del inspector |
-| Velocidad x1, x2, x4 | Botones de velocidad | **1**, **2**, **4** | Botones de velocidad |
+| Velocidad x1, x2, x4 | Botones de velocidad | **V** (pasa de una a otra; sección 18.19) | Botones de velocidad |
+| Acción principal de la máquina (sección 18.19) | Botón grande de «Acciones» | **Espacio** | Botón grande |
+| Elegir CNC 1 o CNC 2 | Clic en la máquina | **1**, **2** | Toque en la máquina |
+| Despachar AGV 1 o AGV 2 | Botones de abajo | **Q**, **W** | Botones de abajo |
+| Cambiar entre «Acciones» y «Autómata» | Pestañas del panel | **Tab** | Pestañas del panel |
 | Cerrar el HUD o un panel | Botón X | **Esc** | Botón X |
 | Consola de reparación: símbolos | Botones H, C, T, R | **H**, **C**, **T**, **R** | Botones H, C, T, R |
 | Consola de reparación: enviar | Botón Enviar | **Enter** | Botón Enviar |
 | Contador de fps | — | **F1** | Botón en el inspector |
-| Silenciar o activar los sonidos | — | **M** | — |
+| Silenciar o activar los sonidos | Botón del altavoz | **M** | Botón del altavoz |
 | Vista de la red de Petri | Botón "Red" | **R** | Botón "Red" |
 | Modo demostración (el piloto juega solo) | — | **D** | — |
 | Mover la cámara | Arrastrar con el botón izquierdo | — | Arrastrar con un dedo |
@@ -488,7 +492,8 @@ Dibuja la red sobre la planta (la planta se oscurece un poco):
 ### 18.5 Tutorial "Turno 0" (opcional, desde el título)
 
 Turno sin límite de tiempo, sin fallas y sin meta, en el que los **pedidos no vencen**. Mensajes cortos y una flecha señalan cada paso.
-El paso avanza cuando el estado del modelo cumple la condición (no cuando se hace clic). Pasos:
+El paso avanza cuando el estado del modelo cumple la condición (no cuando se hace clic). **Actualizado en 18.19:** ahora son 12 pasos
+y usan los botones de la pestaña «Acciones» («Cargar bloque», «Fresar», «Sacar pieza»). Pasos originales:
 
 1. Mandar el brazo a la CNC 1 (`m`, tr_ir) y esperar a que llegue (`l`).
 2. Abrir la pinza (`a`), cargar (`c`), cerrar (`e`) y ver cómo el brazo vuelve solo (tr_volver).
@@ -640,3 +645,56 @@ No cambian estados, eventos, δ, Pre/Post ni puntajes.
 - **Botón pulsado:** destella en amarillo unos 0,45 s.
 - **Planta:** la máquina que cambió de estado muestra un destello amarillo de 0,7 s en su contorno.
 - Todo es dibujo plano y tweens (sin filtros glow). No cambia estados, δ, Pre/Post ni puntajes.
+
+### 18.19 Juego más claro e inmersivo
+Objetivo: que se sienta como un juego y que alguien que no leyó la guía lo entienda en 1 minuto. **No cambian** los modelos
+(autómatas, red de Petri, JSON de `src/sed/modelos/`), δ, el supervisor ni el puntaje. Cada acción del jugador sigue disparando los
+eventos reales del autómata, uno por uno, y todos quedan en el historial del HUD.
+
+**A. Claridad**
+1. **Texto del AGV:** "AGV i: trae material. Para descargarlo necesita la MESA y el ROBOT al mismo tiempo." (antes decía que llevaba
+   la pieza de la mesa al pedido, y en la red de la ficha D.2 el AGV no depende de las piezas).
+2. **Intro de 5 líneas** antes del turno 1 (una vez por partida) y en el botón «?»: jefe de turno y meta, brazo y reparación H C T C R,
+   carritos y pedidos de 30 s, interbloqueo, radar. La ayuda tiene dos páginas: «Cómo se juega» (intro y atajos) y «Controles y colores».
+3. **Rótulos fijos en el mapa:** "CNC 1", "CNC 2", "Brazo", "Mesa", "AGV 1" y "AGV 2" (el del AGV lo sigue por su ruta). Se esconden
+   con la vista de la red de Petri.
+4. **Pedidos:** cada tarjeta dice "AGV 1 espera · 12 s" con la cuenta regresiva de 30 s en color: verde (más de 15 s), amarillo
+   (de 15 a 5 s) y rojo (menos de 5 s o vencido). Si el AGV ya salió dice "AGV 1 en camino"; si hay más pedidos que carritos, "Pedido en
+   cola". Sobre la base de cada AGV libre con pedido sale "Pedido · 12 s" (reemplaza al número que solo subía).
+5. **Radar:** al pasar el mouse dice "M6 = foto actual de las fichas. Verde: seguro. Amarillo: si despachas otro AGV ahora, te trabas.
+   Rojo: trabado." (con el nombre del marcado actual) y debajo de los cuadritos dice "últimos estados".
+6. **AGV detenido:** junto a él dice "Espera el robot" o "Espera la mesa" (según las fichas que le faltan a t1b o t2b).
+
+**B. Controles de juego (dos capas en el panel de cada máquina)**
+1. **Pestaña «Acciones»** (la que abre): un botón grande con el ícono de esa máquina y un verbo de juego.
+   - CNC Libre: **Cargar bloque**. Encadena `m` (tr_ir), `l` (lo dispara el reloj a los 2 s), `a`, `c`, `e` y la vuelta `m` (tr_volver),
+     con 0,5 s de simulación entre uno y otro. Cada evento se pide a la Celda con `evaluar` y `solicitar`: pasa por δ, el supervisor y
+     la red. Nunca insiste contra el supervisor (no genera intentos bloqueados) y espera si la red no habilita tr_ir.
+   - CNC Cargado: **Fresar** (`i`). CNC Fresando: barra de progreso, sin botones. CNC Terminado: **Sacar pieza** (`m`, `l`, `a`, `d` y
+     la vuelta). CNC Falla: la consola H C T C R.
+   - En el panel de una CNC no hay botones del brazo. Si el brazo atiende a la otra CNC (o un AGV tiene el robot) el botón dice
+     **Brazo ocupado**, en gris.
+   - AGV: **Despachar AGV i** (`v`); si no puede, dice qué hace ("En camino…", "Espera el robot", "Descargando…"). Brazo: solo informa.
+   - Debajo va el historial con los eventos reales (también los del brazo mientras atendía a esa CNC).
+2. **Pestaña «Autómata»:** el grafo con los botones de evento verde, gris y rojo, tal como estaba (lo exige la guía). Las CNC conservan
+   la pestaña «Composición».
+3. **Atajos:** 1 y 2 eligen la CNC 1 y la CNC 2; Espacio hace la acción principal de la máquina elegida; Q y W despachan el AGV 1 y el
+   AGV 2; Tab cambia entre «Acciones» y «Autómata». Se muestran en el botón «?». **La velocidad pasa a la tecla V** (x1 → x2 → x4 → x1),
+   porque 1 y 2 ahora eligen la CNC; los botones x1, x2 y x4 siguen igual.
+4. **Cursor de mano y borde amarillo** al pasar el mouse por cualquier botón o pestaña.
+
+**C. Inmersión**
+1. **Sonido** con Web Audio, sin archivos: zumbido mientras alguna CNC fresa, clic de botón, "ding" al terminar una pieza
+   (`fin_fresado`), alarma en la falla, tono grave en el deadlock, fanfarria al ganar el turno y dos tonos al perderlo. Botón del
+   altavoz arriba y tecla M.
+2. **Texto flotante** en el sitio del evento: "+100", "+40", "−20 pedido vencido", "−15 intento bloqueado…". Solo muestra los puntos
+   que ya sumó o restó la Celda.
+3. **Barra de objetivo:** "Piezas 2/5" con una barra de progreso (una división por pieza) y "quedan N s". En los últimos 30 s el reloj
+   se pone rojo y parpadea.
+4. **Animación:** el brazo se extiende hacia la CNC que atiende durante los 2 s de `m` y el carrito avanza por su ruta los 4 s del
+   viaje (ya estaba; se comprobó con las secuencias nuevas).
+5. **Frase del jefe de planta** al terminar el turno: "¡Turno cumplido!", "Faltaron 2 piezas, ojo con los pedidos vencidos." y, tras
+   un interbloqueo, "¡La fábrica se trabó!".
+
+**D. Tutorial:** pasa de 17 a 12 pasos y usa los botones nuevos: abrir la CNC 1, «Cargar bloque», ver la pestaña «Autómata»,
+«Fresar», «Sacar pieza», despachar el AGV 1 y provocar el interbloqueo con Q y W. Sigue avanzando con el estado real del modelo.

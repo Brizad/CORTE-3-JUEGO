@@ -3,6 +3,7 @@
 
 import { COLORES, TEXTO_HEX, ANCHO } from '../config.js';
 import { camaraLogica } from './camara.js';
+import { resaltable } from './resaltar.js';
 
 const PANEL = { ancho: 340, alto: 352, y: 78 };
 const BOTON = { alto: 46, paso: 54 };
@@ -40,9 +41,9 @@ export class MenuPausa extends Phaser.Scene {
     ];
     acciones.forEach(([etiqueta, color, accion], i) => {
       const y = PANEL.y + 56 + i * BOTON.paso;
-      const rect = this.add.rectangle(x0 + 20, y, PANEL.ancho - 40, BOTON.alto, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9).setInteractive({ useHandCursor: true });
+      const rect = resaltable(this.add.rectangle(x0 + 20, y, PANEL.ancho - 40, BOTON.alto, color).setOrigin(0).setInteractive({ useHandCursor: true }));
       const texto = this.add.text(ANCHO / 2, y + BOTON.alto / 2, etiqueta, { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
-      rect.on('pointerup', accion);
+      rect.on('pointerup', () => { this.planta.sonidos.clic(); accion(); });
       this.botones.push({ rect, texto });
     });
     this.add.text(ANCHO / 2, PANEL.y + PANEL.alto - 14, 'P o Esc: continuar', { fontFamily: 'Arial', fontSize: '11px', color: '#8794a3' }).setOrigin(0.5);

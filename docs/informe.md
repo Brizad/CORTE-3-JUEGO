@@ -315,7 +315,7 @@ El proyecto no tiene eventos no observables (Σuo = ∅), por eso no hay autóma
 | Disparar evento o transición | Clic en el botón | sí | Tocar el botón | sí |
 | Escribir en la consola de reparación | Teclado (H, C, T, R, Retroceso, Enter) | sí | Botones de comandos (se tocó H, C, R y Enviar: palabra "HCR", CNC Libre) | sí |
 | Pausa e inspector | P, I | sí | Botones en pantalla | sí |
-| Velocidad de simulación | 1, 2, 4 (se leyó 2 y 4) | sí | Botón de velocidad (x4: 4) | sí |
+| Velocidad de simulación | V (se leyó x1 → x2 → x4 → x1; antes eran 1, 2 y 4) | sí | Botón de velocidad (x4: 4) | sí |
 | Mover la cámara | Arrastre | sí | Arrastre con un dedo | **sin verificar** (ver nota) |
 | Acercar la cámara | Rueda | sí | Pellizco con dos dedos | **sin verificar** (ver nota) |
 
@@ -431,4 +431,16 @@ Esto hay que confirmarlo con el playtest de otro equipo (literal h, todavía pen
 - **Qué errores sí eran del juego:** la pantalla completa de Phaser lanzaba excepciones (ahora usamos la API del navegador) y un botón nuevo
   tapaba el título del Inspector (ahora la disposición del HUD tiene una prueba que impide encimes).
 - **Pendiente:** en un teléfono horizontal pequeño los botones miden unos 30 px en pantalla; cumplir 44 px reales exige rediseñar la barra.
+
+## 7. Juego más claro e inmersivo (después de jugarlo nosotros)
+
+- **Qué notamos:** el juego exigía conocer el autómata para jugar (había que pulsar `m`, `a`, `c`, `e` en orden) y el texto del AGV decía
+  algo que la red no hace. Alguien que no leyó la guía no sabía qué hacer.
+- **Qué hicimos sin tocar el modelo:** una pestaña «Acciones» con verbos ("Cargar bloque", "Fresar", "Sacar pieza", "Despachar AGV 1")
+  que encadenan los mismos eventos, uno por uno, pidiéndolos a la Celda; la pestaña «Autómata» sigue igual. Además: intro de 5 líneas,
+  rótulos en el mapa, pedidos con cuenta regresiva, atajos (1, 2, Espacio, Q, W, Tab), sonidos, textos de puntos, barra de objetivo y
+  una frase del jefe de planta al terminar. Detalle en `docs/GDD.md`, sección 18.19.
+- **Qué nos enseñó:** la capa de "juego" y la capa "formal" pueden convivir si la primera solo llama a `evaluar` y `solicitar`: las
+  pruebas comprueban que "Cargar bloque" deja en la bitácora exactamente `m, l, a, c, e, m` y que nunca genera un intento bloqueado.
+- **Pendiente:** medir los fps con F1 en un equipo real y probar los atajos con otro equipo en el playtest.
 

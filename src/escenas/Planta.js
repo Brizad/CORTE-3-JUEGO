@@ -1,13 +1,15 @@
 // Escena principal: la planta isométrica de 12 x 10 celdas (docs/arte.md).
 // El update solo avanza el reloj y dibuja. No hay reglas de juego aquí.
 
-import { COLORES, TEXTO_HEX, ANCHO, RES, PLANTA, ALTOS, SEMILLA, TURNOS } from '../config.js';
+import { COLORES, TEXTO_HEX, ANCHO, RES, PLANTA, ALTOS, SEMILLA, TURNOS, VELOCIDADES } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
 import { oscurecer, aclarar, puntoEnPoligono } from '../iso/formas.js';
 import { GestorEntrada, ACCIONES } from '../entrada/gestorEntrada.js';
 import { MODELOS } from '../modelos.js';
 import { Celda } from '../sed/celda.js';
 import { Piloto } from '../sed/piloto.js';
+import { Acciones } from '../sed/acciones.js';
+import { Rotulos } from '../entidades/Rotulos.js';
 import { Escenario } from '../entidades/Escenario.js';
 import { EntidadCNC } from '../entidades/EntidadCNC.js';
 import { EntidadBrazo } from '../entidades/EntidadBrazo.js';
@@ -70,6 +72,14 @@ export class Planta extends Phaser.Scene {
       this.scene.launch(clave);
     }
 
+    // Intro corta (5 líneas) antes del turno 1, una sola vez por partida. Con ?intro=0 en la dirección no sale (pruebas automáticas).
+    const sinIntro = new URLSearchParams(globalThis.location?.search ?? '').get('intro') === '0';
+    this.scene.stop('Ayuda');
+    if (!this.partida.tutorial && this.partida.turno === 0 && !this.partida.introVista && !sinIntro) {
+      this.partida.introVista = true;
+      this.scene.launch('Ayuda', { inicio: true });
+    }
+
     this.events.once('shutdown', () => {
       this.piloto.desactivar();
       this.entidades.forEach((e) => e.destruir());
@@ -79,6 +89,9 @@ export class Planta extends Phaser.Scene {
       this.vistaRed.destruir();
       this.piezas.destruir();
       this.efectos.destruir();
+      this.rotulos.destruir();
+      this.acciones.destruir();
+      this.sonidos.zumbido(false);
       this._bajaTemblor();
       this.logros.detener();
       this.scene.stop('Resultados');
@@ -100,6 +113,7 @@ export class Planta extends Phaser.Scene {
     const dt = Math.min(delta, 100) / 1000;
     this._vigilarFps(dt);
     this.reloj.avanzar(dt * this.reloj.velocidad);
+    this.acciones.actualizar(); // siguiente evento del brazo si hay una secuencia en marcha
     this._dibujar();
   }
 
@@ -168,6 +182,7 @@ export class Planta extends Phaser.Scene {
     this.logros.vigilar(this.celda);
     this.celda.arrancar(); // programa los pedidos de AGV y el fin del turno en el reloj
     this.piloto = new Piloto(this.celda);
+    this.acciones = new Acciones(this.celda); // verbos de juego: encadenan los eventos reales del autómata (sección 18.19)
     this.escenario = new Escenario(this);
     this.entidades = [
       new EntidadCNC(this, this.celda, 'CNC1'),
@@ -183,6 +198,7 @@ export class Planta extends Phaser.Scene {
     this.piezas = new Piezas(this, this.celda, () => this.entidades);
     this.efectos = new Efectos(this, this.celda, () => this.entidades);
     this.piezas.efectos = this.efectos;
+    this.rotulos = new Rotulos(this, this.celda, () => this.entidades);
     this._lento = 0; // segundos seguidos por debajo de 50 fps
     // Insistir en un botón rojo (evento que el supervisor deshabilita): la cámara tiembla 0,3 s (docs/arte.md, sección 9).
     this._bajaTemblor = this.celda.alCambiar((e) => {
@@ -256,6 +272,9 @@ export class Planta extends Phaser.Scene {
     const hud = this.scene.get('HUDMaquina');
     this.efectos.actualizar(hud.abierto ? hud.maquinaId : null); // glow en la máquina seleccionada
     this.piezas.actualizar();
+    this.rotulos.actualizar();
+    // Zumbido de fresado mientras alguna CNC fresa y la simulación corre.
+    this.sonidos.zumbido(!this.reloj.enPausa && ['CNC1', 'CNC2'].some((id) => this.celda.estado(id) === 'Fresando'));
     // Etiqueta pequeña de la demostración (el puntaje, el reloj y lo demás los muestra el HUD de partida).
     this.textoDemo.setText(this.piloto.activo ? 'DEMO' : '');
     this.textoPausa.setVisible(false); // la pausa la anuncian el menú de pausa y el HUD ("· pausa")
@@ -271,6 +290,8 @@ export class Planta extends Phaser.Scene {
     else if (e.tipo === 'reparacion' && e.valida) s.reparacion();
     else if (e.tipo === 'rechazo' && e.motivo === 'supervisor') s.bloqueado();
     else if (e.tipo === 'deadlock') s.deadlock();
+    else if (e.tipo === 'automata' && e.evento === 'fin_fresado') s.ding();
+    else if (e.tipo === 'finTurno' && !this.partida.tutorial) (e.resultado === 'victoria' ? s.fanfarria() : s.derrota());
   }
 
   // ---- Acciones de entrada ----
@@ -292,12 +313,31 @@ export class Planta extends Phaser.Scene {
     const alternarAyuda = () => {
       const ayuda = this.scene.get('Ayuda');
       if (ayuda.scene.isActive()) ayuda.cerrar();
-      else if (!this.scene.get('Inspector').abierto && !this.celda.deadlock && !this.celda.terminado) this.scene.launch('Ayuda');
-      else if (this.celda.deadlock || this.celda.terminado) this.scene.launch('Ayuda'); // la simulación ya está detenida
+      else if (!this.scene.get('Inspector').abierto && !this.celda.deadlock && !this.celda.terminado) this.scene.launch('Ayuda', {});
+      else if (this.celda.deadlock || this.celda.terminado) this.scene.launch('Ayuda', {}); // la simulación ya está detenida
     };
     e.on(ACCIONES.AYUDA, alternarAyuda);
     this.events.on('ayuda', alternarAyuda);
     e.on(ACCIONES.VELOCIDAD, ({ valor }) => this.reloj.cambiarVelocidad(valor));
+    e.on(ACCIONES.VELOCIDAD_CICLO, () => this.reloj.cambiarVelocidad(VELOCIDADES[(VELOCIDADES.indexOf(this.reloj.velocidad) + 1) % VELOCIDADES.length]));
+    // Atajos de juego: 1 y 2 eligen la CNC, Espacio hace su acción principal, Q y W despachan los AGV y Tab cambia de pestaña.
+    const libre = () => !this.celda.terminado && !this.celda.deadlock && !['Ayuda', 'MenuPausa', 'Inspector'].some((c) => this.scene.get(c)?.contiene?.(0, 0));
+    e.on(ACCIONES.ELEGIR_CNC, ({ n }) => {
+      if (!libre()) return;
+      const m = this.entidades.find((q) => q.id === `CNC${n}`);
+      if (m) hud().abrir?.(m.id, m.nombre);
+    });
+    e.on(ACCIONES.ACCION_PRINCIPAL, () => {
+      const h = hud();
+      if (!libre() || !h.abierto) return;
+      h.accionPrincipal();
+    });
+    e.on(ACCIONES.DESPACHAR, ({ n }) => {
+      if (libre()) this.scene.get('HUDGeneral')?._despachar?.(`AGV${n}`);
+    });
+    e.on(ACCIONES.PESTANA, () => {
+      if (hud().abierto) hud().alternarPestana();
+    });
     e.on(ACCIONES.FPS, () => {
       const fps = this.scene.get('HUDGeneral')?.txtFps;
       fps?.setVisible(!fps.visible);
@@ -314,11 +354,14 @@ export class Planta extends Phaser.Scene {
       if (!this.celda.terminado) inspector().alternar?.();
     });
     e.on(ACCIONES.PANTALLA_COMPLETA, () => alternarPantallaCompleta());
-    e.on(ACCIONES.SILENCIO, () => this.sonidos.alternarSilencio());
+    e.on(ACCIONES.SILENCIO, () => {
+      // M o el botón del altavoz. Al volver a activar el sonido suena un clic para confirmarlo.
+      if (!this.sonidos.alternarSilencio()) this.sonidos.clic();
+    });
     e.on(ACCIONES.RED_PETRI, () => {
       // Con la consola de reparación abierta, R es el comando de reset: no abre la vista.
       const h = hud();
-      if (h.abierto && h._modoConsola && h._pestana === 'automata') return;
+      if (h.abierto && h._modoConsola && h._pestana !== 'composicion') return;
       this.vistaRed.alternar();
     });
     e.on(ACCIONES.CERRAR, () => {
@@ -361,6 +404,7 @@ export class Planta extends Phaser.Scene {
       const m = this._entidadEn(mundo.x, mundo.y);
       if (!m) this.etiquetas.tocar(mundo.x, mundo.y); // toque sobre un lugar: muestra su etiqueta unos segundos
       else this.scene.get('HUDGeneral')?.explicar?.(DESCRIPCION_MAQUINA[m.id]); // toque sobre una máquina: su frase unos segundos
+      if (m) this.sonidos.clic();
       if (m) hud().abrir?.(m.id, m.nombre);
       else hud().cerrar?.();
     });

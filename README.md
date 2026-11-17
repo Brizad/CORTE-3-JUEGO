@@ -41,11 +41,12 @@ La tecla **F** (fuerza una falla del husillo para probar la consola de reparaci�
 ## Cómo se juega
 
 1. En el título: **Jugar**, **Tutorial** (Turno 0, paso a paso) o **Controles**. El título muestra tu mejor puntaje y tus logros (se guardan en el navegador).
-2. Haz clic en una máquina para abrir su HUD: grafo del autómata, botones de los eventos y la lista de los últimos eventos.
+2. Haz clic en una máquina (o pulsa **1** o **2** para las CNC) y se abre su panel en la pestaña **Acciones**: un botón grande con
+   lo que toca hacer. **Cargar bloque** manda el brazo y dispara solo sus eventos (`m`, `l`, `a`, `c`, `e` y la vuelta), **Fresar**
+   inicia el fresado (`i`) y **Sacar pieza** descarga (`d`) y suma +100. **Espacio** hace la acción de la máquina elegida.
+3. La pestaña **Autómata** (tecla **Tab**) muestra el grafo, los botones de cada evento y los últimos eventos.
    Verde = se puede, gris = no se puede ahora (al pasar el mouse dice por qué), rojo = lo inhibe el supervisor (−15 puntos si insistes).
-3. Carga una CNC: manda el brazo (`m`), abre la pinza (`a`), carga (`c`), cierra (`e`; el brazo vuelve solo) y inicia el fresado (`i`).
-   Descarga con `d` para sumar +100.
-4. Despacha los AGV con los botones de la barra. **Nunca despaches los dos a la vez**: cada uno toma un recurso y espera el otro
+4. Despacha los AGV con los botones de la barra o con **Q** y **W** antes de que venza su pedido (30 s). **Nunca despaches los dos a la vez**: cada uno toma un recurso y espera el otro
    (deadlock). El radar pasa a amarillo cuando hay peligro. El **Controlador de celda** (−150) lo evita.
 5. Si una CNC falla, escribe en su consola una palabra del lenguaje `^H(CT?)+R$` (por ejemplo `HCTCR`) y pulsa Enter.
 6. Son 3 turnos de 180 s con metas de 3, 5 y 6 piezas. Hay 6 logros. Al empezar cada turno un aviso de 3 s dice la meta y la dificultad,
@@ -57,17 +58,21 @@ La tecla **F** (fuerza una falla del husillo para probar la consola de reparaci�
 | Acción | Mouse y teclado | Táctil |
 |---|---|---|
 | Abrir el HUD de una máquina | Clic en la máquina | Toque en la máquina |
-| Disparar un evento o una transición | Clic en su botón | Toque en su botón |
+| Acción de la máquina (Cargar bloque, Fresar, Sacar pieza) | Botón grande o **Espacio** | Toque en el botón |
+| Elegir CNC 1 o CNC 2 | **1**, **2** | Toque en la máquina |
+| Despachar AGV 1 o AGV 2 | **Q**, **W** | Botones de abajo |
+| Cambiar entre «Acciones» y «Autómata» | **Tab** | Pestañas del panel |
+| Disparar un evento o una transición | Clic en su botón (pestaña Autómata) | Toque en su botón |
 | Pausa y menú (Continuar, Reiniciar turno, Ayuda, Sonido, Título) | **P** | Botón de pausa |
-| Ayuda: controles y leyenda de colores | **?** | Botón "?" |
+| Ayuda: cómo se juega, atajos, controles y colores | **?** | Botón "?" |
 | Inspector (ecuación de estado y árbol de cobertura) | **I** | Botón "Insp." |
 | Vista de la red de Petri | **R** | Botón "Red" |
-| Velocidad x1, x2 y x4 | **1**, **2**, **4** | Botones x1, x2, x4 |
+| Velocidad x1, x2 y x4 | **V** (pasa de una a otra) | Botones x1, x2, x4 |
 | Consola de reparación | **H**, **C**, **T**, **R**, Retroceso, Enter | Botones de comandos |
 | Cerrar un panel | **Esc** | Botón X |
 | Mover y acercar la cámara | Arrastrar y rueda | Arrastrar y pellizco |
 | Pantalla completa | **G** | Botón ⛶ |
-| Sonidos, fps y demostración | **M**, **F1**, **D** | — |
+| Silenciar, fps y demostración | **M**, **F1**, **D** | Botón del altavoz |
 
 ## Estructura
 

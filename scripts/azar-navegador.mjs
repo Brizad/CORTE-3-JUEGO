@@ -68,7 +68,7 @@ await enviar('Log.enable');
 await enviar('Emulation.setDeviceMetricsOverride', { width: Number(ancho), height: Number(alto), deviceScaleFactor: 1, mobile: false });
 await enviar('Emulation.setFocusEmulationEnabled', { enabled: true });
 await enviar('Page.bringToFront');
-await enviar('Page.navigate', { url: `http://localhost:${web}/${process.env.AZAR_EFECTOS === '1' ? '' : '?efectos=0'}` });
+await enviar('Page.navigate', { url: `http://localhost:${web}/${process.env.AZAR_EFECTOS === '1' ? '?intro=0' : '?efectos=0&intro=0'}` });
 await dormir(10000);
 
 const escala = Math.min(Number(ancho) / 960, Number(alto) / 540);
@@ -79,11 +79,11 @@ const clic = async (x, y) => {
   const [px, py] = aPantalla(x, y);
   for (const t of ['mouseMoved', 'mousePressed', 'mouseReleased']) await enviar('Input.dispatchMouseEvent', { type: t, x: px, y: py, button: 'left', clickCount: 1 });
 };
-const VK = (code) => (/^Key[A-Z]$/.test(code) ? code.charCodeAt(3) : /^Digit\d$/.test(code) ? 48 + Number(code[5]) : { Escape: 27, Enter: 13, Backspace: 8, F1: 112, Slash: 191 }[code] ?? 0);
+const VK = (code) => (/^Key[A-Z]$/.test(code) ? code.charCodeAt(3) : /^Digit\d$/.test(code) ? 48 + Number(code[5]) : { Escape: 27, Enter: 13, Backspace: 8, F1: 112, Slash: 191, Space: 32, Tab: 9 }[code] ?? 0);
 const tecla = async (k, code) => {
   for (const t of ['keyDown', 'keyUp']) await enviar('Input.dispatchKeyEvent', { type: t, key: k, code, windowsVirtualKeyCode: VK(code), text: t === 'keyDown' && k.length === 1 ? k : undefined });
 };
-const TECLAS = [['p', 'KeyP'], ['Escape', 'Escape'], ['Escape', 'Escape'], ['i', 'KeyI'], ['r', 'KeyR'], ['m', 'KeyM'], ['1', 'Digit1'], ['2', 'Digit2'], ['4', 'Digit4'], ['Escape', 'Escape'], ['h', 'KeyH'], ['c', 'KeyC'], ['t', 'KeyT'], ['Enter', 'Enter'], ['Backspace', 'Backspace'], ['F1', 'F1'], ['?', 'Slash'], ['f', 'KeyF']];
+const TECLAS = [['p', 'KeyP'], ['Escape', 'Escape'], ['Escape', 'Escape'], ['i', 'KeyI'], ['r', 'KeyR'], ['m', 'KeyM'], ['1', 'Digit1'], ['2', 'Digit2'], [' ', 'Space'], [' ', 'Space'], ['Tab', 'Tab'], ['q', 'KeyQ'], ['w', 'KeyW'], ['v', 'KeyV'], ['Escape', 'Escape'], ['h', 'KeyH'], ['c', 'KeyC'], ['t', 'KeyT'], ['Enter', 'Enter'], ['Backspace', 'Backspace'], ['F1', 'F1'], ['?', 'Slash'], ['f', 'KeyF']];
 const SIN_PAUSA = process.env.AZAR_SIN_PAUSA === '1';
 let semilla = 12345;
 const azar = () => ((semilla = (semilla * 1664525 + 1013904223) % 4294967296) / 4294967296);

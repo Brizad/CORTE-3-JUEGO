@@ -202,7 +202,7 @@ El proyecto no tiene eventos no observables (Σuo = ∅), por eso no hay autóma
 | Disparar evento o transición | Clic en el botón | sí | Tocar el botón | sí |
 | Escribir en la consola de reparación | Teclado (H, C, T, R, Retroceso, Enter) | sí | Botones de comandos (se tocó H, C, R y Enviar: palabra "HCR", CNC Libre) | sí |
 | Pausa e inspector | P, I | sí | Botones en pantalla | sí |
-| Velocidad de simulación | 1, 2, 4 (se leyó 2 y 4) | sí | Botón de velocidad (x4: 4) | sí |
+| Velocidad de simulación | V (se leyó x1 → x2 → x4 → x1; antes eran 1, 2 y 4) | sí | Botón de velocidad (x4: 4) | sí |
 | Mover la cámara | Arrastre | sí | Arrastre con un dedo | sí (emulación móvil, `scripts/movil-navegador.mjs`) |
 | Acercar la cámara | Rueda | sí | Pellizco con dos dedos | sí (emulación móvil: zoom 1,00 → 2,00) |
 
@@ -248,4 +248,21 @@ Ver `docs/informe.md`, sección 2.i, y `docs/GDD.md`, secciones 18.10 a 18.16. R
 | Pruebas unitarias | `npm test` | 137 de 137 (las de turnos y de textos ya comprueban la meta de 6 piezas) |
 
 Las capturas de esta ronda están en `docs/capturas/` con el prefijo `final_`.
+
+## j) Juego más claro e inmersivo (GDD 18.19)
+
+| Prueba | Script | Resultado |
+|---|---|---|
+| Pruebas unitarias | `npm test` | 156 de 156. Nuevas: `test/acciones.test.js` (10: cada verbo dispara sus eventos en orden y uno por uno, "Brazo ocupado", nunca insiste contra el supervisor, espera si la red no habilita tr_ir, historial), `test/textos.test.js` (6 más: texto del AGV, intro de 5 líneas, atajos, radar, pedidos y frase del jefe), `test/tutorial.test.js` (12 pasos con los botones nuevos) y `test/sonidos.test.js` (10 sonidos y el zumbido) |
+| Recorrido en el navegador (producción, `npm run preview`) | `scripts/juego-navegador.mjs` | 34 comprobaciones bien y 0 errores de página (2 corridas seguidas): la intro sale antes del turno 1 y pausa; 1 abre la CNC 1 en «Acciones»; Espacio en «Cargar bloque» dispara `m, l, a, c, e, m` en ese orden; la CNC 2 dice «Brazo ocupado»; Tab pasa a «Autómata»; «Fresar» muestra la barra de progreso; «Sacar pieza» suma la pieza; la tarjeta dice "AGV 1 espera · N s"; Q despacha; el AGV detenido dice "Espera el robot"; en Falla la consola sale en «Acciones» y H C T C R + Enter repara; V cambia la velocidad; el mouse resalta los botones; el altavoz y M silencian; salen los resultados con la frase del jefe; el tutorial llega al final con los botones nuevos |
+| Clics y teclas al azar (ahora también Espacio, Tab, Q, W y V) | `scripts/azar-navegador.mjs juego 120 4` | 0 excepciones y 0 atascos |
+| Tutorial y flujos de pausa, ayuda y game over | `scripts/azar-navegador.mjs tutorial` y `flujos` | El tutorial llega a "fin"; flujos 16 de 16 |
+| Celular | `scripts/movil-navegador.mjs` | 42 comprobaciones bien, sin errores |
+| Costo por cuadro | `scripts/costo-cuadro.mjs` | El `update` de la planta y los dos HUD gasta de 0,8 a 1,6 ms de JS por cuadro (el presupuesto a 60 fps es 16,7 ms). No se agregó ningún filtro. **Los fps reales hay que leerlos con F1 en el equipo del jugador:** el navegador de pruebas no tiene GPU y no sirve para medirlos |
+
+Notas:
+- En las corridas de `juego-navegador.mjs` algunas teclas llegan tarde (Edge sin GPU dibuja a pocos cuadros por segundo); el script
+  espera y reintenta. Un error "reading 'id'" que aparecía a veces venía de una extensión del navegador (AdBlock), no del juego: se filtra
+  por el contexto de ejecución, igual que en los otros scripts.
+- Capturas de esta ronda: `docs/capturas/juego_*.png`.
 

@@ -44,7 +44,7 @@ const comprobar = (nombre, ok, dato = '') => { filas.push(`${ok ? 'ok   ' : 'FAL
 async function tamano(ancho, alto) {
   await enviar('Emulation.setDeviceMetricsOverride', { width: ancho, height: alto, deviceScaleFactor: 2, mobile: true, screenOrientation: { type: ancho > alto ? 'landscapePrimary' : 'portraitPrimary', angle: 0 } });
   await enviar('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
-  await enviar('Page.navigate', { url: `http://localhost:${web}/?efectos=0` });
+  await enviar('Page.navigate', { url: `http://localhost:${web}/?efectos=0&intro=0` });
   for (let i = 0; i < 40; i++) { await dormir(1000); if ((await ev("!!(window.juego && window.juego.scene.getScene('Titulo').scene.isActive())")) === true) break; }
   await dormir(1500);
 }

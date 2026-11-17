@@ -6,6 +6,8 @@ import { COLORES, TEXTO_HEX, ANCHO, TURNOS } from '../config.js';
 import { LOGROS } from '../sed/logros.js';
 import { Partida } from '../sed/partida.js';
 import { camaraLogica } from './camara.js';
+import { fraseJefe } from '../textos.js';
+import { resaltable } from './resaltar.js';
 
 const PANEL = { ancho: 620, alto: 456 };
 
@@ -47,7 +49,9 @@ export class Resultados extends Phaser.Scene {
           ? `Turno ${partida.turno + 1} perdido`
           : `Turno ${partida.turno + 1} perdido: se acabó el tiempo`;
     texto(20, 14, titulo, { fontSize: '24px', fontStyle: 'bold', color: victoria ? TEXTO_HEX.operacion : TEXTO_HEX.fallo });
-    texto(20, 48, victoria ? `Meta cumplida: ${r.piezas} de ${r.meta} piezas en ${Math.round(r.tiempo)} s.` : `Meta: ${r.piezas} de ${r.meta} piezas en ${Math.round(r.tiempo)} s.`, { color: '#8794a3' });
+    // Frase corta del jefe de planta y, al lado, el resumen de la meta.
+    texto(20, 44, `«${fraseJefe(r)}»`, { fontSize: '15px', fontStyle: 'bold', color: TEXTO_HEX.espera });
+    texto(20, 66, victoria ? `Meta cumplida: ${r.piezas} de ${r.meta} piezas en ${Math.round(r.tiempo)} s.` : `Meta: ${r.piezas} de ${r.meta} piezas en ${Math.round(r.tiempo)} s.`, { fontSize: '11px', color: '#8794a3' });
 
     const filas = [
       ['Piezas descargadas', `${r.piezas} / ${r.meta}`],
@@ -82,7 +86,7 @@ export class Resultados extends Phaser.Scene {
 
     // Botones.
     const boton = (x, ancho, etiqueta, color, accion) => {
-      const rect = this.add.rectangle(x0 + x, y0 + 390, ancho, 46, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9).setInteractive({ useHandCursor: true });
+      const rect = resaltable(this.add.rectangle(x0 + x, y0 + 390, ancho, 46, color).setOrigin(0).setInteractive({ useHandCursor: true }));
       this.add.text(x0 + x + ancho / 2, y0 + 413, etiqueta, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: TEXTO_HEX.texto }).setOrigin(0.5);
       rect.on('pointerup', accion);
     };

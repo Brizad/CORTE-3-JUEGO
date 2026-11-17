@@ -7,6 +7,7 @@
 import { COLORES, TEXTO_HEX } from '../config.js';
 import { arbolCobertura, nombreMarcado } from '../sed/cobertura.js';
 import { camaraLogica } from './camara.js';
+import { resaltable, fijarBorde } from './resaltar.js';
 
 const PANEL = { x: 8, y: 58, ancho: 944, alto: 390 };
 const CW = 24; // ancho de celda de las tablas
@@ -44,9 +45,11 @@ export class Inspector extends Phaser.Scene {
       .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
     cerrar.on('pointerup', () => this.cerrar());
+    cerrar.on('pointerover', () => cerrar.setColor(TEXTO_HEX.espera));
+    cerrar.on('pointerout', () => cerrar.setColor(TEXTO_HEX.texto));
     this.pestanas = {};
     [['matrices', 'Matrices', 250, 80], ['arbol', 'Árbol', 334, 60], ['logros', 'Logros', 398, 64]].forEach(([clave, etiqueta, x, ancho]) => {
-      const rect = this.add.rectangle(x, 5, ancho, 20, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true });
+      const rect = resaltable(this.add.rectangle(x, 5, ancho, 20, COLORES.panel).setOrigin(0).setInteractive({ useHandCursor: true }), [1, COLORES.maquina, 1]);
       const t = this.add.text(x + ancho / 2, 15, etiqueta, TEXTO({ fontStyle: 'bold' })).setOrigin(0.5);
       rect.on('pointerup', () => this._cambiarPestana(clave));
       this.pestanas[clave] = { rect, t };
@@ -114,7 +117,8 @@ export class Inspector extends Phaser.Scene {
   _estilizarPestanas() {
     for (const [clave, p] of Object.entries(this.pestanas)) {
       const activa = clave === this.pestana;
-      p.rect.setFillStyle(activa ? COLORES.banda : COLORES.panel).setStrokeStyle(activa ? 2 : 1, activa ? COLORES.texto : COLORES.maquina);
+      p.rect.setFillStyle(activa ? COLORES.banda : COLORES.panel);
+      fijarBorde(p.rect, activa ? 2 : 1, activa ? COLORES.texto : COLORES.maquina, 1);
     }
   }
 
@@ -305,7 +309,7 @@ export class Inspector extends Phaser.Scene {
   }
 
   _boton(x, y, ancho, alto, etiqueta, color, accion) {
-    const rect = this.add.rectangle(x, y, ancho, alto, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9).setInteractive({ useHandCursor: true });
+    const rect = resaltable(this.add.rectangle(x, y, ancho, alto, color).setOrigin(0).setInteractive({ useHandCursor: true }));
     const t = this.add.text(x + ancho / 2, y + alto / 2, etiqueta, TEXTO({ fontStyle: 'bold', fontSize: '11px' })).setOrigin(0.5);
     rect.on('pointerup', accion);
     this.dinamico.add([rect, t]);

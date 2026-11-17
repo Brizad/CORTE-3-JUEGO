@@ -1,7 +1,7 @@
 // Gestor de entrada: mouse, teclado y táctil emiten las mismas acciones.
 // Las demás capas escuchan acciones y nunca leen el dispositivo directamente.
 
-import { VELOCIDADES, RES } from '../config.js';
+import { RES } from '../config.js';
 
 /** Nombres de las acciones que emite el gestor. */
 export const ACCIONES = {
@@ -9,7 +9,12 @@ export const ACCIONES = {
   SOLICITAR_EVENTO: 'solicitarEvento', // {codigo, origen}: un botón del HUD pide un evento
   PAUSA: 'pausa', // tecla P
   INSPECTOR: 'inspector', // tecla I
-  VELOCIDAD: 'velocidad', // teclas 1, 2 y 4: {valor}
+  VELOCIDAD: 'velocidad', // botones x1, x2 y x4: {valor}
+  VELOCIDAD_CICLO: 'velocidadCiclo', // tecla V: pasa de x1 a x2, a x4 y otra vez a x1
+  ELEGIR_CNC: 'elegirCNC', // teclas 1 y 2: {n}
+  ACCION_PRINCIPAL: 'accionPrincipal', // tecla Espacio: la acción principal de la máquina elegida
+  DESPACHAR: 'despachar', // teclas Q y W: {n} = AGV 1 o AGV 2
+  PESTANA: 'pestana', // tecla Tab: «Acciones» <-> «Autómata»
   CERRAR: 'cerrar', // tecla Esc
   FPS: 'fps', // tecla F1
   FORZAR_FALLA: 'forzarFalla', // tecla F: solo en desarrollo, fuerza falla_husillo en la CNC que fresa
@@ -143,8 +148,16 @@ export class GestorEntrada {
     else if (tecla === 'F1') {
       evento.preventDefault(); // evita la ayuda del navegador
       this._emitir(ACCIONES.FPS);
-    } else if (VELOCIDADES.includes(Number(tecla)) && tecla.length === 1) {
-      this._emitir(ACCIONES.VELOCIDAD, { valor: Number(tecla) });
+    } else if (tecla === '1' || tecla === '2') this._emitir(ACCIONES.ELEGIR_CNC, { n: Number(tecla) });
+    else if (tecla === ' ') {
+      evento.preventDefault(); // el espacio no desplaza la página
+      this._emitir(ACCIONES.ACCION_PRINCIPAL);
+    } else if (tecla === 'q' || tecla === 'Q') this._emitir(ACCIONES.DESPACHAR, { n: 1 });
+    else if (tecla === 'w' || tecla === 'W') this._emitir(ACCIONES.DESPACHAR, { n: 2 });
+    else if (tecla === 'v' || tecla === 'V') this._emitir(ACCIONES.VELOCIDAD_CICLO);
+    else if (tecla === 'Tab') {
+      evento.preventDefault(); // el Tab no pasa el foco a otro elemento de la página
+      this._emitir(ACCIONES.PESTANA);
     }
   }
 }

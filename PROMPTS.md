@@ -592,3 +592,87 @@ Fecha: 2026-11-16
 
 Resultado: ver `docs/informe.md` (postmortem, "mejoras tras el playtest") y `docs/decisiones_por_confirmar.md`.
 
+## Prompt 27 · Funcionó
+
+*Decisión del equipo sobre el balance del turno 3.*
+
+Fecha: 2026-11-16
+
+```text
+Decisión del equipo sobre el balance: cambia la meta del turno 3 de 7 a 6 piezas (las fallas siguen en 30 % y los pedidos cada 12 s). Actualiza el GDD (sección de turnos y decisiones confirmadas, explicando que se ajustó por la medición de balance), src/config.js, las pruebas, docs/pruebas.md y el postmortem de docs/informe.md. Vuelve a correr scripts/balance.mjs y dime cuántas de 30 se ganan ahora en el turno 3 con 1 decisión cada 2 s. Las demás decisiones de decisiones_por_confirmar.md quedan aceptadas como están. Regenera el ZIP, commit "Balance turno 3" y git push.
+```
+
+Resultado: 0 de 30 con una decisión cada 2 s (27 de 30 con una por segundo). Ver `docs/decisiones_por_confirmar.md`.
+
+## Prompt 28 · Funcionó
+
+*Correcciones tras jugarlo: lentitud al abrir una CNC, estado actual sin iluminar, botones rojos y tarjetas encimadas.*
+
+Fecha: 2026-11-16
+
+```text
+Probé el juego y hay estos problemas:
+1. Al hacer clic en una CNC el juego se pone lento, como en cámara lenta. Revisa qué lo causa (filtros glow, bloom, redibujos del HUD en cada cuadro u otra cosa) y corrígelo para que vaya fluido.
+2. En el grafo del HUD el estado actual NO se ve iluminado. Haz que el nodo del estado actual se rellene de un color fuerte (verde, o el color de su estado según arte.md) y tenga un borde grueso, sin depender del filtro glow, para que se vea claro en cualquier navegador.
+3. Los botones deshabilitados por el supervisor (por ejemplo i · iniciar_fresado con el mandril abierto) se ven solo como texto. Deben verse como botón ROJO relleno con la razón al pasar el mouse.
+4. Las tarjetas de pedidos de arriba tapan el título del HUD (CNC 1, Autómata, Composición). Muévelas para que no choquen.
+Pruébalo en el navegador, npm test y npm run build deben pasar. Commit "Correcciones de jugabilidad" y git push.
+```
+
+Resultado: la causa eran los filtros glow; se quitaron (GDD 18.17).
+
+## Prompt 29 · Funcionó
+
+*Parpadeo de la última transición (guía 5.7.3, punto 2) sin filtros.*
+
+Fecha: 2026-11-16
+
+```text
+La guía (sección 5.7.3, punto 2) pide que la última transición recorrida parpadee en el grafo del HUD, y ahora no se ve. Arréglalo sin filtros glow (para no volver a poner lento el juego), solo con dibujo plano y tweens:
+1. Cuando ocurre un evento en una máquina, en su grafo la flecha recorrida y su etiqueta se pintan de AMARILLO grueso y parpadean durante 3 segundos (unos 6 parpadeos), y el nodo de destino hace un pulso de tamaño. Después del parpadeo, el estado actual queda relleno fijo. Si mientras parpadea ocurre otro evento, el parpadeo nuevo reemplaza al anterior.
+2. El botón que el jugador presionó destella en amarillo un momento al hacer clic.
+3. En la planta, la máquina que cambió de estado muestra un destello amarillo breve en su contorno.
+4. Funciona igual en el HUD de la CNC, del brazo y del AGV, y también con los eventos no controlables que pasan solos (llegar, fin_fresado, falla_husillo).
+Anota en la sección 18 del GDD que el equipo decidió 3 s en lugar de los 0,5 s de la guía para que se note mejor al jugar y en la sustentación.
+Pruébalo en el navegador, npm test y npm run build deben pasar. Commit "Parpadeo de transiciones" y git push.
+```
+
+Resultado: GDD 18.18.
+
+## Prompt 30 · Funcionó (con decisiones anotadas)
+
+*Que se sienta como un juego y se entienda en 1 minuto, sin tocar los modelos.*
+
+Fecha: 2026-11-16
+
+```text
+Objetivo: que RoboCell se sienta como un JUEGO y que alguien que nunca leyó la guía lo entienda en 1 minuto. Reglas que NO se tocan: los modelos (autómatas, red de Petri, JSON de src/sed/), δ, el supervisor y el puntaje. Cada acción del jugador debe seguir disparando los eventos reales del autómata uno por uno (se deben ver en el historial del HUD). Todo en español.
+
+A. CLARIDAD
+1. Texto del AGV: hoy dice "lleva la pieza de la mesa al pedido" y es falso (en la red de la ficha D.2 el AGV no depende de las piezas). Cámbialo por: "AGV i: trae material. Para descargarlo necesita la MESA y el ROBOT al mismo tiempo."
+2. Intro corta antes del Turno 1 (y en el botón ?), máximo 5 líneas.
+3. Etiquetas fijas sobre el mapa: "CNC 1", "CNC 2", "Brazo", "Mesa", "AGV 1", "AGV 2".
+4. Pedidos: en vez de un número que solo sube, "AGV 1 espera · 12 s" con cuenta regresiva de 30 s en color (verde > amarillo > rojo).
+5. Radar: tooltip "M6 = foto actual de las fichas. Verde: seguro. Amarillo: si despachas otro AGV ahora, te trabas. Rojo: trabado." y el texto "últimos estados" debajo de los cuadritos.
+6. AGV esperando: texto simple sobre él, "Espera el robot" o "Espera la mesa".
+
+B. CONTROLES DE JUEGO (dos capas en el panel de cada máquina)
+1. Pestaña "Acciones" (la que abre por defecto): solo botones grandes con ícono de ESA máquina, con verbos de juego (Libre: "Cargar bloque"; Cargado: "Fresar"; Fresando: barra de progreso; Terminado: "Sacar pieza"; Falla: la consola H C T C R). Al hacer clic en una CNC NO deben aparecer botones del brazo. Si el brazo está ocupado, el botón dice "Brazo ocupado" en gris.
+2. Pestaña "Autómata": el grafo actual con los botones de eventos verde/gris/rojo tal como está hoy.
+3. Atajos de teclado: 1 y 2 seleccionan CNC 1 y CNC 2, Espacio hace la acción principal de la máquina seleccionada, Q y W despachan AGV 1 y AGV 2, Tab cambia entre "Acciones" y "Autómata". Muéstralos en el botón ?.
+4. Cursor de mano y borde resaltado al pasar el mouse por cualquier cosa clicable.
+
+C. INMERSIÓN
+1. Sonido sintetizado con Web Audio (sin archivos): zumbido de fresado, clic de botón, "ding" al terminar pieza, alarma corta en Falla, tono grave en deadlock, fanfarria corta al ganar. Botón de silencio arriba y tecla M.
+2. Texto flotante en el sitio del evento: "+100", "+40", "−20 pedido vencido".
+3. Barra de objetivo visible: "Piezas 2/5" con progreso y el tiempo restante; en los últimos 30 s el reloj parpadea en rojo.
+4. El brazo se ve girando hacia la CNC que atiende, y el carrito avanza por la ruta (no aparece de golpe).
+5. Al ganar o perder el turno, una frase corta de jefe de planta.
+
+D. CIERRE
+Mantén unos 60 fps (mídelo con F1). Corre npm test (deben pasar todas). Revisa en el navegador que nada se monte encima de otra cosa y que el tutorial siga funcionando con los nuevos botones (actualiza sus pasos si hace falta). Anota todo en docs/GDD.md §18. Haz commit "Juego mas claro e inmersivo" y push.
+```
+
+Resultado: GDD 18.19 y `docs/pruebas.md`, literal j. Decisiones que el pedido no definía (tecla V para la velocidad, a qué AGV se
+atribuye cada pedido, pausa de 0,5 s entre eventos): `docs/decisiones_por_confirmar.md`, filas 24 a 29.
+

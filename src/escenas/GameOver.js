@@ -5,6 +5,7 @@
 import { COLORES, TEXTO_HEX, ANCHO, PUNTOS } from '../config.js';
 import { nombreMarcado } from '../sed/cobertura.js';
 import { camaraLogica } from './camara.js';
+import { resaltable } from './resaltar.js';
 
 const PANEL = { ancho: 560, alto: 360 };
 
@@ -36,6 +37,8 @@ export class GameOver extends Phaser.Scene {
       this.add.text(x0 + x, y0 + y, t, { fontFamily: 'Arial', fontSize: '12px', color: TEXTO_HEX.texto, wordWrap: { width: PANEL.ancho - 2 * x }, lineSpacing: 3, ...estilo });
 
     texto(16, 12, 'Game over por interbloqueo', { fontSize: '22px', fontStyle: 'bold', color: TEXTO_HEX.fallo });
+    // Frase corta del jefe de planta.
+    this.add.text(x0 + PANEL.ancho - 16, y0 + 20, '«¡La fábrica se trabó!»', { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: TEXTO_HEX.espera }).setOrigin(1, 0);
     const M = c.red.marcado();
     const nombre = nombreMarcado(M);
     texto(16, 48, `Marcado muerto: M = [${M.join(',')}]${nombre ? `  (${nombre})` : ''}`, { fontSize: '14px', fontStyle: 'bold' });
@@ -59,7 +62,7 @@ export class GameOver extends Phaser.Scene {
     texto(16, 258, `${PUNTOS.deadlock} puntos por el deadlock. Puntaje: ${c.puntaje}.`, { fontStyle: 'bold', color: TEXTO_HEX.espera });
 
     const boton = (x, y, ancho, etiqueta, color, accion) => {
-      const rect = this.add.rectangle(x0 + x, y0 + y, ancho, 44, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9).setInteractive({ useHandCursor: true });
+      const rect = resaltable(this.add.rectangle(x0 + x, y0 + y, ancho, 44, color).setOrigin(0).setInteractive({ useHandCursor: true }));
       this.add.text(x0 + x + ancho / 2, y0 + y + 22, etiqueta, { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.texto, align: 'center' }).setOrigin(0.5);
       rect.on('pointerup', accion);
     };

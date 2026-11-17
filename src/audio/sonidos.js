@@ -51,6 +51,7 @@ export class Sonidos {
 
   alternarSilencio() {
     this.silenciado = !this.silenciado;
+    if (this.silenciado) this.zumbido(false);
     return this.silenciado;
   }
 
@@ -81,6 +82,64 @@ export class Sonidos {
   /** Logro: arpegio ascendente. */
   logro() {
     [523, 659, 784, 1047].forEach((f, i) => this._tono({ frecuencia: f, duracion: 0.16, tipo: 'triangle', retraso: i * 0.09 }));
+  }
+
+  /** Clic de un botón de la interfaz. */
+  clic() {
+    if (!this._libre('clic', 40)) return;
+    this._tono({ frecuencia: 440, fin: 300, duracion: 0.05, tipo: 'square', volumen: 0.45 });
+  }
+
+  /** "Ding" al terminar una pieza (la CNC queda Terminada). */
+  ding() {
+    this._tono({ frecuencia: 1318, duracion: 0.28, tipo: 'sine', volumen: 0.9 });
+    this._tono({ frecuencia: 1760, duracion: 0.35, tipo: 'sine', volumen: 0.5, retraso: 0.06 });
+  }
+
+  /** Fanfarria corta al ganar un turno. */
+  fanfarria() {
+    [[523, 0], [659, 0.12], [784, 0.24], [1047, 0.38]].forEach(([f, t]) => this._tono({ frecuencia: f, duracion: t === 0.38 ? 0.5 : 0.14, tipo: 'triangle', retraso: t }));
+    this._tono({ frecuencia: 262, duracion: 0.7, tipo: 'sine', volumen: 0.6, retraso: 0.38 });
+  }
+
+  /** Turno perdido por tiempo: dos tonos que bajan. */
+  derrota() {
+    this._tono({ frecuencia: 392, duracion: 0.2, tipo: 'triangle' });
+    this._tono({ frecuencia: 262, duracion: 0.4, tipo: 'triangle', retraso: 0.2 });
+  }
+
+  /** Zumbido de fresado: suena mientras alguna CNC fresa (activo = true) y se apaga con activo = false o en silencio. */
+  zumbido(activo) {
+    if (!activo || this.silenciado) {
+      if (this._zumbido) {
+        const { osc, osc2, ganancia, ctx } = this._zumbido;
+        const t = ctx.currentTime;
+        ganancia.gain.setValueAtTime(this.volumen * 0.3, t);
+        ganancia.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+        osc.stop(t + 0.12);
+        osc2.stop(t + 0.12);
+        this._zumbido = null;
+      }
+      return;
+    }
+    if (this._zumbido) return;
+    const ctx = this._contexto();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const ganancia = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc2.type = 'square';
+    osc.frequency.setValueAtTime(96, ctx.currentTime);
+    osc2.frequency.setValueAtTime(144, ctx.currentTime);
+    ganancia.gain.setValueAtTime(0.0001, ctx.currentTime);
+    ganancia.gain.exponentialRampToValueAtTime(this.volumen * 0.3, ctx.currentTime + 0.15);
+    osc.connect(ganancia);
+    osc2.connect(ganancia);
+    ganancia.connect(ctx.destination);
+    osc.start();
+    osc2.start();
+    this._zumbido = { osc, osc2, ganancia, ctx };
   }
 
   /** Deadlock: caída grave y larga. */

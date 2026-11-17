@@ -19,7 +19,7 @@ export const PLANTA = { columnas: 12, filas: 10 };
 // Vértice superior de la celda (0, 0) en pantalla. La planta queda centrada en x = 480.
 export const ORIGEN = { x: 448, y: 90 };
 
-// Velocidades de simulación permitidas (teclas 1, 2 y 4).
+// Velocidades de simulación permitidas (botones x1, x2 y x4; la tecla V pasa de una a otra).
 export const VELOCIDADES = [1, 2, 4];
 
 // Semilla del generador pseudoaleatorio (docs/GDD.md, sección 6).

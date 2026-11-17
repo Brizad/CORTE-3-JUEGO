@@ -1,10 +1,12 @@
-// Estaciones de los AGV: muestran qué ficha falta cuando un AGV espera una transición (AND-join),
-// y los pedidos pendientes como un número sobre la base de cada AGV (docs/GDD.md, secciones 5 y 6).
+// Estaciones de los AGV: muestran qué espera un AGV detenido en su estación ("Espera el robot" o "Espera la mesa", AND-join)
+// y, sobre la base de cada AGV libre con un pedido pendiente, la cuenta regresiva del pedido (docs/GDD.md, secciones 5, 6 y 18.19).
 
-import { COLORES, TEXTO_HEX } from '../config.js';
+import { TEXTO_HEX, ALTOS } from '../config.js';
 import { aPantalla } from '../iso/proyeccion.js';
+import { textoEsperaAGV, etiquetasPedidos, cuentaPedido } from '../textos.js';
 
 const PROFUNDIDAD = 410;
+const HEX_NIVEL = { operacion: TEXTO_HEX.operacion, espera: TEXTO_HEX.espera, fallo: TEXTO_HEX.fallo, mantenimiento: TEXTO_HEX.texto };
 const AGVS = {
   // estación (celda), transición b que espera (iniciar descarga) y base donde se muestra el pedido
   AGV1: { estacion: [8.5, 3.5], transicion: 't1b', base: [11.5, 0.5] },
@@ -21,7 +23,8 @@ export class Estaciones {
     this.celda = celda;
     this.items = {};
     for (const [agv, cfg] of Object.entries(AGVS)) {
-      const e = aPantalla(cfg.estacion[0], cfg.estacion[1], 62);
+      const e0 = aPantalla(cfg.estacion[0], cfg.estacion[1], ALTOS.AGV);
+      const e = { x: e0.x + 30, y: e0.y + 20 }; // justo debajo del rótulo "AGV n" (Rotulos.js)
       const b = aPantalla(cfg.base[0], cfg.base[1], 12);
       this.items[agv] = {
         cfg,
@@ -29,15 +32,11 @@ export class Estaciones {
           .text(e.x, e.y, '', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: TEXTO_HEX.espera, stroke: '#161b22', strokeThickness: 3 })
           .setOrigin(0.5)
           .setDepth(PROFUNDIDAD),
-        insignia: escena.add.graphics().setDepth(PROFUNDIDAD),
-        numero: escena.add
-          .text(b.x, b.y, '0', { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#161b22' })
+        // Cuenta regresiva del pedido que espera a este AGV ("Pedido · 12 s"), sobre su base.
+        pedido: escena.add
+          .text(b.x, b.y, '', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: TEXTO_HEX.texto, backgroundColor: 'rgba(22,27,34,0.8)', padding: { x: 4, y: 2 } })
           .setOrigin(0.5)
           .setDepth(PROFUNDIDAD + 1),
-        rotulo: escena.add
-          .text(b.x, b.y + 11, 'pedidos', { fontFamily: 'Arial', fontSize: '8px', color: TEXTO_HEX.texto, stroke: '#161b22', strokeThickness: 2 })
-          .setOrigin(0.5, 0)
-          .setDepth(PROFUNDIDAD),
         b,
         clave: '',
       };
@@ -46,37 +45,32 @@ export class Estaciones {
 
   actualizar() {
     const c = this.celda;
-    const pedidos = c.pedidos.length;
-    const vencido = c.pedidos.some((p) => p.vencido);
+    const estados = { AGV1: c.estado('AGV1'), AGV2: c.estado('AGV2') };
+    const rotulos = etiquetasPedidos(c.pedidos, estados);
     for (const [agv, it] of Object.entries(this.items)) {
       // AND-join: el AGV espera en la estación y la transición no está habilitada.
-      let aviso = '';
-      if (c.estado(agv) === 'Esperando') {
-        const falta = c.faltantes(it.cfg.transicion);
-        if (falta.length > 0) aviso = `${agv} espera: falta ${falta.join(', ')}`;
+      const aviso = estados[agv] === 'Esperando' ? textoEsperaAGV(c.faltantes(it.cfg.transicion)) : '';
+      // Pedido que espera a este AGV (libre en su base): cuenta regresiva con color.
+      const i = rotulos.findIndex((r) => r.agv === agv);
+      let pedido = '';
+      let color = TEXTO_HEX.texto;
+      if (i >= 0 && estados[agv] === 'Libre') {
+        const cuenta = cuentaPedido(c.pedidos[i], c.reloj.ahora, c.tiempos.pedidoVence, c.turno.pedidosVencen !== false);
+        pedido = `Pedido · ${cuenta.texto}`;
+        color = HEX_NIVEL[cuenta.nivel];
       }
+      const clave = `${aviso}|${pedido}|${color}`;
+      if (clave === it.clave) continue;
+      it.clave = clave;
       it.aviso.setText(aviso);
-
-      const clave = `${pedidos}|${vencido}`;
-      if (clave !== it.clave) {
-        it.clave = clave;
-        const color = vencido ? COLORES.fallo : COLORES.espera;
-        it.insignia.clear();
-        it.insignia.fillStyle(color, pedidos > 0 ? 1 : 0.35);
-        it.insignia.fillCircle(it.b.x, it.b.y, 10);
-        it.insignia.lineStyle(1.5, COLORES.texto, pedidos > 0 ? 0.9 : 0.3);
-        it.insignia.strokeCircle(it.b.x, it.b.y, 10);
-        it.numero.setText(String(pedidos));
-      }
+      it.pedido.setText(pedido).setColor(color).setVisible(pedido !== '');
     }
   }
 
   destruir() {
     for (const it of Object.values(this.items)) {
       it.aviso.destroy();
-      it.insignia.destroy();
-      it.numero.destroy();
-      it.rotulo.destroy();
+      it.pedido.destroy();
     }
   }
 }

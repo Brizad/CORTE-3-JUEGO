@@ -6,6 +6,7 @@ import { COLORES, TEXTO_HEX } from '../config.js';
 import { GuiaTutorial, PASOS } from '../sed/tutorial.js';
 import { Partida } from '../sed/partida.js';
 import { camaraLogica } from './camara.js';
+import { resaltable } from './resaltar.js';
 
 const CAJA = { x: 8, y: 56, ancho: 410, alto: 70 };
 
@@ -34,11 +35,13 @@ export class Tutorial extends Phaser.Scene {
       .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
     this.salir.on('pointerup', () => this._empezarTurno1());
+    this.salir.on('pointerover', () => this.salir.setColor(TEXTO_HEX.espera));
+    this.salir.on('pointerout', () => this.salir.setColor('#8794a3'));
 
     // Botones del último paso.
     this.botonesFin = [];
     const boton = (x, ancho, etiqueta, color, accion) => {
-      const rect = this.add.rectangle(CAJA.x + x, CAJA.y + CAJA.alto + 6, ancho, 44, color).setOrigin(0).setStrokeStyle(2, COLORES.texto, 0.9).setInteractive({ useHandCursor: true }).setVisible(false);
+      const rect = resaltable(this.add.rectangle(CAJA.x + x, CAJA.y + CAJA.alto + 6, ancho, 44, color).setOrigin(0).setInteractive({ useHandCursor: true })).setVisible(false);
       const t = this.add.text(CAJA.x + x + ancho / 2, CAJA.y + CAJA.alto + 28, etiqueta, { fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: TEXTO_HEX.texto, align: 'center' }).setOrigin(0.5).setVisible(false);
       rect.on('pointerup', accion);
       this.botonesFin.push(rect, t);
@@ -75,9 +78,11 @@ export class Tutorial extends Phaser.Scene {
       return { x: q.x, y: q.y - 4 };
     }
     if (o.tipo === 'boton') {
-      const b = hud.abierto ? hud.posicionBoton?.(o.etiqueta) : null;
-      if (b) return b;
-      // Sin el HUD abierto: se señala la máquina para abrirlo.
+      if (hud.abierto && hud.maquinaId === 'CNC1') {
+        // El botón del paso; si está en la otra pestaña, se señala la pestaña «Acciones».
+        return hud.posicionBoton?.(o.etiqueta, o.alterna) ?? hud.posicionBoton?.('Acciones') ?? null;
+      }
+      // Sin el HUD de la CNC 1 abierto: se señala la máquina para abrirlo.
       const e = this.planta.entidades.find((q) => q.id === 'CNC1');
       const p = e.silueta[0];
       const q = this.planta.aPantallaLogica(p.x, p.y);
@@ -93,7 +98,7 @@ export class Tutorial extends Phaser.Scene {
   update(tiempo) {
     if (!this.activo) return;
     const hud = this.scene.get('HUDMaquina');
-    const ctx = { hud: hud.abierto ? hud.maquinaId : null };
+    const ctx = { hud: hud.abierto ? hud.maquinaId : null, pestana: hud.abierto ? hud._pestana : null };
     this.guia.avanzar(this.celda, ctx, tiempo);
     const paso = this.guia.paso;
     const n = PASOS.indexOf(paso) + 1;
