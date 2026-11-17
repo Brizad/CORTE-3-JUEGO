@@ -10,6 +10,8 @@ Modelado Discreto, Corte 3.
 
 **Integrantes:** Brian Acevedo, Brayan Amado y Manuel Carvajal.
 
+**Jugar en línea (Netlify):** https://flourishing-caramel-127c26.netlify.app
+
 ## Tecnología
 
 Phaser 4.2.1 (por CDN, no se instala con npm), Vite y JavaScript. Mouse, teclado y táctil. Phaser se carga desde
@@ -115,5 +117,15 @@ PROMPTS.md                        Prompts usados, en orden, y cuáles hubo que c
 
 ## Entrega
 
-`npm run empaquetar` deja `entrega/GrupoN_RoboCell.zip` (contenido de `dist/` con `index.html` en la raíz, muy por debajo de 25 MB).
-`netlify.toml` está listo para publicar en Netlify (opcional, guía 5.11): comando `npm run build`, carpeta `dist`.
+`npm run empaquetar` hace el build y deja en `entrega/` (carpeta ignorada por git):
+
+- `Grupo2_RoboCell.zip`: contenido de `dist/` con `index.html` en la raíz (0,06 MB; el máximo es 25 MB). Para el aula virtual.
+- `Grupo2_RoboCell_completo.zip`: `modelos/`, `.agents/skills/`, `docs/`, `src/`, `test/`, `scripts/`, `README.md`, `PROMPTS.md`,
+  `package.json`, `index.html` y los archivos para volver a construirlo (`package-lock.json`, `vite.config.js`, `netlify.toml`). Sin
+  `node_modules` ni `dist`.
+- `ENTREGA.md`: la lista de la sección 5.12 de la guía con lo que está listo y lo pendiente.
+
+El ZIP del juego se abre con un servidor local (por ejemplo `python -m http.server` dentro de la carpeta descomprimida) o en la
+previsualización del aula virtual. Con doble clic (`file://`) el navegador bloquea el script de tipo módulo que genera Vite.
+
+Versión publicada: https://flourishing-caramel-127c26.netlify.app (`netlify.toml`: comando `npm run build`, carpeta `dist`).

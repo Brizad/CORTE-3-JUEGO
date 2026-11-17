@@ -2,6 +2,7 @@
 
 **Equipo:** Brian Acevedo, Brayan Amado y Manuel Carvajal. **Proyecto 2** de la guía *Laboratorio 1: Sistemas de Eventos Discretos con
 Phaser, Autómatas y Redes de Petri* (FLA-23 v.00). Repositorio: https://github.com/Brizad/CORTE-3-JUEGO
+Juego publicado: https://flourishing-caramel-127c26.netlify.app
 
 Este informe reúne las tablas de la sección 5.2 (modelo formal verificado) y de la sección 5.9 (pruebas) y el postmortem de la
 sección 5.13 b. Los números salen de `npm run pruebas` y de las pruebas en el navegador guardadas en `docs/datos/`.
@@ -9,6 +10,11 @@ sección 5.13 b. Los números salen de `npm run pruebas` y de las pruebas en el 
 > Aviso: JFLAP, Supremica y PIPE2 no se pudieron abrir en el entorno de trabajo automático. En las tablas, la columna del
 > "software académico" se calculó con un lector propio de los archivos `.jff` y `.pnml` (`scripts/pruebas-modelo.mjs`).
 > Antes de entregar hay que confirmar cada dato con una captura del programa correspondiente.
+> **Por completar:** capturas de JFLAP, de Supremica y de los análisis de PIPE2 (Incidence & Marking, State Space, Coverability
+> Graph e Invariant Analysis). En las tablas, donde dice «software académico» el dato es del lector propio hasta que esté la captura.
+
+**Leyenda:** «por completar» = dato que no se puede llenar desde el entorno de trabajo (requiere el programa académico, un teléfono
+real o el playtest con otro equipo). No se inventó ningún dato.
 
 ---
 
@@ -79,6 +85,8 @@ Expresión regular de la ficha: `^H(CT?)+R$`; en JFLAP: `H(C(T+!))(C(T+!))*R`, c
 
 ## 1.4 Composición y supervisor (Supremica)
 
+Captura de Supremica (Synchronize, Verify y Synthesize): **por completar**.
+
 | Dato | Software académico (cálculo independiente sobre los .jff) | Juego | ¿Coincide? |
 |---|---|---|---|
 | N.º de estados de CNC ‖ Brazo | 20 | 20 | sí |
@@ -91,6 +99,8 @@ Regla del supervisor: ¬(CNC = Fresando ∧ Brazo = Mandril_Abierto). Deshabilit
 `abrir_mandril` en (Fresando, Mandril_Cerrado): esos son los botones que el juego muestra en rojo.
 
 ## 1.5 Red de Petri (PIPE2)
+
+Capturas de PIPE2 (Incidence & Marking, State Space Analysis, Coverability Graph e Invariant Analysis): **por completar**.
 
 | Propiedad | Software académico (cálculo propio sobre el .pnml) | Juego | ¿Coincide? |
 |---|---|---|---|
@@ -151,6 +161,8 @@ Resultados reales de RoboCell Tycoon 2.5D. Cada tabla dice cómo se obtuvo el da
 
 ### a.2 Criterios CA del GDD (sección 16) comprobados con el núcleo
 
+Tabla de `npm run pruebas` con la versión final (copiada de `docs/pruebas_gdd_generado.md`; los valores de fallas y entregas son los de GDD 18.20).
+
 | N.º | Criterio | Cómo se prueba | Observado | ¿Cumple? |
 |---|---|---|---|---|
 | CA-04 | El estado prohibido nunca se alcanza | i con el mandril abierto y a con la CNC fresando | i: supervisor; a: supervisor; CNC = Fresando, Brazo = Mandril_Cerrado | sí |
@@ -163,8 +175,8 @@ Resultados reales de RoboCell Tycoon 2.5D. Cada tabla dice cómo se obtuvo el da
 | CA-11 | Tiempos: brazo 2 s, fresado 10 s, viaje del AGV 4 s, descarga 5 s | Medir con el reloj a velocidad x1 | brazo 2 s, fresado 10 s, viaje 4 s, descarga 5 s | sí |
 | CA-12 | Falla entre 2 y 8 s después de i; con la semilla 2026 la secuencia siempre es la misma | Dos corridas de 120 s con la semilla 2026 y una con otra | misma semilla: idéntica; otra semilla: distinta | sí |
 | CA-12b | El instante de la falla es uniforme entre 2 s y 8 s | 200 fallas con semillas distintas | mínimo 2.00 s, máximo 7.98 s | sí |
-| CA-13 | Probabilidad de falla 10 %, 20 % y 30 % por turno | 1000 fresados por turno | turno 1: 10.6 %; turno 2: 19.3 %; turno 3: 29.7 % | sí |
-| CA-14 | Pedidos cada 25, 18 y 12 s y un pedido sin atender vence a los 30 s con −20 | Contar pedidos en 179 s y esperar un vencimiento | pedidos por turno: 7, 9, 14; primer pedido vence a los 55 s, puntaje -20 | sí |
+| CA-13 | Probabilidad de falla 10 %, 15 % y 20 % por turno (GDD 18.20) | 1000 fresados por turno | turno 1: 10.6 %; turno 2: 15.2 %; turno 3: 19.3 % | sí |
+| CA-14 | Entregas de metal cada 25, 20 y 18 s (turno 3 con parejas); una sin atender se pierde a los 30 s (20 s en el turno 3) con −20 | Contar entregas en 179 s y esperar un vencimiento por turno | entregas por turno: 7, 8, 11; la primera se pierde a los 55, 50, 38 s, puntaje -20 | sí |
 | CA-16 | Un AGV no descarga sin la mesa y el brazo (AND-join) | AGV1 llega con el brazo fuera | AGV1 = Esperando; falta: Robot_libre; t1b habilitada = false | sí |
 | CA-17 | El puntaje de cada acción coincide con la sección 8 | Ejecutar cada acción | pieza +100; ayuda -20; Controlador -150; palabra inválida -30; reparación válida +50; ciclo de AGV +40, bloqueo −15, pedido vencido −20, radar +25 y deadlock −200 (ver CA-05, CA-06, CA-10, CA-14 y tests) | sí |
 | CA-19 | Las velocidades y la pausa no cambian el resultado del turno | Misma partida con pasos de reloj de 0,05 s, 0,25 s y 1 s | resultados idénticos | sí |
@@ -181,6 +193,8 @@ Cumplen 16 de 16. Los demás criterios (CA-01 a CA-03, CA-18, CA-20 a CA-22) se 
 | 3 | victoria | 7 / 7 | 3 (3) | 0 | 0 | 16 | 1545 | 169.7 | sin_red_de_seguridad |
 
 Puntaje total: 2860. Sin errores en la consola del navegador. Capturas: `docs/capturas/pruebas_resultados_turno1.png`, `..._turno2.png` y `..._turno3.png`.
+**Por completar:** repetir esta corrida con la versión final (metas 6, 8 y 8, GDD 18.20); la tabla de arriba es de una versión anterior
+(metas 3, 5 y 7). Para la versión final hay medición con jugadores simulados en la tabla de dificultad de GDD 18.20 (`scripts/balance.mjs`).
 **Nota (balance):** esta corrida es anterior al ajuste de balance y se hizo con la meta del turno 3 en 7 piezas (por eso dice 7 / 7). El equipo bajó esa meta a 6 piezas (GDD, sección 17, decisión 14); con la meta nueva el turno 3 se midió con `scripts/balance.mjs`: el piloto gana 27 de 30 con una decisión por segundo y 0 de 30 con una cada 2 s (`docs/datos/balance.json`).
 
 
@@ -315,10 +329,11 @@ El proyecto no tiene eventos no observables (Σuo = ∅), por eso no hay autóma
 | Disparar evento o transición | Clic en el botón | sí | Tocar el botón | sí |
 | Escribir en la consola de reparación | Teclado (H, C, T, R, Retroceso, Enter) | sí | Botones de comandos (se tocó H, C, R y Enviar: palabra "HCR", CNC Libre) | sí |
 | Pausa e inspector | P, I | sí | Botones en pantalla | sí |
-| Velocidad de simulación | V (se leyó x1 → x2 → x4 → x1; antes eran 1, 2 y 4) | sí | Botón de velocidad (x4: 4) | sí |
+| Velocidad de simulación | 1, 2, 4 (GDD 18.20; `scripts/juego-navegador.mjs`: la tecla 4 pone x4) | sí | Botón de velocidad (x4: 4) | sí |
 | Mover la cámara | Arrastre | sí | Arrastre con un dedo | **sin verificar** (ver nota) |
 | Acercar la cámara | Rueda | sí | Pellizco con dos dedos | **sin verificar** (ver nota) |
 
+**Por completar:** probar arrastre y pellizco en un teléfono o tableta real.
 Nota: en el navegador sin ventana, los eventos de toque de *movimiento* (arrastre y pellizco) no llegan a Phaser con la emulación disponible (los toques sueltos sí). El arrastre y el pellizco están implementados (dos punteros, ver `src/entrada/gestorEntrada.js`), pero hay que probarlos en un teléfono o una tableta antes de entregar.
 
 ---
@@ -332,6 +347,7 @@ Medido con `juego.loop.actualFps` (promedio de 8 muestras). Equipo de prueba: Wi
 | Inicio del turno | 53 | 60 | Edge sin ventana, render por software |
 | Hora pico a velocidad x4 | 53 | 55 | Edge sin ventana, render por software |
 | Inspector abierto con el árbol de cobertura | 43 | 22 | Edge sin ventana, render por software |
+| Los 3 momentos en un equipo con GPU (tecla F1) | por completar | por completar | por completar |
 
 "Sin efectos" es `?efectos=0`: sin partículas, bloom ni glow. Si el juego baja de 50 fps durante 4 s seguidos, el modo reducido se activa solo (docs/decisiones_por_confirmar.md, n.º 7). El radar se calcula en menos de 1 ms por disparo, así que no hizo falta calcularlo cada 0,5 s.
 
@@ -339,11 +355,11 @@ Medido con `juego.loop.actualFps` (promedio de 8 muestras). Equipo de prueba: Wi
 
 ## 2.h) Prueba de juego con otro equipo (playtest)
 
-**Pendiente.** Requiere que otro equipo juegue un turno sin explicaciones. Preguntas para después de jugar: ¿entendieron por qué un botón estaba en rojo?, ¿vieron venir el deadlock en el radar?, ¿qué fue lo más difícil? y ¿qué cambiarían?
+**Por completar.** Requiere que otro equipo juegue un turno sin explicaciones. Preguntas para después de jugar: ¿entendieron por qué un botón estaba en rojo?, ¿vieron venir el deadlock en el radar?, ¿qué fue lo más difícil? y ¿qué cambiarían?
 
 | Observación del otro equipo | Cambio realizado | Sección a la que se regresó |
 |---|---|---|
-| (sin datos todavía) | | |
+| por completar | por completar | por completar |
 
 
 ---
@@ -361,6 +377,9 @@ Resultados reales de la última ronda (GDD 18.10 a 18.16). Los scripts están en
 | Balance de los 3 turnos | `scripts/balance.mjs` (30 semillas, 5 ritmos de decisión) | Turno 1 ganable sin el Controlador. El turno 3 con 7 piezas solo se ganaba a 1 s por decisión (21/30), así que el equipo bajó la meta a 6: ahora gana 27/30 a 1 s, 15/30 a 1,5 s y 0/30 a 2 s (ver `docs/decisiones_por_confirmar.md`) |
 | Textos en español | `scripts/revisar-tildes.mjs` y lectura de las pantallas | Sin palabras sin tilde (queda 1 falso positivo del buscador en una cadena anidada) |
 | Pruebas del núcleo y del juego | `npm test` | 137 pruebas, todas pasan (17 nuevas: guardado, textos, pantalla completa y disposición del HUD) |
+| Revisión final de solapes (GDD 18.21) | `scripts/solapes-navegador.mjs`: todas las escenas, con y sin tutorial, a 960 x 540, 844 x 390 y 360 x 640 | Ningún texto se sale ni se encima; capturas `docs/capturas/final_*.png` y resultado en `docs/capturas/final_revision.txt` |
+| Pruebas al cerrar la entrega | `npm test`, `npm run pruebas` y `scripts/juego-navegador.mjs` | 161 pruebas pasan; 68 comparaciones modelo–juego sin diferencias; 16 de 16 criterios CA; el recorrido en el navegador pasa sin errores |
+| ZIP del aula virtual | `entrega/Grupo2_RoboCell.zip` descomprimido y servido con `python -m http.server` en Edge | Arranca sin errores. Con doble clic (`file://`) **no** arranca: el navegador bloquea el script de tipo módulo que genera Vite (hay que abrirlo con un servidor o en la previsualización del aula) |
 
 Errores reales encontrados y corregidos (cada uno con su prueba): la pantalla completa lanzaba excepciones al pulsar G varias veces o si
 el navegador negaba el permiso (`test/pantalla.test.js`); el botón "?" y el del Controlador no cumplían la disposición del HUD
@@ -377,7 +396,7 @@ el navegador negaba el permiso (`test/pantalla.test.js`); el botón "?" y el del
 - **Diseño:** el GDD citaba en cada mecánica el elemento del modelo que la produce. Eso evitó discutir reglas: si algo no estaba en el
   modelo, no se inventaba.
 - **Arte:** dibujar todo en código con una paleta fija de 14 colores mantuvo el estilo y dejó el ZIP en menos de 1 MB.
-- **Código:** el núcleo (`src/sed/`) no usa Phaser ni el DOM. Por eso se prueba con Node (120 pruebas) y la parte visual solo muestra lo
+- **Código:** el núcleo (`src/sed/`) no usa Phaser ni el DOM. Por eso se prueba con Node (120 pruebas al principio, 161 al entregar) y la parte visual solo muestra lo
   que ya pasó. Tener una sola clase (`Celda`) que sincroniza autómatas, red y reloj hizo fácil agregar el radar, el Controlador y el
   tutorial sin tocar las reglas.
 
