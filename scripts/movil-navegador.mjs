@@ -10,7 +10,7 @@ const PUERTO = 9800 + Math.floor(Math.random() * 150);
 const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find((p) => fs.existsSync(p));
 const edge = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${PUERTO}`, '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', `--user-data-dir=${fs.mkdtempSync(path.join(os.tmpdir(), 'movil-'))}`, 'about:blank'], { stdio: 'ignore' });
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
-setTimeout(() => { console.log('TIEMPO AGOTADO'); edge.kill(); process.exit(2); }, 240000);
+setTimeout(() => { console.log('TIEMPO AGOTADO'); edge.kill(); process.exit(2); }, 400000);
 await dormir(3000);
 const pestanas = await (await fetch(`http://127.0.0.1:${PUERTO}/json`)).json();
 const ws = new WebSocket(pestanas.find((t) => t.type === 'page').webSocketDebuggerUrl);
@@ -54,10 +54,11 @@ const toque = async (tipo, puntos) => enviar('Input.dispatchTouchEvent', { type:
 await tamano(960, 540);
 await ev(`localStorage.setItem('robocell-tycoon-2.5d', JSON.stringify({ version: 2, ultimo: 'Movil', jugadores: { Movil: { mejorPuntaje: 0, logros: {} } }, puntajes: [] }))`);
 
-for (const [ancho, alto] of [[360, 640], [640, 360], [800, 360], [844, 390]]) {
+for (const [ancho, alto] of [[360, 640], [640, 360], [800, 360], [844, 390], [960, 540]]) {
   await tamano(ancho, alto);
   const info = JSON.parse(await ev(`JSON.stringify({
     aviso: getComputedStyle(document.getElementById('girar')).display,
+    textoAviso: document.getElementById('girar').textContent,
     scrollV: document.documentElement.scrollHeight - innerHeight, scrollH: document.documentElement.scrollWidth - innerWidth,
     pos: getComputedStyle(document.body).position,
     canvas: (() => { const r = document.querySelector('canvas').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.left), Math.round(r.top)]; })(),
@@ -68,9 +69,10 @@ for (const [ancho, alto] of [[360, 640], [640, 360], [800, 360], [844, 390]]) {
   console.log(`--- ${ancho} x ${alto}: aviso=${info.aviso} canvas=${info.canvas} escala=${escala.toFixed(3)} → botón de 44 px lógicos = ${(44 * escala).toFixed(1)} px`);
   comprobar(`${ancho}x${alto} sin desplazamiento de la página`, info.scrollV <= 0 && info.scrollH <= 0, `(vertical ${info.scrollV}, horizontal ${info.scrollH})`);
   comprobar(`${ancho}x${alto} cuerpo fijo`, info.pos === 'fixed');
-  if (alto > ancho) { comprobar(`${ancho}x${alto} muestra el aviso de girar el teléfono`, info.aviso === 'flex'); continue; }
+  if (alto > ancho) { comprobar(`${ancho}x${alto} muestra el aviso «Gira el celular»`, info.aviso === 'flex' && info.textoAviso.includes('Gira el celular')); continue; }
   comprobar(`${ancho}x${alto} no muestra el aviso en horizontal`, info.aviso === 'none');
   comprobar(`${ancho}x${alto} el juego cabe en la pantalla`, info.canvas[0] <= ancho && info.canvas[1] <= alto, `(${info.canvas[0]}x${info.canvas[1]})`);
+  comprobar(`${ancho}x${alto} nada del juego queda fuera (HUD arriba y fichas abajo)`, info.canvas[2] >= 0 && info.canvas[3] >= 0 && info.canvas[2] + info.canvas[0] <= ancho + 1 && info.canvas[3] + info.canvas[1] <= alto + 1, `(x ${info.canvas[2]}, y ${info.canvas[3]})`);
   // Toque en "Jugar" (140, 272 lógicos; disposición del título de 18.21) y en la CNC1.
   const aPantalla = (x, y) => [info.canvas[2] + (x / 960) * info.canvas[0], info.canvas[3] + (y / 540) * info.canvas[1]];
   const [jx, jy] = aPantalla(140, 272);

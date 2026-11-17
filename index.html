@@ -18,14 +18,17 @@
                font-family: Arial, sans-serif; text-align: center; align-items: center; justify-content: center;
                flex-direction: column; padding: 24px; font-size: 20px; line-height: 1.4; }
       #girar b { font-size: 56px; display: block; margin-bottom: 12px; }
-      @media (orientation: portrait) and (max-width: 700px) { #girar { display: flex; } }
-      #game-container { width: 100vw; height: 100vh; }
+      @media (orientation: portrait) and (max-width: 700px), (orientation: portrait) and (pointer: coarse) and (max-width: 1024px) { #girar { display: flex; } }
+      /* El contenedor ocupa el área visible real (no 100vh: en el celular 100vh incluye la barra del navegador y
+         el juego centrado se cortaba arriba y abajo) y respeta la muesca. En PC los márgenes seguros valen 0. */
+      #game-container { position: fixed; top: env(safe-area-inset-top, 0px); right: env(safe-area-inset-right, 0px);
+                        bottom: env(safe-area-inset-bottom, 0px); left: env(safe-area-inset-left, 0px); }
       #game-container canvas { display: block; }
    </style>
 </head>
 <body>
    <div id="game-container"></div>
-   <div id="girar"><div><b>&#8635;</b>Gira el teléfono a horizontal para jugar RoboCell Tycoon 2.5D.</div></div>
+   <div id="girar"><div><b>&#8635;</b>Gira el celular a horizontal para jugar RoboCell Tycoon 2.5D.</div></div>
    <script type="module" src="./src/main.js"></script>
 </body>
 </html>

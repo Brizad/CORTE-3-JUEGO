@@ -37,3 +37,9 @@ const configuracion = {
 
 // Se deja accesible para las pruebas en el navegador (consola y scripts de verificación).
 window.juego = new Phaser.Game(configuracion);
+
+// En el celular, al girar o al mostrarse/ocultarse la barra del navegador, el área visible cambia sin que siempre
+// llegue un «resize» a tiempo: se vuelve a ajustar el juego para que entre completo (en PC no cambia nada).
+const reajustar = () => setTimeout(() => window.juego.scale.refresh(), 150);
+window.addEventListener('orientationchange', reajustar);
+window.visualViewport?.addEventListener('resize', reajustar);
